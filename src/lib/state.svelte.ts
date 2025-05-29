@@ -17,6 +17,7 @@ class TimelineState {
 	selectedClipId = $state('');
 
 	dragOffset = 0;
+	dragStart = 0;
 	hoverClipId = '';
 	invalidate = false;
 }
@@ -26,27 +27,30 @@ export const timelineState = new TimelineState();
 export class Clip {
 	id: string;
 	videoClip: VideoClip;
-	sourceId: string;
-	layer: number = 0;
-	start: number = 0;
-	duration: number;
+	source: Source;
+	layer = 0;
+	start = 0;
+	sourceOffset = 0;
+	duration: number = $state(0);
 	hovered: boolean = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';
-	constructor(videoClip: VideoClip, sourceId: string, duration: number) {
+	constructor(videoClip: VideoClip, source: Source) {
 		this.id = Math.random().toString(16).slice(2);
 		this.videoClip = videoClip;
-		this.sourceId = sourceId;
+		this.source = source;
 		this.layer = 0;
 		this.start = 0;
-		this.duration = $state(duration);
+		this.duration = source.videoSource.duration?.frames ?? 0;
 	}
 }
 
 export class Source {
 	id: string;
+	duration: number;
 	videoSource: VideoSource;
 	constructor(videoSource: VideoSource) {
 		this.id = Math.random().toString(16).slice(2);
 		this.videoSource = videoSource;
+		this.duration = videoSource.duration?.frames ?? 0;
 	}
 }

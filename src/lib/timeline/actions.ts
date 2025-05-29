@@ -10,9 +10,9 @@ export const setCurrentFrame = (frame: number) => {
 	appState.composition?.seek(frame);
 };
 
-export const setFrameFromOffset = (canvasOffset: number, width: number) => {
+export const setFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
-	setCurrentFrame(canvasOffsetToFrame(canvasOffset, width, timelineState.duration));
+	setCurrentFrame(canvasOffsetToFrame(canvasOffset));
 };
 
 export const createSource = async (url: string) => {
@@ -20,16 +20,21 @@ export const createSource = async (url: string) => {
 	appState.sources.push(new Source(videoSource));
 };
 
-export const createClip = async (sourceId: string) => {
+export const getSourceFromId = (id: string) => {
 	let foundSource;
 	for (const source of appState.sources) {
-		if (source.id === sourceId) {
+		if (source.id === id) {
 			foundSource = source;
 		}
 	}
-	if (!foundSource) return;
+	return foundSource;
+};
 
-	const videoClip = new VideoClip(foundSource.videoSource, {
+export const createClip = async (sourceId: string) => {
+	const source = getSourceFromId(sourceId);
+	if (!source) return;
+
+	const videoClip = new VideoClip(source.videoSource, {
 		// also accepts files/blobs or urls
 		position: 'center', // ensures the clip is centered
 		height: 1080 // Math.random() * 1000 // stretches the clip to the full height
@@ -37,18 +42,14 @@ export const createClip = async (sourceId: string) => {
 
 	await appState.composition?.add(videoClip);
 
-	const clip = new Clip(videoClip, sourceId, foundSource.videoSource.duration?.frames ?? 0);
+	const clip = new Clip(videoClip, source);
 
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 };
 
 export const moveSelectedClip = () => {
-	const frame = canvasOffsetToFrame(
-		timelineState.dragOffset,
-		timelineState.width,
-		timelineState.duration
-	);
+	const frame = canvasOffsetToFrame(timelineState.dragOffset);
 	const clip = getClipFromId(timelineState.selectedClipId);
 	if (!clip) return;
 	clip.start = clip.start + frame;
@@ -58,16 +59,29 @@ export const moveSelectedClip = () => {
 export const resizeSelctedClip = () => {
 	const clip = getClipFromId(timelineState.selectedClipId);
 	if (!clip) return;
-	const frame = canvasOffsetToFrame(
-		timelineState.dragOffset,
-		timelineState.width,
-		timelineState.duration
-	);
+	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset);
 	if (clip.resizeHover === 'start') {
-		clip.start = clip.start + frame;
-		clip.duration = clip.duration - frame;
+		const oldOffset = clip.sourceOffset;
+		clip.sourceOffset = clip.sourceOffset + frameOffset;
+
+		if (clip.sourceOffset < 0) {
+			// out of bounds
+			clip.start = clip.start - oldOffset;
+			clip.duration = clip.duration + oldOffset;
+			clip.sourceOffset = 0;
+		} else {
+			clip.start = clip.start + frameOffset;
+			clip.duration = clip.duration - frameOffset;
+		}
+
+		clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	} else if (clip.resizeHover === 'end') {
-		clip.duration = clip.duration + frame;
+		clip.duration = clip.duration + frameOffset;
+		const maxLength = clip.source.duration - clip.sourceOffset;
+
+		if (clip.duration > maxLength) clip.duration = maxLength;
+
+		clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	}
 };
 

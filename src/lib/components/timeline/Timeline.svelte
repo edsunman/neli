@@ -19,7 +19,6 @@
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
-	let dragStartPositionX = 0;
 
 	let context: CanvasRenderingContext2D | null;
 
@@ -33,29 +32,21 @@
 		timelineState.invalidate = true;
 		if (canvas) canvas.style.cursor = 'default';
 		if (scrubbing) {
-			setFrameFromOffset(e.offsetX, timelineState.width);
+			setFrameFromOffset(e.offsetX);
 			return;
 		}
 		if (dragging || resizing) {
-			timelineState.dragOffset = e.offsetX - dragStartPositionX;
+			timelineState.dragOffset = e.offsetX - timelineState.dragStart;
 			return;
 		}
 		timelineState.hoverClipId = '';
-		const hoveredFrame = canvasOffsetToFrame(
-			e.offsetX,
-			timelineState.width,
-			timelineState.duration
-		);
+		const hoveredFrame = canvasOffsetToFrame(e.offsetX);
 		const clip = setClipHover(hoveredFrame, e.offsetY);
 		if (!clip) return;
 
 		clip.resizeHover = 'none';
-		const start = frameToCanvasOffset(clip.start, timelineState.duration, timelineState.width);
-		const end = frameToCanvasOffset(
-			clip.start + clip.duration,
-			timelineState.duration,
-			timelineState.width
-		);
+		const start = frameToCanvasOffset(clip.start);
+		const end = frameToCanvasOffset(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
 			if (canvas) canvas.style.cursor = 'col-resize';
 			clip.resizeHover = 'start';
@@ -72,15 +63,14 @@
 		if (timelineState.hoverClipId) {
 			// clicked a clip
 			timelineState.selectedClipId = timelineState.hoverClipId;
-
 			const clip = getClipFromId(timelineState.hoverClipId);
 			if (!clip) return;
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
-				dragStartPositionX = e.offsetX;
+				timelineState.dragStart = e.offsetX;
 			} else {
 				dragging = true;
-				dragStartPositionX = e.offsetX;
+				timelineState.dragStart = e.offsetX;
 			}
 		} else {
 			timelineState.selectedClipId = '';
@@ -92,7 +82,7 @@
 	const mouseUp = (e: MouseEvent) => {
 		if (scrubbing) {
 			scrubbing = false;
-			setFrameFromOffset(e.offsetX, timelineState.width);
+			setFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
 			dragging = false;

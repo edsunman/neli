@@ -71,7 +71,6 @@
 	};
 
 	const formatString = (string: string) => {
-		console.log('d');
 		const reg = new RegExp(inputValue ?? '', 'gi');
 		return string.replace(reg, function (str) {
 			return '<span class="font-bold">' + str + '</span>';

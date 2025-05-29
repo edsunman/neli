@@ -42,11 +42,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		context.fillRect(Math.floor(endPercent * width) + offset + lengthOffset - 10, 40, 10, 40);
 	}
 
-	const playheadPosition = frameToCanvasOffset(
-		timelineState.currentFrame,
-		timelineState.duration,
-		width
-	);
+	const playheadPosition = frameToCanvasOffset(timelineState.currentFrame);
 	context.fillStyle = 'white';
 	context.fillRect(playheadPosition - 1, 0, 2, height);
 };
