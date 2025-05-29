@@ -3,10 +3,6 @@ import { canvasOffsetToFrame } from './utils';
 import { VideoClip, VideoSource, Source as coreSource } from '@diffusionstudio/core';
 
 export const setCurrentFrame = (frame: number) => {
-	//console.log('----');
-	//console.log('the frame is : ', timelineState.currentFrame);
-	//console.log('setting frame to: ', frame);
-	//timelineState.currentFrame = frame;
 	appState.composition?.seek(frame);
 };
 
