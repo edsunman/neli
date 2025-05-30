@@ -7,7 +7,8 @@
 		resizeSelctedClip,
 		setClipHover,
 		setCurrentFrame,
-		setFrameFromOffset
+		setFrameFromOffset,
+		updateClipCore
 	} from '$lib/timeline/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasOffsetToFrame, frameToCanvasOffset } from '$lib/timeline/utils';
@@ -37,6 +38,13 @@
 		}
 		if (dragging || resizing) {
 			timelineState.dragOffset = e.offsetX - timelineState.dragStart;
+		}
+		if (dragging) {
+			moveSelectedClip();
+			return;
+		}
+		if (resizing) {
+			resizeSelctedClip();
 			return;
 		}
 		timelineState.hoverClipId = '';
@@ -65,6 +73,9 @@
 			timelineState.selectedClipId = timelineState.hoverClipId;
 			const clip = getClipFromId(timelineState.hoverClipId);
 			if (!clip) return;
+			clip.dragStart = clip.start;
+			clip.dragDuration = clip.duration;
+			clip.dragSourceOffset = clip.sourceOffset;
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
 				timelineState.dragStart = e.offsetX;
@@ -85,12 +96,12 @@
 			setFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
+			updateClipCore();
 			dragging = false;
-			moveSelectedClip();
 		}
 		if (resizing) {
+			updateClipCore();
 			resizing = false;
-			resizeSelctedClip();
 		}
 		timelineState.dragOffset = 0;
 	};

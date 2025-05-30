@@ -15,7 +15,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		const startPercent = clip.start / timelineState.duration;
 		const durationPercent = clip.duration / timelineState.duration;
 		const endPercent = (clip.start + clip.duration) / timelineState.duration;
-		let offset = 0;
+		/* 		let offset = 0;
 		let lengthOffset = 0;
 		if (selected && clip.resizeHover === 'end') {
 			lengthOffset = timelineState.dragOffset;
@@ -24,13 +24,13 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 			lengthOffset = -timelineState.dragOffset;
 		} else if (selected) {
 			offset = timelineState.dragOffset;
-		}
+		} */
 
 		// base shape
 		context.fillRect(
-			Math.floor(startPercent * width) + offset,
+			Math.floor(startPercent * width), //+ offset,
 			40,
-			Math.floor(durationPercent * width) + lengthOffset,
+			Math.floor(durationPercent * width), //+ lengthOffset,
 			40
 		);
 
@@ -38,8 +38,13 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 		// handles
 		context.fillStyle = 'white';
-		context.fillRect(Math.floor(startPercent * width) + offset, 40, 10, 40);
-		context.fillRect(Math.floor(endPercent * width) + offset + lengthOffset - 10, 40, 10, 40);
+		context.fillRect(Math.floor(startPercent * width) /* + offset */, 40, 10, 40);
+		context.fillRect(
+			Math.floor(endPercent * width) /*  + offset + lengthOffset */ - 10,
+			40,
+			10,
+			40
+		);
 	}
 
 	const playheadPosition = frameToCanvasOffset(timelineState.currentFrame);

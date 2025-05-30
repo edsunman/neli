@@ -30,8 +30,11 @@ export class Clip {
 	source: Source;
 	layer = 0;
 	start = 0;
+	dragStart = 0;
 	sourceOffset = 0;
-	duration: number = $state(0);
+	dragSourceOffset = 0;
+	duration = 0;
+	dragDuration = 0;
 	hovered: boolean = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';
 	constructor(videoClip: VideoClip, source: Source) {

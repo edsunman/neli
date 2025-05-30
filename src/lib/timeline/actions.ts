@@ -44,40 +44,53 @@ export const createClip = async (sourceId: string) => {
 	timelineState.invalidate = true;
 };
 
+export const updateClipCore = () => {
+	const clip = getClipFromId(timelineState.selectedClipId);
+	if (!clip) return;
+	if (clip.resizeHover === 'none') {
+		const frame = canvasOffsetToFrame(timelineState.dragOffset);
+		clip.videoClip.offset(frame);
+	} else {
+		clip.videoClip.trim(clip.start, clip.start + clip.duration);
+	}
+};
+
 export const moveSelectedClip = () => {
 	const frame = canvasOffsetToFrame(timelineState.dragOffset);
 	const clip = getClipFromId(timelineState.selectedClipId);
 	if (!clip) return;
-	clip.start = clip.start + frame;
-	clip.videoClip.offset(frame);
+	clip.start = clip.dragStart + frame;
+
+	//clip.videoClip.offset(frame);
 };
 
 export const resizeSelctedClip = () => {
 	const clip = getClipFromId(timelineState.selectedClipId);
 	if (!clip) return;
+
 	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset);
 	if (clip.resizeHover === 'start') {
-		const oldOffset = clip.sourceOffset;
-		clip.sourceOffset = clip.sourceOffset + frameOffset;
+		/* const oldOffset = clip.sourceOffset; */
+		clip.sourceOffset = clip.dragSourceOffset + frameOffset;
 
 		if (clip.sourceOffset < 0) {
 			// out of bounds
-			clip.start = clip.start - oldOffset;
-			clip.duration = clip.duration + oldOffset;
+			clip.start = clip.dragStart - clip.dragSourceOffset;
+			clip.duration = clip.dragDuration + clip.dragSourceOffset;
 			clip.sourceOffset = 0;
 		} else {
-			clip.start = clip.start + frameOffset;
-			clip.duration = clip.duration - frameOffset;
+			clip.start = clip.dragStart + frameOffset;
+			clip.duration = clip.dragDuration - frameOffset;
 		}
 
-		clip.videoClip.trim(clip.start, clip.start + clip.duration);
+		//clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	} else if (clip.resizeHover === 'end') {
-		clip.duration = clip.duration + frameOffset;
+		clip.duration = clip.dragDuration + frameOffset;
 		const maxLength = clip.source.duration - clip.sourceOffset;
 
 		if (clip.duration > maxLength) clip.duration = maxLength;
 
-		clip.videoClip.trim(clip.start, clip.start + clip.duration);
+		//clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	}
 };
 
