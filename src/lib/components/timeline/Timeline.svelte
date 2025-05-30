@@ -70,7 +70,7 @@
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
-			timelineState.selectedClipId = timelineState.hoverClipId;
+			timelineState.selectedClip = getClipFromId(timelineState.hoverClipId);
 			const clip = getClipFromId(timelineState.hoverClipId);
 			if (!clip) return;
 			clip.dragStart = clip.start;
@@ -84,7 +84,7 @@
 				timelineState.dragStart = e.offsetX;
 			}
 		} else {
-			timelineState.selectedClipId = '';
+			timelineState.selectedClip = null;
 		}
 		dehoverAllClips();
 		timelineState.invalidate = true;

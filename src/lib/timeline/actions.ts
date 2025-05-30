@@ -45,7 +45,7 @@ export const createClip = async (sourceId: string) => {
 };
 
 export const updateClipCore = () => {
-	const clip = getClipFromId(timelineState.selectedClipId);
+	const clip = timelineState.selectedClip;
 	if (!clip) return;
 	if (clip.resizeHover === 'none') {
 		const frame = canvasOffsetToFrame(timelineState.dragOffset);
@@ -57,7 +57,7 @@ export const updateClipCore = () => {
 
 export const moveSelectedClip = () => {
 	const frame = canvasOffsetToFrame(timelineState.dragOffset);
-	const clip = getClipFromId(timelineState.selectedClipId);
+	const clip = timelineState.selectedClip;
 	if (!clip) return;
 	clip.start = clip.dragStart + frame;
 
@@ -65,7 +65,7 @@ export const moveSelectedClip = () => {
 };
 
 export const resizeSelctedClip = () => {
-	const clip = getClipFromId(timelineState.selectedClipId);
+	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
 	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset);
@@ -124,5 +124,5 @@ export const getClipFromId = (id: string) => {
 			break;
 		}
 	}
-	return foundClip;
+	return foundClip ?? null;
 };

@@ -14,7 +14,7 @@ class TimelineState {
 	currentFrame = $state(0);
 	playing = $state(false);
 	width = $state(0);
-	selectedClipId = $state('');
+	selectedClip = $state.raw<Clip | null>(null);
 
 	dragOffset = 0;
 	dragStart = 0;
@@ -25,7 +25,7 @@ class TimelineState {
 export const timelineState = new TimelineState();
 
 export class Clip {
-	id: string;
+	id = '';
 	videoClip: VideoClip;
 	source: Source;
 	layer = 0;
