@@ -46,10 +46,10 @@ export const createClip = async (sourceId: string) => {
 
 export const updateClipCore = () => {
 	const clip = timelineState.selectedClip;
+	console.log('update', clip);
 	if (!clip) return;
 	if (clip.resizeHover === 'none') {
-		const frame = canvasOffsetToFrame(timelineState.dragOffset);
-		clip.videoClip.offset(frame);
+		clip.videoClip.offset(clip.start - clip.savedStart);
 	} else {
 		clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	}
@@ -60,6 +60,13 @@ export const moveSelectedClip = () => {
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 	clip.start = clip.savedStart + frame;
+
+	if (clip.start < 0) {
+		clip.start = 0;
+	}
+	if (clip.start + clip.duration > timelineState.duration) {
+		clip.start = timelineState.duration - clip.duration;
+	}
 };
 
 export const resizeSelctedClip = () => {
