@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { appState, timelineState } from '$lib/state.svelte';
 	import {
-		dehoverAllClips,
+		removeHoverAllClips,
 		getClipFromId,
 		moveSelectedClip,
 		resizeSelctedClip,
 		setClipHover,
 		setCurrentFrame,
 		setFrameFromOffset,
-		updateClipCore
+		updateClipCore,
+		removeInvalidAllClips
 	} from '$lib/timeline/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasOffsetToFrame, frameToCanvasOffset } from '$lib/timeline/utils';
@@ -70,12 +71,14 @@
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
-			timelineState.selectedClip = getClipFromId(timelineState.hoverClipId);
 			const clip = getClipFromId(timelineState.hoverClipId);
+			timelineState.selectedClip = clip;
 			if (!clip) return;
-			clip.dragStart = clip.start;
-			clip.dragDuration = clip.duration;
-			clip.dragSourceOffset = clip.sourceOffset;
+
+			clip.savedStart = clip.start;
+			clip.savedDuration = clip.duration;
+			clip.savedSourceOffset = clip.sourceOffset;
+
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
 				timelineState.dragStart = e.offsetX;
@@ -86,7 +89,7 @@
 		} else {
 			timelineState.selectedClip = null;
 		}
-		dehoverAllClips();
+		removeHoverAllClips();
 		timelineState.invalidate = true;
 	};
 
@@ -104,6 +107,7 @@
 			resizing = false;
 		}
 		timelineState.dragOffset = 0;
+		removeInvalidAllClips();
 	};
 
 	const mouseLeave = (e: MouseEvent) => {

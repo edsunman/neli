@@ -28,21 +28,22 @@ export class Clip {
 	id = '';
 	videoClip: VideoClip;
 	source: Source;
-	layer = 0;
+
 	start = 0;
-	dragStart = 0;
+	savedStart = 0;
 	sourceOffset = 0;
-	dragSourceOffset = 0;
+	savedSourceOffset = 0;
 	duration = 0;
-	dragDuration = 0;
-	hovered: boolean = false;
+	savedDuration = 0;
+
+	invalid = false;
+	hovered = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';
+
 	constructor(videoClip: VideoClip, source: Source) {
 		this.id = Math.random().toString(16).slice(2);
 		this.videoClip = videoClip;
 		this.source = source;
-		this.layer = 0;
-		this.start = 0;
 		this.duration = source.videoSource.duration?.frames ?? 0;
 	}
 }

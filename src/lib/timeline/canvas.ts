@@ -9,7 +9,10 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		if (selected) {
 			context.fillStyle = 'blue';
 		} else {
-			context.fillStyle = clip.hovered ? 'red' : 'green';
+			context.fillStyle = 'green';
+		}
+		if (clip.invalid) {
+			context.fillStyle = 'red';
 		}
 
 		const startPercent = clip.start / timelineState.duration;

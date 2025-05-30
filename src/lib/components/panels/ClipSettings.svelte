@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { timelineState } from '$lib/state.svelte';
-	$inspect(timelineState.selectedClip);
 </script>
 
 {#each timelineState.clips as clip}

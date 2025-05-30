@@ -59,44 +59,56 @@ export const moveSelectedClip = () => {
 	const frame = canvasOffsetToFrame(timelineState.dragOffset);
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
-	clip.start = clip.dragStart + frame;
-
-	//clip.videoClip.offset(frame);
+	clip.start = clip.savedStart + frame;
 };
 
 export const resizeSelctedClip = () => {
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
+	clip.invalid = false;
 	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset);
 	if (clip.resizeHover === 'start') {
-		/* const oldOffset = clip.sourceOffset; */
-		clip.sourceOffset = clip.dragSourceOffset + frameOffset;
+		clip.start = clip.savedStart + frameOffset;
+		clip.duration = clip.savedDuration - frameOffset;
+		clip.sourceOffset = clip.savedSourceOffset + frameOffset;
 
 		if (clip.sourceOffset < 0) {
-			// out of bounds
-			clip.start = clip.dragStart - clip.dragSourceOffset;
-			clip.duration = clip.dragDuration + clip.dragSourceOffset;
+			// going past start of source
+			clip.start = clip.savedStart - clip.savedSourceOffset;
+			clip.duration = clip.savedDuration + clip.savedSourceOffset;
 			clip.sourceOffset = 0;
-		} else {
-			clip.start = clip.dragStart + frameOffset;
-			clip.duration = clip.dragDuration - frameOffset;
+			clip.invalid = true;
+		} else if (clip.duration < 200) {
+			// clip too short
+			clip.start = clip.savedStart + clip.savedDuration - 200;
+			clip.duration = 200;
+			clip.sourceOffset = clip.savedSourceOffset + clip.savedDuration - 200;
 		}
-
-		//clip.videoClip.trim(clip.start, clip.start + clip.duration);
 	} else if (clip.resizeHover === 'end') {
-		clip.duration = clip.dragDuration + frameOffset;
+		clip.duration = clip.savedDuration + frameOffset;
 		const maxLength = clip.source.duration - clip.sourceOffset;
 
-		if (clip.duration > maxLength) clip.duration = maxLength;
-
-		//clip.videoClip.trim(clip.start, clip.start + clip.duration);
+		if (clip.duration > maxLength) {
+			// going past end of source
+			clip.duration = maxLength;
+			clip.invalid = true;
+		} else if (clip.duration < 200) {
+			// clip too short
+			clip.duration = 200;
+		}
 	}
 };
 
-export const dehoverAllClips = () => {
+export const removeHoverAllClips = () => {
 	for (const clip of timelineState.clips) {
 		clip.hovered = false;
+	}
+};
+
+export const removeInvalidAllClips = () => {
+	for (const clip of timelineState.clips) {
+		clip.invalid = false;
 	}
 };
 
