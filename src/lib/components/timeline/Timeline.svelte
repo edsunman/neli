@@ -159,7 +159,17 @@
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;
 			case 'ArrowRight':
-				setCurrentFrame(timelineState.currentFrame + 2);
+				setCurrentFrame(timelineState.currentFrame + 1);
+				break;
+			case 'Minus':
+				if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
+				timelineState.invalidate = true;
+				console.log(timelineState.zoom);
+				break;
+			case 'Equal':
+				if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
+				timelineState.invalidate = true;
+				console.log(timelineState.zoom);
 				break;
 		}
 	}}

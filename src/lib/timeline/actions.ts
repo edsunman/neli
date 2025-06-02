@@ -46,7 +46,6 @@ export const createClip = async (sourceId: string) => {
 
 export const updateClipCore = () => {
 	const clip = timelineState.selectedClip;
-	console.log('update', clip);
 	if (!clip) return;
 	if (clip.resizeHover === 'none') {
 		clip.videoClip.offset(clip.start - clip.savedStart);
