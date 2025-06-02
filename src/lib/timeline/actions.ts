@@ -4,6 +4,7 @@ import { VideoClip, VideoSource, Source as coreSource } from '@diffusionstudio/c
 
 export const setCurrentFrame = (frame: number) => {
 	appState.composition?.seek(frame);
+	//timelineState.currentFrame = frame;
 };
 
 export const setFrameFromOffset = (canvasOffset: number) => {
@@ -123,7 +124,7 @@ export const setClipHover = (hoveredFrame: number, offsetY: number) => {
 	for (const clip of timelineState.clips) {
 		clip.hovered = false;
 		if (offsetY > 40 && offsetY < 80) {
-			if (hoveredFrame < clip.start + clip.duration && hoveredFrame > clip.start) {
+			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 				foundClip = clip;
 				clip.hovered = true;
 				timelineState.hoverClipId = clip.id;

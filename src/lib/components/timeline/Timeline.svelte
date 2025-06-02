@@ -31,8 +31,9 @@
 	});
 
 	const mouseMove = (e: MouseEvent) => {
+		if (!canvas) return;
 		timelineState.invalidate = true;
-		if (canvas) canvas.style.cursor = 'default';
+		canvas.style.cursor = 'default';
 		if (scrubbing) {
 			setFrameFromOffset(e.offsetX);
 			return;
@@ -46,6 +47,7 @@
 		}
 		if (resizing) {
 			resizeSelctedClip();
+			canvas.style.cursor = 'col-resize';
 			return;
 		}
 		timelineState.hoverClipId = '';
@@ -57,11 +59,11 @@
 		const start = frameToCanvasOffset(clip.start);
 		const end = frameToCanvasOffset(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
-			if (canvas) canvas.style.cursor = 'col-resize';
+			canvas.style.cursor = 'col-resize';
 			clip.resizeHover = 'start';
 		} else if (e.offsetX > end - 15) {
 			clip.resizeHover = 'end';
-			if (canvas) canvas.style.cursor = 'col-resize';
+			canvas.style.cursor = 'col-resize';
 		}
 	};
 
@@ -159,17 +161,15 @@
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;
 			case 'ArrowRight':
-				setCurrentFrame(timelineState.currentFrame + 1);
+				setCurrentFrame(timelineState.currentFrame + 2);
 				break;
 			case 'Minus':
 				if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
 				timelineState.invalidate = true;
-				console.log(timelineState.zoom);
 				break;
 			case 'Equal':
 				if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
 				timelineState.invalidate = true;
-				console.log(timelineState.zoom);
 				break;
 		}
 	}}
