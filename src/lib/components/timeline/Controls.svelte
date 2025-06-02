@@ -17,7 +17,7 @@
 	});
 </script>
 
-<div class="basis-1/6 flex-none flex justify-center">
+<div class="basis-1/6 flex-none flex justify-center font-semibold text-xl">
 	<div class="text-white">{timelineState.currentFrame} --- {formattedTime}</div>
 	<button
 		onclick={() => {

@@ -17,6 +17,7 @@ class TimelineState {
 	selectedClip = $state.raw<Clip | null>(null);
 
 	zoom = 1;
+	offset = 0;
 	dragOffset = 0;
 	dragStart = 0;
 	hoverClipId = '';

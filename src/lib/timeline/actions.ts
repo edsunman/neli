@@ -27,6 +27,27 @@ export const getSourceFromId = (id: string) => {
 	return foundSource;
 };
 
+export const centerViewOnPlayhead = () => {
+	const playheadPercent = timelineState.currentFrame / timelineState.duration;
+	const percentOfTimelineVisible = 1 / timelineState.zoom;
+	const maxPercentAllowed = 1 - percentOfTimelineVisible;
+	timelineState.offset = playheadPercent - percentOfTimelineVisible / 2;
+	if (timelineState.offset < 0) timelineState.offset = 0;
+	if (timelineState.offset > maxPercentAllowed) timelineState.offset = maxPercentAllowed;
+};
+
+export const zoomIn = () => {
+	if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
+	centerViewOnPlayhead();
+	timelineState.invalidate = true;
+};
+
+export const zoomOut = () => {
+	if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
+	centerViewOnPlayhead();
+	timelineState.invalidate = true;
+};
+
 export const createClip = async (sourceId: string) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
@@ -56,7 +77,7 @@ export const updateClipCore = () => {
 };
 
 export const moveSelectedClip = () => {
-	const frame = canvasOffsetToFrame(timelineState.dragOffset);
+	const frame = canvasOffsetToFrame(timelineState.dragOffset, false);
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 	clip.start = clip.savedStart + frame;
@@ -74,7 +95,7 @@ export const resizeSelctedClip = () => {
 	if (!clip) return;
 
 	clip.invalid = false;
-	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset);
+	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset, false);
 	if (clip.resizeHover === 'start') {
 		clip.start = clip.savedStart + frameOffset;
 		clip.duration = clip.savedDuration - frameOffset;

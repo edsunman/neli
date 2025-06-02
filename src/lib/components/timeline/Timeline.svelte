@@ -9,7 +9,9 @@
 		setCurrentFrame,
 		setFrameFromOffset,
 		updateClipCore,
-		removeInvalidAllClips
+		removeInvalidAllClips,
+		zoomOut,
+		zoomIn
 	} from '$lib/timeline/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasOffsetToFrame, frameToCanvasOffset } from '$lib/timeline/utils';
@@ -134,6 +136,12 @@
 
 		context.fillStyle = '#18181b';
 		context.fillRect(0, 0, timelineState.width, height);
+
+		// @ts-ignore
+		window.offset = (o: number) => {
+			timelineState.offset = o;
+			timelineState.invalidate = true;
+		};
 	});
 </script>
 
@@ -164,12 +172,10 @@
 				setCurrentFrame(timelineState.currentFrame + 2);
 				break;
 			case 'Minus':
-				if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
-				timelineState.invalidate = true;
+				zoomOut();
 				break;
 			case 'Equal':
-				if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
-				timelineState.invalidate = true;
+				zoomIn();
 				break;
 		}
 	}}

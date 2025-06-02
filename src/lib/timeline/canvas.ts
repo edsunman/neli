@@ -8,14 +8,25 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
 	const minuteInPixels = (timelineState.width / durationInMinutes) * timelineState.zoom;
+	const offsetInPixels = timelineState.width * timelineState.zoom * timelineState.offset;
+	//console.log(offsetInPixels);
 
-	context.fillStyle = 'white';
-	context.font = '15px georgia';
+	context.fillStyle = '#777';
+	context.font = '12px sen';
+
+	// minutes
 	for (let i = 0; i < durationInMinutes; i++) {
-		const position = Math.floor(minuteInPixels * i);
-		context.fillRect(position, 0, 1, 40);
-		context.fillText(i.toString(), position + 5, 10);
+		const position = Math.floor(minuteInPixels * i - offsetInPixels);
+		context.fillRect(position, 0, 1, 20);
+		context.fillText(`0${i.toString()}:00`, position + 5, 12);
 	}
+
+	// 30 secs
+	/* 	for (let i = 0; i < durationInMinutes; i++) {
+		const position = Math.floor(minuteInPixels * i + minuteInPixels / 2);
+		context.fillRect(position, 0, 1, 20);
+		//context.fillText(i.toString(), position + 5, 10);
+	} */
 
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
@@ -28,9 +39,9 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 			context.fillStyle = 'red';
 		}
 
-		const startPercent = clip.start / timelineState.duration;
+		const startPercent = clip.start / timelineState.duration - timelineState.offset;
 		const durationPercent = clip.duration / timelineState.duration;
-		const endPercent = (clip.start + clip.duration) / timelineState.duration;
+		const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
 		// base shape
 		context.fillRect(
@@ -50,5 +61,5 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	const playheadPosition = frameToCanvasOffset(timelineState.currentFrame);
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition - 1, 0, 2, height);
+	context.fillRect(playheadPosition, 0, 2, height);
 };
