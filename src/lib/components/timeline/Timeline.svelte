@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { timelineState } from '$lib/state.svelte';
 	import {
 		removeHoverAllClips,
 		getClipFromId,
@@ -14,7 +14,7 @@
 		zoomIn
 	} from '$lib/timeline/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
-	import { canvasOffsetToFrame, frameToCanvasOffset } from '$lib/timeline/utils';
+	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
 
@@ -23,6 +23,7 @@
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
+	let fontsLoaded = false;
 
 	let context: CanvasRenderingContext2D | null;
 
@@ -53,13 +54,13 @@
 			return;
 		}
 		timelineState.hoverClipId = '';
-		const hoveredFrame = canvasOffsetToFrame(e.offsetX);
+		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setClipHover(hoveredFrame, e.offsetY);
 		if (!clip) return;
 
 		clip.resizeHover = 'none';
-		const start = frameToCanvasOffset(clip.start);
-		const end = frameToCanvasOffset(clip.start + clip.duration);
+		const start = frameToCanvasPixel(clip.start);
+		const end = frameToCanvasPixel(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
 			canvas.style.cursor = 'col-resize';
 			clip.resizeHover = 'start';
@@ -119,7 +120,7 @@
 	};
 
 	const step = () => {
-		if (timelineState.invalidate) {
+		if (timelineState.invalidate && fontsLoaded) {
 			if (context) drawCanvas(context, timelineState.width, height);
 			timelineState.invalidate = false;
 		}
@@ -137,11 +138,10 @@
 		context.fillStyle = '#18181b';
 		context.fillRect(0, 0, timelineState.width, height);
 
-		// @ts-ignore
-		window.offset = (o: number) => {
-			timelineState.offset = o;
+		document.fonts.ready.then(() => {
+			fontsLoaded = true;
 			timelineState.invalidate = true;
-		};
+		});
 	});
 </script>
 
@@ -150,7 +150,7 @@
 	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
-		class="basis-5/6 mb-8 mx-8"
+		class="basis-5/6"
 		role="navigation"
 		onmousemove={mouseMove}
 		onmousedown={mouseDown}

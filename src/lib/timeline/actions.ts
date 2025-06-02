@@ -1,5 +1,5 @@
 import { appState, Clip, Source, timelineState } from '$lib/state.svelte';
-import { canvasOffsetToFrame } from './utils';
+import { canvasPixelToFrame } from './utils';
 import { VideoClip, VideoSource, Source as coreSource } from '@diffusionstudio/core';
 
 export const setCurrentFrame = (frame: number) => {
@@ -9,7 +9,7 @@ export const setCurrentFrame = (frame: number) => {
 
 export const setFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
-	setCurrentFrame(canvasOffsetToFrame(canvasOffset));
+	setCurrentFrame(canvasPixelToFrame(canvasOffset));
 };
 
 export const createSource = async (url: string) => {
@@ -77,7 +77,7 @@ export const updateClipCore = () => {
 };
 
 export const moveSelectedClip = () => {
-	const frame = canvasOffsetToFrame(timelineState.dragOffset, false);
+	const frame = canvasPixelToFrame(timelineState.dragOffset, false);
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 	clip.start = clip.savedStart + frame;
@@ -95,7 +95,7 @@ export const resizeSelctedClip = () => {
 	if (!clip) return;
 
 	clip.invalid = false;
-	const frameOffset = canvasOffsetToFrame(timelineState.dragOffset, false);
+	const frameOffset = canvasPixelToFrame(timelineState.dragOffset, false);
 	if (clip.resizeHover === 'start') {
 		clip.start = clip.savedStart + frameOffset;
 		clip.duration = clip.savedDuration - frameOffset;

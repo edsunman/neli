@@ -1,6 +1,8 @@
 <script>
 	import { timelineState } from '$lib/state.svelte';
 
+	let showFrames = false;
+
 	let formattedTime = $derived.by(() => {
 		const FF = timelineState.currentFrame % 30;
 		const seconds = (timelineState.currentFrame - FF) / 30;
@@ -17,9 +19,9 @@
 	});
 </script>
 
-<div class="basis-1/6 flex-none flex justify-center font-semibold text-xl">
-	<div class="text-white">{timelineState.currentFrame} --- {formattedTime}</div>
-	<button
+<div class="basis-1/6 flex-none flex justify-center font-semibold text-2xl">
+	<div class="text-white">{showFrames ? timelineState.currentFrame : formattedTime}</div>
+	<!-- 	<button
 		onclick={() => {
 			timelineState.playing = true;
 		}}>play</button
@@ -28,5 +30,5 @@
 		onclick={() => {
 			timelineState.playing = false;
 		}}>pause</button
-	>
+	> -->
 </div>
