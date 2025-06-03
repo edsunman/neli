@@ -16,8 +16,8 @@ class TimelineState {
 	width = $state(0);
 	selectedClip = $state.raw<Clip | null>(null);
 
-	zoom = 1;
-	offset = 0; // percentage, 0 to 1
+	zoom = 0.9;
+	offset = -0.055; // percentage, 0 to 1
 	offsetStart = 0; // percentage, 0 to 1
 	dragOffset = 0; // pixels
 	dragStart = 0; // pixels

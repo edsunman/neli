@@ -9,7 +9,9 @@ export const setCurrentFrame = (frame: number) => {
 
 export const setFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
-	setCurrentFrame(canvasPixelToFrame(canvasOffset));
+	let frame = canvasPixelToFrame(canvasOffset);
+	if (frame > 8999) frame = 8999;
+	setCurrentFrame(frame);
 };
 
 export const createSource = async (url: string) => {
@@ -34,31 +36,36 @@ export const centerViewOnPlayhead = () => {
 };
 
 export const checkViewBounds = () => {
+	const padding = 0.05 / timelineState.zoom;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
 	const maxPercentAllowed = 1 - percentOfTimelineVisible;
-	if (timelineState.offset < 0) timelineState.offset = 0;
-	if (timelineState.offset > maxPercentAllowed) timelineState.offset = maxPercentAllowed;
+	if (timelineState.offset < 0) {
+		timelineState.offset = 0 - padding;
+	}
+	if (timelineState.offset > maxPercentAllowed + padding)
+		timelineState.offset = maxPercentAllowed + padding;
 };
 
 export const zoomIn = () => {
-	if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
+	if (timelineState.zoom < 220) timelineState.zoom = timelineState.zoom * 2;
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
 };
 
 export const zoomOut = () => {
-	if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
+	if (timelineState.zoom > 0.9) timelineState.zoom = timelineState.zoom / 2;
 	checkViewBounds();
 	timelineState.invalidate = true;
 };
 
 export const updateScrollPosition = () => {
+	const padding = 0.05 / timelineState.zoom;
 	const offsetPercent = timelineState.dragOffset / timelineState.width;
 	timelineState.offset = timelineState.offsetStart + offsetPercent;
-	if (timelineState.offset < 0) timelineState.offset = 0;
+	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
 	const barWidth = 1 / timelineState.zoom;
-	if (timelineState.offset + barWidth >= 1) timelineState.offset = 1 - barWidth;
+	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
 };
 
 export const createClip = async (sourceId: string) => {

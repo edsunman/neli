@@ -54,25 +54,31 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		}
 	}
 
-	if (minuteInPixels > 50000) {
+	if (minuteInPixels > 40000) {
 		const numberOfFramesToShow = Math.ceil(endFrame - startFrame) + 1;
-		let frame = startFrame;
+		let frame = startFrame > 0 ? startFrame : 0;
 		for (let i = 0; i < numberOfFramesToShow; i++) {
-			if ((frame - 1) % 30 === 0) {
+			if (minuteInPixels < 70000 && (frame - 1) % 30 === 0) {
 				frame++;
 				continue;
 			}
 			const position = Math.floor((minuteInPixels / 60 / 30) * frame - offsetInPixels);
-			context.fillRect(position, 8, 1, 5);
+			context.fillRect(position, 9, 1, 5);
 			frame++;
 		}
 	}
 
 	// scrollbar
-
-	if (timelineState.zoom > 1) {
+	if (timelineState.zoom > 0.9) {
+		const padding = 0.05 / timelineState.zoom;
+		const paddingInPixels = padding * width;
 		context.fillStyle = '#3f3f47';
-		context.fillRect(timelineState.offset * width, height - 40, width / timelineState.zoom, 20);
+		context.fillRect(
+			(timelineState.offset + padding) * width,
+			height - 40,
+			width / timelineState.zoom - paddingInPixels * 2,
+			20
+		);
 	}
 
 	for (const clip of timelineState.clips) {
