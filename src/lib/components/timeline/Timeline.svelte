@@ -11,7 +11,8 @@
 		updateClipCore,
 		removeInvalidAllClips,
 		zoomOut,
-		zoomIn
+		zoomIn,
+		updateScrollPosition
 	} from '$lib/timeline/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -23,6 +24,7 @@
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
+	let scrolling = false;
 	let fontsLoaded = false;
 
 	let context: CanvasRenderingContext2D | null;
@@ -41,8 +43,11 @@
 			setFrameFromOffset(e.offsetX);
 			return;
 		}
-		if (dragging || resizing) {
+		if (dragging || resizing || scrolling) {
 			timelineState.dragOffset = e.offsetX - timelineState.dragStart;
+		}
+		if (scrolling) {
+			updateScrollPosition();
 		}
 		if (dragging) {
 			moveSelectedClip();
@@ -73,6 +78,13 @@
 	const mouseDown = (e: MouseEvent) => {
 		if (e.offsetY < 40) {
 			scrubbing = true;
+		}
+		const scrollBarStart = timelineState.offset * timelineState.width;
+		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
+		if (e.offsetY > height - 60 && e.offsetX > scrollBarStart && e.offsetX < scrollBarEnd) {
+			scrolling = true;
+			timelineState.dragStart = e.offsetX;
+			timelineState.offsetStart = timelineState.offset;
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
@@ -111,12 +123,15 @@
 			updateClipCore();
 			resizing = false;
 		}
+		if (scrolling) {
+			scrolling = false;
+		}
 		timelineState.dragOffset = 0;
 		removeInvalidAllClips();
 	};
 
 	const mouseLeave = (e: MouseEvent) => {
-		scrubbing = false;
+		mouseUp(e);
 	};
 
 	const step = () => {

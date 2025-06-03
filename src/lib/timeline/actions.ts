@@ -30,8 +30,12 @@ export const getSourceFromId = (id: string) => {
 export const centerViewOnPlayhead = () => {
 	const playheadPercent = timelineState.currentFrame / timelineState.duration;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
-	const maxPercentAllowed = 1 - percentOfTimelineVisible;
 	timelineState.offset = playheadPercent - percentOfTimelineVisible / 2;
+};
+
+export const checkViewBounds = () => {
+	const percentOfTimelineVisible = 1 / timelineState.zoom;
+	const maxPercentAllowed = 1 - percentOfTimelineVisible;
 	if (timelineState.offset < 0) timelineState.offset = 0;
 	if (timelineState.offset > maxPercentAllowed) timelineState.offset = maxPercentAllowed;
 };
@@ -39,13 +43,22 @@ export const centerViewOnPlayhead = () => {
 export const zoomIn = () => {
 	if (timelineState.zoom < 256) timelineState.zoom = timelineState.zoom * 2;
 	centerViewOnPlayhead();
+	checkViewBounds();
 	timelineState.invalidate = true;
 };
 
 export const zoomOut = () => {
 	if (timelineState.zoom > 1) timelineState.zoom = timelineState.zoom / 2;
-	centerViewOnPlayhead();
+	checkViewBounds();
 	timelineState.invalidate = true;
+};
+
+export const updateScrollPosition = () => {
+	const offsetPercent = timelineState.dragOffset / timelineState.width;
+	timelineState.offset = timelineState.offsetStart + offsetPercent;
+	if (timelineState.offset < 0) timelineState.offset = 0;
+	const barWidth = 1 / timelineState.zoom;
+	if (timelineState.offset + barWidth >= 1) timelineState.offset = 1 - barWidth;
 };
 
 export const createClip = async (sourceId: string) => {

@@ -15,7 +15,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		(timelineState.offset + 1 / timelineState.zoom) * timelineState.duration
 	);
 
-	context.fillStyle = '#777';
+	context.fillStyle = '#52525c';
 	context.font = '12px sen';
 
 	if (minuteInPixels <= 1000) {
@@ -68,6 +68,13 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		}
 	}
 
+	// scrollbar
+
+	if (timelineState.zoom > 1) {
+		context.fillStyle = '#3f3f47';
+		context.fillRect(timelineState.offset * width, height - 40, width / timelineState.zoom, 20);
+	}
+
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
 		if (selected) {
@@ -101,5 +108,5 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, 0, 2, height);
+	context.fillRect(playheadPosition, 0, 2, height - 80);
 };

@@ -18,6 +18,7 @@ class TimelineState {
 
 	zoom = 1;
 	offset = 0; // percentage, 0 to 1
+	offsetStart = 0; // percentage, 0 to 1
 	dragOffset = 0; // pixels
 	dragStart = 0; // pixels
 	hoverClipId = '';
