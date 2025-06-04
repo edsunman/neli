@@ -19,9 +19,9 @@ export const createClip = async (sourceId: string, start = 0, duration = 0, sour
 	}
 	if (sourceOffset > 0) {
 		videoClip.offset(-sourceOffset);
-		if (videoClip.source && videoClip.source.duration)
+		if (videoClip.source && videoClip.source.duration) {
 			videoClip.trim(start, start + videoClip.source.duration.frames);
-		//console.log(start, start + videoClip.source.duration.frames);
+		}
 	}
 	if (duration > 0) {
 		videoClip.trim(start, start + duration);
@@ -199,6 +199,12 @@ export const trimSiblingClips = () => {
 			continue;
 		}
 
+		if (clip.start > siblingClip.start && clipEnd < siblingEnd) {
+			// clip fits inside sibling so split it
+			splitClip(siblingClip.id, clip.start, clip.duration);
+			continue;
+		}
+
 		if (clip.start > siblingClip.start && clip.start < siblingEnd) {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
@@ -219,22 +225,20 @@ export const trimSiblingClips = () => {
 	}
 };
 
-export const splitClip = (clipId: string, mousePosition: number) => {
+export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	const clip = getClipFromId(clipId);
 	if (!clip) return;
 
-	const frame = canvasPixelToFrame(mousePosition);
 	const ogClipDuration = frame - clip.start;
-	const newClipDuration = clip.duration - ogClipDuration;
-	const newClipOffset = clip.sourceOffset + ogClipDuration;
-	console.log(clip.sourceOffset, newClipOffset);
+	const newClipDuration = clip.duration - ogClipDuration - gapSize;
+	const newClipOffset = clip.sourceOffset + ogClipDuration + gapSize;
 
 	// trim clip
 	clip.duration = ogClipDuration;
 	updateClipCore(clip, 'trim');
 
 	// create new clip
-	createClip(clip.source.id, frame, newClipDuration, newClipOffset);
+	createClip(clip.source.id, frame + gapSize, newClipDuration, newClipOffset);
 };
 
 export const removeClipWithId = (id: string) => {

@@ -93,7 +93,7 @@
 		if (timelineState.hoverClipId) {
 			// clicked a clip
 			if (e.shiftKey) {
-				splitClip(timelineState.hoverClipId, e.offsetX);
+				splitClip(timelineState.hoverClipId, canvasPixelToFrame(e.offsetX));
 				timelineState.invalidate = true;
 				return;
 			}
@@ -101,7 +101,6 @@
 			const clip = getClipFromId(timelineState.hoverClipId);
 			timelineState.selectedClip = clip;
 			if (!clip) return;
-			console.log(clip);
 
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
