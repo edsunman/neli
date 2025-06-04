@@ -73,13 +73,22 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	if (timelineState.zoom > 0.9) {
 		const padding = 0.05 / timelineState.zoom;
 		const paddingInPixels = padding * width;
-		context.fillStyle = '#3f3f47';
-		context.fillRect(
+		context.fillStyle = '#3c3c44';
+		context.beginPath();
+		context.roundRect(
+			(timelineState.offset + padding) * width,
+			height - 40,
+			width / timelineState.zoom - paddingInPixels * 2,
+			15,
+			8
+		);
+		context.fill();
+		/* context.fillRect(
 			(timelineState.offset + padding) * width,
 			height - 40,
 			width / timelineState.zoom - paddingInPixels * 2,
 			20
-		);
+		); */
 	}
 
 	for (const clip of timelineState.clips) {
@@ -101,31 +110,50 @@ const drawClip = (
 	width: number,
 	selected = false
 ) => {
-	if (selected) {
-		context.fillStyle = 'blue';
-	} else {
-		context.fillStyle = 'green';
-	}
-	if (clip.invalid) {
-		context.fillStyle = 'red';
-	}
-
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const durationPercent = clip.duration / timelineState.duration;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
 	// base shape
+	context.save();
+
+	context.beginPath();
+
+	context.roundRect(
+		startPercent * width * timelineState.zoom + 1,
+		80,
+		durationPercent * width * timelineState.zoom - 2,
+		35,
+		8
+	);
+	//context.fill();
+	//context.closePath();
+
+	/// define this Path as clipping mask
+	context.clip();
+
+	if (selected) {
+		context.fillStyle = 'oklch(58.6% 0.253 17.585)';
+	} else {
+		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+	}
+	if (clip.invalid) {
+		context.fillStyle = 'red';
+	}
+
 	context.fillRect(
-		Math.floor(startPercent * width * timelineState.zoom), //+ offset,
-		40,
-		Math.floor(durationPercent * width * timelineState.zoom), //+ lengthOffset,
-		40
+		startPercent * width * timelineState.zoom,
+		80,
+		durationPercent * width * timelineState.zoom,
+		35
 	);
 
-	if (!selected && !clip.hovered) return;
+	if (selected || clip.hovered) {
+		// handles
+		context.fillStyle = 'white';
+		context.fillRect(Math.floor(startPercent * width * timelineState.zoom), 80, 10, 35);
+		context.fillRect(Math.floor(endPercent * width * timelineState.zoom) - 10, 80, 10, 35);
+	}
 
-	// handles
-	context.fillStyle = 'white';
-	context.fillRect(Math.floor(startPercent * width * timelineState.zoom), 40, 10, 40);
-	context.fillRect(Math.floor(endPercent * width * timelineState.zoom) - 10, 40, 10, 40);
+	context.restore();
 };

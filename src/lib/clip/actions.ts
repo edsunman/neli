@@ -271,12 +271,11 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		clip.hovered = false;
-		if (offsetY > 40 && offsetY < 80) {
+		if (offsetY > 80 && offsetY < 115) {
 			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 				foundClip = clip;
 				clip.hovered = true;
 				timelineState.hoverClipId = clip.id;
-				break;
 			}
 		}
 	}
