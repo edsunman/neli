@@ -15,7 +15,8 @@
 		setHoverOnHoveredClip,
 		updateClipCore,
 		removeInvalidAllClips,
-		trimSiblingClips
+		trimSiblingClips,
+		splitClip
 	} from '$lib/clip/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -91,9 +92,16 @@
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
+			if (e.shiftKey) {
+				splitClip(timelineState.hoverClipId, e.offsetX);
+				timelineState.invalidate = true;
+				return;
+			}
+
 			const clip = getClipFromId(timelineState.hoverClipId);
 			timelineState.selectedClip = clip;
 			if (!clip) return;
+			console.log(clip);
 
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
@@ -120,11 +128,11 @@
 		}
 		if (dragging) {
 			trimSiblingClips();
-			updateClipCore();
+			updateClipCore(timelineState.selectedClip, 'offset');
 			dragging = false;
 		}
 		if (resizing) {
-			updateClipCore();
+			updateClipCore(timelineState.selectedClip, 'trim');
 			resizing = false;
 		}
 		if (scrolling) {

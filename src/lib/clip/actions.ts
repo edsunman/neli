@@ -4,7 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { VideoClip } from '@diffusionstudio/core';
 import { Clip } from './clip';
 
-export const createClip = async (sourceId: string) => {
+export const createClip = async (sourceId: string, start = 0, duration = 0, sourceOffset = 0) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
@@ -14,18 +14,29 @@ export const createClip = async (sourceId: string) => {
 		height: 1080 // Math.random() * 1000 // stretches the clip to the full height
 	});
 
+	if (start > 0) {
+		videoClip.offset(start);
+	}
+	if (sourceOffset > 0) {
+		videoClip.offset(-sourceOffset);
+		if (videoClip.source && videoClip.source.duration)
+			videoClip.trim(start, start + videoClip.source.duration.frames);
+		//console.log(start, start + videoClip.source.duration.frames);
+	}
+	if (duration > 0) {
+		videoClip.trim(start, start + duration);
+	}
+
 	await appState.composition?.add(videoClip);
 
-	const clip = new Clip(videoClip, source);
-
+	const clip = new Clip(videoClip, source, start, duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 };
 
-export const updateClipCore = () => {
-	const clip = timelineState.selectedClip;
+export const updateClipCore = (clip: Clip | null, method: 'offset' | 'trim') => {
 	if (!clip) return;
-	if (clip.resizeHover === 'none') {
+	if (method === 'offset') {
 		clip.videoClip.offset(clip.start - clip.savedStart);
 	} else {
 		clip.videoClip.trim(clip.start, clip.start + clip.duration);
@@ -192,7 +203,7 @@ export const trimSiblingClips = () => {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			siblingClip.videoClip.trim(siblingClip.start, siblingClip.start + siblingClip.duration);
+			updateClipCore(siblingClip, 'trim');
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
 			// need to trim start
@@ -200,12 +211,30 @@ export const trimSiblingClips = () => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			siblingClip.videoClip.trim(siblingClip.start, siblingClip.start + siblingClip.duration);
+			updateClipCore(siblingClip, 'trim');
 		}
 	}
 	for (const clipId of clipsToRemove) {
 		removeClipWithId(clipId);
 	}
+};
+
+export const splitClip = (clipId: string, mousePosition: number) => {
+	const clip = getClipFromId(clipId);
+	if (!clip) return;
+
+	const frame = canvasPixelToFrame(mousePosition);
+	const ogClipDuration = frame - clip.start;
+	const newClipDuration = clip.duration - ogClipDuration;
+	const newClipOffset = clip.sourceOffset + ogClipDuration;
+	console.log(clip.sourceOffset, newClipOffset);
+
+	// trim clip
+	clip.duration = ogClipDuration;
+	updateClipCore(clip, 'trim');
+
+	// create new clip
+	createClip(clip.source.id, frame, newClipDuration, newClipOffset);
 };
 
 export const removeClipWithId = (id: string) => {

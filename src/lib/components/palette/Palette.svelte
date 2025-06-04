@@ -10,7 +10,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-	class="h-dvh w-dvw absolute top-0 left-0 flex items-center justify-center bg-black/50 backdrop-blur-xs"
+	class="h-dvh w-dvw absolute top-0 left-0 flex items-center justify-center bg-black/50"
 	onclick={() => {
 		appState.showPalette = false;
 	}}
