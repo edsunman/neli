@@ -14,7 +14,8 @@
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
 		updateClipCore,
-		removeInvalidAllClips
+		removeInvalidAllClips,
+		trimSiblingClips
 	} from '$lib/clip/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -118,6 +119,7 @@
 			setFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
+			trimSiblingClips();
 			updateClipCore();
 			dragging = false;
 		}

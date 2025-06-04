@@ -14,12 +14,12 @@ class TimelineState {
 	duration = $state(9000); // frames
 	currentFrame = $state(0);
 	playing = $state(false);
-	width = $state(0);
+	width = $state(0); // pixels
 	selectedClip = $state.raw<Clip | null>(null);
 
 	zoom = 0.9;
-	offset = -0.055; // percentage, 0 to 1
-	offsetStart = 0; // percentage, 0 to 1
+	offset = -0.055; // percentage, 0...1
+	offsetStart = 0; // percentage, 0...1
 	dragOffset = 0; // pixels
 	dragStart = 0; // pixels
 	hoverClipId = '';

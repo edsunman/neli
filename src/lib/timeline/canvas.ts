@@ -1,3 +1,4 @@
+import type { Clip } from '$lib/clip/clip';
 import { timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 
@@ -83,36 +84,48 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected) {
-			context.fillStyle = 'blue';
-		} else {
-			context.fillStyle = 'green';
-		}
-		if (clip.invalid) {
-			context.fillStyle = 'red';
-		}
-
-		const startPercent = clip.start / timelineState.duration - timelineState.offset;
-		const durationPercent = clip.duration / timelineState.duration;
-		const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
-
-		// base shape
-		context.fillRect(
-			Math.floor(startPercent * width * timelineState.zoom), //+ offset,
-			40,
-			Math.floor(durationPercent * width * timelineState.zoom), //+ lengthOffset,
-			40
-		);
-
-		if (!selected && !clip.hovered) continue;
-
-		// handles
-		context.fillStyle = 'white';
-		context.fillRect(Math.floor(startPercent * width * timelineState.zoom), 40, 10, 40);
-		context.fillRect(Math.floor(endPercent * width * timelineState.zoom) - 10, 40, 10, 40);
+		if (selected) continue;
+		drawClip(context, clip, width);
 	}
+
+	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
 	context.fillRect(playheadPosition, 0, 2, height - 80);
+};
+
+const drawClip = (
+	context: CanvasRenderingContext2D,
+	clip: Clip,
+	width: number,
+	selected = false
+) => {
+	if (selected) {
+		context.fillStyle = 'blue';
+	} else {
+		context.fillStyle = 'green';
+	}
+	if (clip.invalid) {
+		context.fillStyle = 'red';
+	}
+
+	const startPercent = clip.start / timelineState.duration - timelineState.offset;
+	const durationPercent = clip.duration / timelineState.duration;
+	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+
+	// base shape
+	context.fillRect(
+		Math.floor(startPercent * width * timelineState.zoom), //+ offset,
+		40,
+		Math.floor(durationPercent * width * timelineState.zoom), //+ lengthOffset,
+		40
+	);
+
+	if (!selected && !clip.hovered) return;
+
+	// handles
+	context.fillStyle = 'white';
+	context.fillRect(Math.floor(startPercent * width * timelineState.zoom), 40, 10, 40);
+	context.fillRect(Math.floor(endPercent * width * timelineState.zoom) - 10, 40, 10, 40);
 };

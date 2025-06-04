@@ -96,6 +96,30 @@ export const resizeSelctedClip = () => {
 			clip.sourceOffset = clip.savedSourceOffset - delta;
 		}
 
+		//  sibling clips snap
+		let neighbour;
+		let prevDistance = 10000;
+		for (const siblingClip of timelineState.clips) {
+			if (clip.id === siblingClip.id) continue;
+			const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
+			if (distance < 0 || distance > clip.sourceOffset + clip.duration) continue;
+			if (distance < prevDistance) {
+				neighbour = siblingClip;
+				prevDistance = distance;
+			}
+		}
+
+		const hardStop = neighbour ? neighbour.start + neighbour.duration : 0;
+
+		// boundry check
+		if (clip.start < hardStop) {
+			clip.start = hardStop;
+			const delta = clip.savedStart - clip.start;
+			clip.duration = clip.savedDuration + delta;
+			clip.sourceOffset = clip.savedSourceOffset - delta;
+			return;
+		}
+
 		// source length checks
 		if (clip.sourceOffset < 0) {
 			clip.start = clip.savedStart - clip.savedSourceOffset;
@@ -106,14 +130,6 @@ export const resizeSelctedClip = () => {
 			clip.start = clip.savedStart + clip.savedDuration - 200;
 			clip.duration = 200;
 			clip.sourceOffset = clip.savedSourceOffset + clip.savedDuration - 200;
-		}
-
-		// boundry check
-		if (clip.start < 0) {
-			clip.start = 0;
-			const delta = clip.savedStart - clip.start;
-			clip.duration = clip.savedDuration + delta;
-			clip.sourceOffset = clip.savedSourceOffset - delta;
 		}
 	} else if (clip.resizeHover === 'end') {
 		clip.duration = clip.savedDuration + frameOffset;
@@ -153,6 +169,56 @@ export const resizeSelctedClip = () => {
 			clip.invalid = true;
 		} else if (clip.duration < 200) {
 			clip.duration = 200;
+		}
+	}
+};
+
+export const trimSiblingClips = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const clipsToRemove: string[] = [];
+	for (const siblingClip of timelineState.clips) {
+		if (siblingClip.id === clip.id) continue;
+		const clipEnd = clip.start + clip.duration;
+		const siblingEnd = siblingClip.start + siblingClip.duration;
+
+		if (clip.start < siblingClip.start && clipEnd > siblingEnd) {
+			// clip covers sibling so remove it
+			clipsToRemove.push(siblingClip.id);
+			continue;
+		}
+
+		if (clip.start > siblingClip.start && clip.start < siblingEnd) {
+			// need to trim end
+			const trimAmount = siblingEnd - clip.start;
+			siblingClip.duration = siblingClip.duration - trimAmount;
+			siblingClip.videoClip.trim(siblingClip.start, siblingClip.start + siblingClip.duration);
+		}
+		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
+			// need to trim start
+			const trimAmount = clipEnd - siblingClip.start;
+			siblingClip.start = siblingClip.start + trimAmount;
+			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
+			siblingClip.duration = siblingClip.duration - trimAmount;
+			siblingClip.videoClip.trim(siblingClip.start, siblingClip.start + siblingClip.duration);
+		}
+	}
+	for (const clipId of clipsToRemove) {
+		removeClipWithId(clipId);
+	}
+};
+
+export const removeClipWithId = (id: string) => {
+	let i = 0;
+	while (i < timelineState.clips.length) {
+		const clip = timelineState.clips[i];
+		if (clip.id === id) {
+			console.log(clip.videoClip);
+			clip.videoClip.detach();
+
+			timelineState.clips.splice(i, 1);
+		} else {
+			i += 1;
 		}
 	}
 };
