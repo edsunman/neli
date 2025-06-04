@@ -1,4 +1,4 @@
-import { appState, timelineState } from '$lib/state.svelte';
+import { appHistory, appState, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/timeline/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { VideoClip } from '@diffusionstudio/core';
@@ -32,6 +32,8 @@ export const createClip = async (sourceId: string, start = 0, duration = 0, sour
 	const clip = new Clip(videoClip, source, start, duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
+
+	appHistory.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 };
 
 export const updateClipCore = (clip: Clip | null, method: 'offset' | 'trim') => {
@@ -61,7 +63,7 @@ export const moveSelectedClip = () => {
 
 	// sibling clips snap
 	for (const siblingClip of timelineState.clips) {
-		if (clip.id === siblingClip.id) continue;
+		if (clip.id === siblingClip.id || siblingClip.deleted) continue;
 		if (isFrameInSnapRange(clip.start, siblingClip.start + siblingClip.duration, snapRange)) {
 			clip.start = siblingClip.start + siblingClip.duration;
 		}
@@ -111,7 +113,7 @@ export const resizeSelctedClip = () => {
 		let neighbour;
 		let prevDistance = 10000;
 		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id) continue;
+			if (clip.id === siblingClip.id || siblingClip.deleted) continue;
 			const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
 			if (distance < 0 || distance > clip.sourceOffset + clip.duration) continue;
 			if (distance < prevDistance) {
@@ -157,7 +159,7 @@ export const resizeSelctedClip = () => {
 		let neighbour;
 		let prevDistance = 10000;
 		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id) continue;
+			if (clip.id === siblingClip.id || siblingClip.deleted) continue;
 			const distance = siblingClip.start - clip.start;
 			if (distance < 0 || distance > maxLength) continue;
 			if (distance < prevDistance) {
@@ -189,7 +191,7 @@ export const trimSiblingClips = () => {
 	if (!clip) return;
 	const clipsToRemove: string[] = [];
 	for (const siblingClip of timelineState.clips) {
-		if (siblingClip.id === clip.id) continue;
+		if (siblingClip.id === clip.id || siblingClip.deleted) continue;
 		const clipEnd = clip.start + clip.duration;
 		const siblingEnd = siblingClip.start + siblingClip.duration;
 
@@ -221,12 +223,12 @@ export const trimSiblingClips = () => {
 		}
 	}
 	for (const clipId of clipsToRemove) {
-		removeClipWithId(clipId);
+		deleteClip(clipId);
 	}
 };
 
 export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
-	const clip = getClipFromId(clipId);
+	const clip = getClip(clipId);
 	if (!clip) return;
 
 	const ogClipDuration = frame - clip.start;
@@ -241,17 +243,13 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	createClip(clip.source.id, frame + gapSize, newClipDuration, newClipOffset);
 };
 
-export const removeClipWithId = (id: string) => {
-	let i = 0;
-	while (i < timelineState.clips.length) {
-		const clip = timelineState.clips[i];
+export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
+	for (const clip of timelineState.clips) {
 		if (clip.id === id) {
-			console.log(clip.videoClip);
-			clip.videoClip.detach();
-
-			timelineState.clips.splice(i, 1);
-		} else {
-			i += 1;
+			clip.deleted = unDelete ? false : true;
+			clip.videoClip.disabled = unDelete ? false : true;
+			timelineState.selectedClip = null;
+			if (!noHistory) appHistory.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
 		}
 	}
 };
@@ -271,6 +269,7 @@ export const removeInvalidAllClips = () => {
 export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => {
 	let foundClip;
 	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
 		clip.hovered = false;
 		if (offsetY > 40 && offsetY < 80) {
 			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
@@ -284,7 +283,7 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	return foundClip;
 };
 
-export const getClipFromId = (id: string) => {
+export const getClip = (id: string) => {
 	let foundClip;
 	for (const clip of timelineState.clips) {
 		if (clip.id === id) {

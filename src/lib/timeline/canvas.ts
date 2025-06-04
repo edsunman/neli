@@ -84,7 +84,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected) continue;
+		if (selected || clip.deleted) continue;
 		drawClip(context, clip, width);
 	}
 

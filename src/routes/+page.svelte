@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as core from '@diffusionstudio/core';
 	import { onMount } from 'svelte';
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, timelineState, appHistory } from '$lib/state.svelte';
 
 	import Project from '$lib/components/panels/Project.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -54,6 +54,15 @@
 		switch (event.code) {
 			case 'KeyP':
 				if (!appState.showPalette) appState.showPalette = true;
+				break;
+			case 'KeyZ':
+				if (!event.ctrlKey) break;
+				if (event.shiftKey) {
+					appHistory.redo();
+				} else {
+					appHistory.undo();
+				}
+
 				break;
 		}
 	}}

@@ -1,5 +1,6 @@
 import type { Composition, VideoSource } from '@diffusionstudio/core';
 import type { Clip } from './clip/clip';
+import { HistoryCommands } from './history/history';
 
 class AppState {
 	composition: Composition | null = null;
@@ -38,3 +39,5 @@ export class Source {
 		this.duration = videoSource.duration?.frames ?? 0;
 	}
 }
+
+export const appHistory = new HistoryCommands();

@@ -13,6 +13,7 @@ export class Clip {
 	duration = 0;
 	savedDuration = 0;
 
+	deleted = false;
 	invalid = false;
 	hovered = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';

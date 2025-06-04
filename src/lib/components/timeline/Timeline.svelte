@@ -9,14 +9,15 @@
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
-		getClipFromId,
+		getClip,
 		moveSelectedClip,
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
 		updateClipCore,
 		removeInvalidAllClips,
 		trimSiblingClips,
-		splitClip
+		splitClip,
+		deleteClip
 	} from '$lib/clip/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -98,7 +99,7 @@
 				return;
 			}
 
-			const clip = getClipFromId(timelineState.hoverClipId);
+			const clip = getClip(timelineState.hoverClipId);
 			timelineState.selectedClip = clip;
 			if (!clip) return;
 
@@ -202,6 +203,12 @@
 				break;
 			case 'Equal':
 				zoomIn();
+				break;
+			case 'Backspace':
+				const selectedClip = timelineState.selectedClip;
+				if (!selectedClip) break;
+				deleteClip(selectedClip.id);
+				timelineState.invalidate = true;
 				break;
 		}
 	}}
