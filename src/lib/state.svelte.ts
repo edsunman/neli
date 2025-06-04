@@ -1,4 +1,5 @@
-import type { Composition, VideoClip, VideoSource } from '@diffusionstudio/core';
+import type { Composition, VideoSource } from '@diffusionstudio/core';
+import type { Clip } from './clip/clip';
 
 class AppState {
 	composition: Composition | null = null;
@@ -26,30 +27,6 @@ class TimelineState {
 }
 
 export const timelineState = new TimelineState();
-
-export class Clip {
-	id = '';
-	videoClip: VideoClip;
-	source: Source;
-
-	start = 0;
-	savedStart = 0;
-	sourceOffset = 0;
-	savedSourceOffset = 0;
-	duration = 0;
-	savedDuration = 0;
-
-	invalid = false;
-	hovered = false;
-	resizeHover: 'none' | 'start' | 'end' = 'none';
-
-	constructor(videoClip: VideoClip, source: Source) {
-		this.id = Math.random().toString(16).slice(2);
-		this.videoClip = videoClip;
-		this.source = source;
-		this.duration = source.videoSource.duration?.frames ?? 0;
-	}
-}
 
 export class Source {
 	id: string;

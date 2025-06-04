@@ -1,19 +1,21 @@
 <script lang="ts">
 	import { timelineState } from '$lib/state.svelte';
 	import {
-		removeHoverAllClips,
-		getClipFromId,
-		moveSelectedClip,
-		resizeSelctedClip,
-		setClipHover,
 		setCurrentFrame,
 		setFrameFromOffset,
-		updateClipCore,
-		removeInvalidAllClips,
 		zoomOut,
 		zoomIn,
 		updateScrollPosition
 	} from '$lib/timeline/actions';
+	import {
+		removeHoverAllClips,
+		getClipFromId,
+		moveSelectedClip,
+		resizeSelctedClip,
+		setHoverOnHoveredClip,
+		updateClipCore,
+		removeInvalidAllClips
+	} from '$lib/clip/actions';
 	import { drawCanvas } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
@@ -60,7 +62,7 @@
 		}
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
-		const clip = setClipHover(hoveredFrame, e.offsetY);
+		const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 		if (!clip) return;
 
 		clip.resizeHover = 'none';

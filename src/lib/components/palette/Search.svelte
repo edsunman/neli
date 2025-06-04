@@ -73,18 +73,8 @@
 	const formatString = (string: string) => {
 		const reg = new RegExp(inputValue ?? '', 'gi');
 		return string.replace(reg, function (str) {
-			return '<span class="font-bold">' + str + '</span>';
+			return '<span class="underline">' + str + '</span>';
 		});
-		/*if (!string || string.length < 1 || !inputValue) return string;
-		 let newString = string.replace(
-			inputValue.toLowerCase(),
-			`<span class="text-rose-400">${inputValue.toLowerCase()}</span>`
-		);
-		newString = string.replace(
-			inputValue.toUpperCase(),
-			`<span class="text-rose-400">${inputValue.toUpperCase()}</span>`
-		);
-		return newString; */
 	};
 </script>
 

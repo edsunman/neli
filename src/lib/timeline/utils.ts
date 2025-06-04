@@ -12,8 +12,6 @@ export const frameToCanvasPixel = (frame: number) => {
 };
 
 export const secondsToTimecode = (seconds: number) => {
-	//const FF = frame % 30;
-	//const seconds = (frame - FF) / 30;
 	const SS = seconds % 60;
 	const minutes = (seconds - SS) / 60;
 	const MM = minutes % 60;

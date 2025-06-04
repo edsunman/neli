@@ -1,6 +1,6 @@
 <script>
 	import { appState } from '$lib/state.svelte';
-	import { createClip } from '$lib/timeline/actions';
+	import { createClip } from '$lib/clip/actions';
 </script>
 
 Project
