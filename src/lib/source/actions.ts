@@ -1,11 +1,13 @@
+import { sendFileToWorker } from '$lib/renderer/actions';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source';
-import { createFile, MP4BoxBuffer } from 'mp4box';
+import { createFile, MP4BoxBuffer, type Movie } from 'mp4box';
 
 export const createSource = async (file: File) => {
 	//const videoSource = await coreSource.from<VideoSource>(url, { prefetch: false });
 
 	const reader = new FileReader();
+	let mp4info: Movie;
 
 	reader.onload = function (e) {
 		const arrayBuffer = e.target?.result as MP4BoxBuffer;
@@ -14,6 +16,10 @@ export const createSource = async (file: File) => {
 		const mp4file = createFile();
 		mp4file.onReady = (info) => {
 			console.log(info);
+			mp4info = info;
+
+			appState.sources.push(new Source(mp4info, file));
+			sendFileToWorker();
 		};
 		arrayBuffer.fileStart = 0;
 		mp4file.appendBuffer(arrayBuffer);
@@ -21,8 +27,6 @@ export const createSource = async (file: File) => {
 	};
 
 	reader.readAsArrayBuffer(file);
-
-	//appState.sources.push(new Source(url));
 };
 
 export const getSourceFromId = (id: string) => {

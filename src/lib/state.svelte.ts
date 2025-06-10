@@ -5,6 +5,7 @@ import type { WebGPURenderer } from './renderer/renderer';
 
 class AppState {
 	renderer: WebGPURenderer | null = null;
+	mediaWorker: Worker | null = null;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 }

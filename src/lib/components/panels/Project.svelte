@@ -2,6 +2,7 @@
 	import { appState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
 	import { createSource } from '$lib/source/actions';
+	import { sendFileToWorker } from '$lib/renderer/actions';
 
 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
@@ -14,9 +15,8 @@
 	};
 </script>
 
-Project
 {#each appState.sources as source}
-	<span class="text-white">{source.id}</span>
+	<span class="text-white">{source.name}</span>
 	<button class="text-white" onclick={() => createClip(source.id)}>add</button>
 	<br />
 {/each}

@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { createSource } from '$lib/source/actions';
 	import { WebGPURenderer } from '$lib/renderer/renderer';
+	import { setupRenderer } from '$lib/renderer/actions';
 
 	let element = $state<HTMLCanvasElement>();
 	let width = $state(0);
@@ -12,8 +13,8 @@
 
 	onMount(async () => {
 		if (!element) return;
-		appState.renderer = new WebGPURenderer(element);
-		console.log(appState.renderer);
+		setupRenderer(element);
+		//	console.log(appState.renderer);
 		/* if (!element || !appState.composition) return;
 
 		appState.composition.mount(element); */

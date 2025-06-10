@@ -3,37 +3,11 @@ import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip';
 
-export const createClip = async (
-	sourceId: string,
-	start = 0,
-	duration = 1800,
-	sourceOffset = 0
-) => {
+export const createClip = async (sourceId: string, start = 0, duration = 0, sourceOffset = 0) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	/* const videoClip = new VideoClip(source.videoSource, {
-		// also accepts files/blobs or urls
-		position: 'center', // ensures the clip is centered
-		height: 1080 // Math.random() * 1000 // stretches the clip to the full height
-	});
-
-	if (start > 0) {
-		videoClip.offset(start);
-	}
-	if (sourceOffset > 0) {
-		videoClip.offset(-sourceOffset);
-		if (videoClip.source && videoClip.source.duration) {
-			videoClip.trim(start, start + videoClip.source.duration.frames);
-		}
-	}
-	if (duration > 0) {
-		videoClip.trim(start, start + duration);
-	}
- */
-	//await appState.composition?.add(videoClip);
-
-	const clip = new Clip(/* videoClip, */ source, start, duration, sourceOffset);
+	const clip = new Clip(source, start, duration ? duration : source.duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 

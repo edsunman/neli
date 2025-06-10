@@ -106,7 +106,7 @@ export class WebGPURenderer {
 	}
 
 	async draw(frame: VideoFrame) {
-		//console.log(frame);
+		console.log(frame);
 		// Don't try to draw any frames until the context is configured.
 		await this.#started;
 
