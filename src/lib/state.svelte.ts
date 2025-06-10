@@ -1,9 +1,10 @@
-import type { Composition, VideoSource } from '@diffusionstudio/core';
+import type { Source } from './source/source';
 import type { Clip } from './clip/clip';
 import { HistoryCommands } from './history/history';
+import type { WebGPURenderer } from './renderer/renderer';
 
 class AppState {
-	composition: Composition | null = null;
+	renderer: WebGPURenderer | null = null;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 }
@@ -28,16 +29,5 @@ class TimelineState {
 }
 
 export const timelineState = new TimelineState();
-
-export class Source {
-	id: string;
-	duration: number;
-	videoSource: VideoSource;
-	constructor(videoSource: VideoSource) {
-		this.id = Math.random().toString(16).slice(2);
-		this.videoSource = videoSource;
-		this.duration = videoSource.duration?.frames ?? 0;
-	}
-}
 
 export const appHistory = new HistoryCommands();

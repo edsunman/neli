@@ -1,32 +1,18 @@
-import { appState, Source, timelineState } from '$lib/state.svelte';
+import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
-import { VideoSource, Source as coreSource } from '@diffusionstudio/core';
 
 export const setCurrentFrame = (frame: number) => {
-	appState.composition?.seek(frame);
-	//timelineState.currentFrame = frame;
+	//frame;
+	//appState.composition?.seek(frame);
+	timelineState.currentFrame = frame;
 };
 
 export const setFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
 	let frame = canvasPixelToFrame(canvasOffset);
+	if (frame < 0) frame = 0;
 	if (frame > 8999) frame = 8999;
 	setCurrentFrame(frame);
-};
-
-export const createSource = async (url: string) => {
-	const videoSource = await coreSource.from<VideoSource>(url, { prefetch: false });
-	appState.sources.push(new Source(videoSource));
-};
-
-export const getSourceFromId = (id: string) => {
-	let foundSource;
-	for (const source of appState.sources) {
-		if (source.id === id) {
-			foundSource = source;
-		}
-	}
-	return foundSource;
 };
 
 export const centerViewOnPlayhead = () => {

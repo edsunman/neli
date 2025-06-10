@@ -9,21 +9,21 @@
 	import Controls from '$lib/components/panels/ClipSettings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 
-	appState.composition = new core.Composition({ width: 1920, height: 1080 });
+	//appState.composition = new core.Composition({ width: 1920, height: 1080 });
 
 	$effect(() => {
 		if (timelineState.playing) {
-			appState.composition?.play();
+			//appState.composition?.play();
 		} else {
-			appState.composition?.pause();
+			//appState.composition?.pause();
 		}
 	});
 
 	onMount(async () => {
-		if (!appState.composition) return;
+		/* if (!appState.composition) return;
 		appState.composition.on('currentframe', (event) => {
 			timelineState.currentFrame = event.detail;
-		});
+		}); */
 	});
 </script>
 

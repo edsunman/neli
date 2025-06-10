@@ -15,7 +15,7 @@
 	$inspect(value);
 
 	const exportFile = async () => {
-		if (!appState.composition) return;
+		/* 	if (!appState.composition) return;
 		encoding = true;
 		const encoder = new Encoder(appState.composition);
 		console.log('starting');
@@ -25,7 +25,7 @@
 			currentFrame = e.detail.progress;
 		});
 		await encoder.render('myVideo.mp4');
-		console.log('done');
+		console.log('done'); */
 	};
 </script>
 
