@@ -1,4 +1,12 @@
-import { createFile, MP4BoxBuffer, DataStream, ISOFile, Endianness } from 'mp4box';
+import {
+	createFile,
+	MP4BoxBuffer,
+	DataStream,
+	ISOFile,
+	Endianness,
+	VisualSampleEntry,
+	MultiBufferStream
+} from 'mp4box';
 import { WebGPURenderer } from './renderer';
 
 console.info('Worker started');
@@ -47,9 +55,12 @@ self.addEventListener('message', async function (e) {
 
 						const decoder = new VideoDecoder({
 							output(frame) {
+								console.log(frame);
 								if (frame.timestamp === 0) {
 									renderer?.draw(frame);
 									console.log(frame);
+								} else {
+									frame.close();
 								}
 							},
 							error(e) {
@@ -65,10 +76,6 @@ self.addEventListener('message', async function (e) {
 						});
 						decoder.flush();
 						for (let i = 0; i < 10; i++) {
-							//  if (chunks[i].type === "key") foundKeyframe = true;
-							// if (!foundKeyframe) continue;
-							// sentChunks.push(chunks[startingFrame + i]);
-							console.log(chunks[i]);
 							decoder.decode(chunks[i]);
 						}
 						decoder.decode(chunks[0]);
@@ -80,20 +87,23 @@ self.addEventListener('message', async function (e) {
 					mp4file.setExtractionOptions(1);
 					mp4file.start();
 				};
-
-				reader.readAsArrayBuffer(e.data.file);
+				const file = e.data.file as File;
+				//console.log('file', file);
+				reader.readAsArrayBuffer(file);
 			}
 			break;
 	}
 });
 
 const getDescription = (file: ISOFile) => {
+	// TODO: dont hardcode this track number
 	const trak = file.getTrackById(1);
 	for (const entry of trak.mdia.minf.stbl.stsd.entries) {
-		const box = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
+		const e = entry as VisualSampleEntry;
+		const box = e.avcC || e.hvcC;
 		if (box) {
 			const stream = new DataStream(undefined, 0, Endianness.BIG_ENDIAN);
-			box.write(stream);
+			box.write(stream as MultiBufferStream);
 			return new Uint8Array(stream.buffer, 8); // Remove the box header.
 		}
 	}
