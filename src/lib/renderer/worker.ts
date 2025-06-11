@@ -15,13 +15,11 @@ let decoder: VideoDecoder | null = null;
 let mp4file: ISOFile | null = null;
 let file: File | null = null;
 let targetFrame = 0;
+let selectedFrameTimestamp = 0;
 
 let frameQueue = []; // Holds decoded VideoFrames waiting to be rendered
 let encodedChunkBuffer: EncodedVideoChunk[] = []; // Holds EncodedVideoChunks ready to be fed to the decoder
 let isFeedingPaused = false;
-
-let gap = 0;
-let largestGapBetweenKeyframes = 0;
 
 let seeking = false;
 
@@ -41,8 +39,8 @@ self.addEventListener('message', async function (e) {
 
 						// After a frame is processed (and its memory released via videoFrame.close()),
 						// we can check if we should resume feeding.
-
-						if (frame.timestamp <= targetFrame + 1 && frame.timestamp >= targetFrame - 1) {
+						frameQueue.push(frame);
+						if (frame.timestamp === selectedFrameTimestamp) {
 							renderer?.draw(frame);
 							seeking = false;
 							//frame.close();
@@ -50,10 +48,10 @@ self.addEventListener('message', async function (e) {
 							frame.close();
 						}
 
-						if (isFeedingPaused && frameQueue.length < 10 && decoder!.decodeQueueSize < 10) {
+						if (isFeedingPaused && /* frameQueue.length < 10 &&  */ decoder!.decodeQueueSize < 10) {
 							isFeedingPaused = false;
 							//console.log('Decoder backpressure: Resuming feeding.');
-							feedDecoder(); // Resume feeding
+							feedDecoder();
 						}
 					},
 					error(e) {
@@ -71,20 +69,15 @@ self.addEventListener('message', async function (e) {
 					if (!decoder) return;
 					decoder.configure({
 						codec: info.videoTracks[0].codec.startsWith('vp08') ? 'vp8' : info.videoTracks[0].codec,
-						codedHeight: 1920,
-						codedWidth: 1080,
-						description: getDescription(mp4file)
+						codedHeight: info.videoTracks[0].track_height,
+						codedWidth: info.videoTracks[0].track_width,
+						description: getDescription(mp4file),
+						optimizeForLatency: true
 					});
 				};
 				mp4file.onSamples = (id, user, samples) => {
 					//console.log(`adding new ${samples.length} samples `);
-
 					for (const sample of samples) {
-						if (sample.is_sync) {
-							largestGapBetweenKeyframes = gap;
-							gap = 0;
-						}
-						gap++;
 						const chunk = new EncodedVideoChunk({
 							type: sample.is_sync ? 'key' : 'delta',
 							timestamp: (1e6 * sample.cts) / sample.timescale,
@@ -126,40 +119,41 @@ self.addEventListener('message', async function (e) {
 		case 'seek':
 			{
 				if (!decoder) return;
-				console.log(`largest gap between keyframes: ${largestGapBetweenKeyframes}`);
 				if (seeking) {
 					//console.log('still seeking');
 					return;
 				}
+
 				seeking = true;
 				decoder.flush();
-				targetFrame = Math.floor(e.data.targetFrame * 33333.3333333);
-				//console.log(`target frame is ${targetFrame}`);
+				targetFrame = Math.floor(e.data.targetFrame * 33333.3333333) + 33333 / 2;
+				console.log(`target frame is ${targetFrame}`);
 
-				let startingFrame = 0;
-				for (let i = 0; i < chunks.length; i++) {
-					if (chunks[i].timestamp <= targetFrame + 1 && chunks[i].timestamp >= targetFrame - 1) {
-						startingFrame = i - largestGapBetweenKeyframes;
+				let targetFrameIndex = 0;
+				let keyFrameIndex = 0;
+				let scanForKeyframe = false;
+				for (let i = chunks.length - 1; i >= 0; i--) {
+					if (!scanForKeyframe && chunks[i].timestamp < targetFrame) {
+						targetFrameIndex = i;
+						selectedFrameTimestamp = chunks[i].timestamp;
+						scanForKeyframe = true;
+					}
+					if (scanForKeyframe) {
+						if (chunks[i].type === 'key') {
+							keyFrameIndex = i;
+							break;
+						}
 					}
 				}
-				if (startingFrame < 0) startingFrame = 0;
 
-				/* for (let i = 0; i < 10; i++) {
-					console.log(chunks[i]);
-				} */
-
-				//console.log(startingFrame);
-
-				let foundKeyframe = false;
 				encodedChunkBuffer = [];
+
 				frameQueue = [];
-				for (let i = 0; i < largestGapBetweenKeyframes + 5; i++) {
-					if (chunks[startingFrame + i].type === 'key') foundKeyframe = true;
-					if (!foundKeyframe) continue;
-					//sentChunks.push(chunks[startingFrame + i]);
-					encodedChunkBuffer.push(chunks[startingFrame + i]);
+
+				for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
+					encodedChunkBuffer.push(chunks[i]);
 				}
-				//console.log(chunks);
+
 				feedDecoder();
 			}
 			break;
@@ -174,7 +168,7 @@ const feedDecoder = async () => {
 	// Check if we're hitting our backpressure limits
 	// 1. Too many decoded frames waiting to be rendered
 	// 2. Too many chunks already sent to the decoder, but not yet outputted
-	if (frameQueue.length >= 10 || decoder.decodeQueueSize >= 10) {
+	if (/* frameQueue.length >= 10 ||  */ decoder.decodeQueueSize >= 10) {
 		isFeedingPaused = true;
 		/* console.warn(
 			'Decoder backpressure: Pausing feeding. frameQueue:',
@@ -212,7 +206,6 @@ const getDescription = (file: ISOFile | null) => {
 	const trak = file.getTrackById(1);
 	for (const entry of trak.mdia.minf.stbl.stsd.entries) {
 		const e = entry as VisualSampleEntry;
-		console.log('entry', e);
 		// @ts-expect-error avc1C or vpcC may exist
 		const box = e.avcC || e.hvcC || entry.av1C || entry.vpcC;
 		if (box) {

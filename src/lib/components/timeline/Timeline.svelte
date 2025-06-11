@@ -196,7 +196,7 @@
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;
 			case 'ArrowRight':
-				setCurrentFrame(timelineState.currentFrame + 2);
+				setCurrentFrame(timelineState.currentFrame + 1);
 				break;
 			case 'Minus':
 				zoomOut();
