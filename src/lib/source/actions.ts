@@ -10,6 +10,7 @@ export const createSource = async (file: File) => {
 	const chunkSize = 1024 * 1024; // 1 MB chunks
 	let offset = 0;
 	let foundInfo = false;
+	//let loop = 0;
 
 	const mp4file = createFile();
 	mp4file.onReady = (info) => {
@@ -28,10 +29,12 @@ export const createSource = async (file: File) => {
 		mp4file.appendBuffer(arrayBuffer);
 
 		offset += arrayBuffer.byteLength;
+		//loop++;
 
 		if (offset < file.size && !foundInfo) {
 			readNextChunk();
 		} else {
+			// we may need to store the loop to tell the worker where the info container is
 			mp4file.flush();
 		}
 	};

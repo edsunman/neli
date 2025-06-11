@@ -108,10 +108,10 @@ export class WebGPURenderer {
 	async draw(frame: VideoFrame) {
 		// Don't try to draw any frames until the context is configured.
 		await this.#started;
-
+		//console.log('frame -> ', frame);
 		if (!this.#canvas || !this.#ctx) return;
-		this.#canvas.width = frame.displayWidth;
-		this.#canvas.height = frame.displayHeight;
+		//this.#canvas.width = frame.displayWidth;
+		//this.#canvas.height = frame.displayHeight;
 
 		if (!this.#device || !this.#pipeline || !this.#sampler) return;
 		const uniformBindGroup = this.#device.createBindGroup({

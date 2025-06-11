@@ -1,9 +1,11 @@
+import { seek } from '$lib/renderer/actions';
 import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 
 export const setCurrentFrame = (frame: number) => {
 	//frame;
 	//appState.composition?.seek(frame);
+	seek(frame);
 	timelineState.currentFrame = frame;
 };
 
