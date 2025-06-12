@@ -30,9 +30,15 @@ export const seek = (frame: number) => {
 };
 
 // @ts-expect-error fds
-window.seek = (n: number) => {
+window.play = () => {
 	appState.mediaWorker?.postMessage({
-		command: 'seek',
-		targetFrame: n
+		command: 'play'
+	});
+};
+
+// @ts-expect-error fds
+window.pause = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'pause'
 	});
 };
