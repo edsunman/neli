@@ -66,7 +66,7 @@ self.addEventListener('message', async function (e) {
 							}
 						}
 
-						if (isFeedingPaused && /* frameQueue.length < 10 &&  */ decoder!.decodeQueueSize < 10) {
+						if (isFeedingPaused && /* frameQueue.length < 10 &&  */ decoder!.decodeQueueSize < 3) {
 							isFeedingPaused = false;
 							console.log('Decoder backpressure: Resuming feeding.');
 							feedDecoder();
@@ -143,7 +143,7 @@ self.addEventListener('message', async function (e) {
 				//decoder?.flush();
 				let firstRAFTimestamp: number | null = null;
 
-				console.log(selectedFrameTimestamp);
+				//console.log(selectedFrameTimestamp);
 
 				let targetFrameIndex = 0;
 				let keyFrameIndex = 0;
@@ -203,7 +203,7 @@ self.addEventListener('message', async function (e) {
 
 						for (let i = 0; i < frameIndex; i++) {
 							const staleFrame = frameQueue.shift();
-							console.log('stale frame was closed: ', staleFrame?.format);
+							//console.log('stale frame was closed: ', staleFrame?.format);
 							//	if (staleFrame) console.log(staleFrame);
 							//staleFrame?.close();
 						}
@@ -217,7 +217,7 @@ self.addEventListener('message', async function (e) {
 								frameTime,
 								chosenFrame.timestamp
 							);
-							console.log(chosenFrame);
+							//console.log(chosenFrame);
 							renderer?.draw(chosenFrame);
 						}
 
@@ -263,6 +263,13 @@ self.addEventListener('message', async function (e) {
 		case 'pause':
 			playing = false;
 			feedMoreFrames = false;
+			console.log('paused', frameQueue);
+
+			for (let i = 0; i < frameQueue.length; i++) {
+				const staleFrame = frameQueue.shift();
+
+				staleFrame?.close();
+			}
 			//console.log('flush started');
 			//decoder?.flush();
 			//	console.log('flush finished');
@@ -278,7 +285,7 @@ self.addEventListener('message', async function (e) {
 				}
 
 				seeking = true;
-
+				console.log('attempting to seek. Queue: ', decoder.decodeQueueSize);
 				//decoder.flush();
 				/* console.log('flush started');
 				
@@ -325,21 +332,21 @@ const feedDecoder = () => {
 	if (isFeedingPaused || !decoder || decoder.state !== 'configured') {
 		return; // Don't feed if paused or not configured
 	}
-	console.log(decoder.decodeQueueSize);
+	console.log('Queue size: ', decoder.decodeQueueSize);
 	// Check if we're hitting our backpressure limits
 	// 1. Too many decoded frames waiting to be rendered
 	// 2. Too many chunks already sent to the decoder, but not yet outputted
-	if (/* frameQueue.length >= 10 ||  */ decoder.decodeQueueSize >= 15) {
+	if (/* frameQueue.length >= 10 ||  */ decoder.decodeQueueSize >= 3) {
 		isFeedingPaused = true;
-		/* console.warn(
+		console.log(
 			'Decoder backpressure: Pausing feeding. frameQueue:',
 			frameQueue.length,
 			'decodeQueueSize:',
 			decoder.decodeQueueSize
-		); */
+		);
 		return; // Stop feeding for now
 	}
-	console.log('made it');
+
 	// If we have chunks in our buffer and not paused, send them
 	if (encodedChunkBuffer.length > 0) {
 		const chunk = encodedChunkBuffer.shift(); // Get the next chunk
