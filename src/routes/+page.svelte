@@ -27,7 +27,7 @@
 	});
 </script>
 
-<div class="h-dvh grid grid-cols-[20%_60%_20%] grid-rows-2 bg-zinc-900">
+<div class="h-dvh grid grid-cols-[25%_50%_25%] grid-rows-[55%_45%] bg-zinc-900">
 	<div><Project /></div>
 	<div><Program /></div>
 	<div><Controls /></div>

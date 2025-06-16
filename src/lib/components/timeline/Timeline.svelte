@@ -177,7 +177,7 @@
 	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
-		class="basis-5/6"
+		class="flex-1"
 		role="navigation"
 		onmousemove={mouseMove}
 		onmousedown={mouseDown}

@@ -9,7 +9,7 @@
 	let element = $state<HTMLCanvasElement>();
 	let width = $state(0);
 	let height = $state(0);
-	let scale = $state(35);
+	let scale = $state(40);
 
 	onMount(async () => {
 		if (!element) return;

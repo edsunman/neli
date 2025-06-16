@@ -19,7 +19,7 @@
 	});
 </script>
 
-<div class="basis-1/6 flex-none flex justify-center font-semibold text-2xl">
+<div class="h-12 flex-none flex justify-center font-semibold text-2xl">
 	<div class="text-white">{showFrames ? timelineState.currentFrame : formattedTime}</div>
 	<!-- 	<button
 		onclick={() => {

@@ -33,7 +33,6 @@ export class WebGPURenderer {
 		if (!navigator.gpu) {
 			throw Error('WebGPU not supported.');
 		}
-
 		const adapter = await navigator.gpu.requestAdapter();
 		if (!adapter) return;
 		this.#device = await adapter.requestDevice();
@@ -71,6 +70,24 @@ export class WebGPURenderer {
 
 		// Default sampler configuration is nearset + clamp.
 		this.#sampler = this.#device.createSampler({});
+
+		this.blankFrame();
+	}
+
+	blankFrame() {
+		if (!this.#device || !this.#pipeline || !this.#sampler || !this.#ctx || !this.#format) return;
+		const encoder = this.#device.createCommandEncoder();
+		const pass = encoder.beginRenderPass({
+			colorAttachments: [
+				{
+					view: this.#ctx.getCurrentTexture().createView(),
+					loadOp: 'clear',
+					storeOp: 'store'
+				}
+			]
+		});
+		pass.end();
+		this.#device.queue.submit([encoder.finish()]);
 	}
 
 	async draw(frame: VideoFrame) {

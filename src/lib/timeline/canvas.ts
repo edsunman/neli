@@ -6,6 +6,46 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	context.fillStyle = '#18181b';
 	context.fillRect(0, 0, width, height);
 
+	drawRuler(context);
+
+	// scrollbar
+	if (timelineState.zoom > 0.9) {
+		const padding = 0.05 / timelineState.zoom;
+		const paddingInPixels = padding * width;
+		context.fillStyle = '#3c3c44';
+		context.beginPath();
+		context.roundRect(
+			(timelineState.offset + padding) * width,
+			height - 40,
+			width / timelineState.zoom - paddingInPixels * 2,
+			15,
+			8
+		);
+		context.fill();
+	}
+
+	for (const clip of timelineState.clips) {
+		const selected = timelineState.selectedClip?.id === clip.id;
+		if (selected || clip.deleted) continue;
+		drawClip(context, clip, width);
+	}
+
+	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
+
+	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
+	context.fillStyle = 'white';
+	context.fillRect(playheadPosition, 0, 2, height - 60);
+
+	const radius = 3;
+	context.beginPath();
+	context.arc(playheadPosition - 4, 3, radius, 2.2, -1.4);
+	context.arc(playheadPosition + 10 - 4, 3, radius, 4.6, 1.0);
+	context.arc(playheadPosition + 5 - 4, 14, 1, 0.6, 2.6);
+	context.arc(playheadPosition - 4, 3, radius, 2.2, -1.4);
+	context.fill();
+};
+
+const drawRuler = (context: CanvasRenderingContext2D) => {
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
 	const minuteInPixels = (timelineState.width / durationInMinutes) * timelineState.zoom;
@@ -24,8 +64,8 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		let startMinute = Math.floor(startFrame / 1800);
 		for (let i = 0; i < numberOfMinutesToShow; i++) {
 			const position = Math.floor(minuteInPixels * startMinute - offsetInPixels);
-			context.fillRect(position, 0, 1, 22);
-			context.fillText(secondsToTimecode(startMinute * 60), position + 5, 15);
+			context.fillRect(position, 10, 1, 22);
+			context.fillText(secondsToTimecode(startMinute * 60), position + 5, 25);
 			startMinute++;
 		}
 	}
@@ -36,8 +76,8 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
 			const position = Math.floor((minuteInPixels / 6) * startSecond - offsetInPixels);
-			context.fillRect(position, 0, 1, 22);
-			context.fillText(secondsToTimecode(startSecond * 10), position + 5, 15);
+			context.fillRect(position, 10, 1, 22);
+			context.fillText(secondsToTimecode(startSecond * 10), position + 5, 25);
 			startSecond++;
 		}
 	}
@@ -48,9 +88,8 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
 			const position = Math.floor((minuteInPixels / 60) * startSecond - offsetInPixels);
-			context.fillRect(position, 0, 1, 22);
-
-			context.fillText(secondsToTimecode(startSecond), position + 5, 15);
+			context.fillRect(position, 10, 1, 22);
+			context.fillText(secondsToTimecode(startSecond), position + 5, 25);
 			startSecond++;
 		}
 	}
@@ -64,44 +103,10 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 				continue;
 			}
 			const position = Math.floor((minuteInPixels / 60 / 30) * frame - offsetInPixels);
-			context.fillRect(position, 9, 1, 5);
+			context.fillRect(position, 19, 1, 5);
 			frame++;
 		}
 	}
-
-	// scrollbar
-	if (timelineState.zoom > 0.9) {
-		const padding = 0.05 / timelineState.zoom;
-		const paddingInPixels = padding * width;
-		context.fillStyle = '#3c3c44';
-		context.beginPath();
-		context.roundRect(
-			(timelineState.offset + padding) * width,
-			height - 40,
-			width / timelineState.zoom - paddingInPixels * 2,
-			15,
-			8
-		);
-		context.fill();
-		/* context.fillRect(
-			(timelineState.offset + padding) * width,
-			height - 40,
-			width / timelineState.zoom - paddingInPixels * 2,
-			20
-		); */
-	}
-
-	for (const clip of timelineState.clips) {
-		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected || clip.deleted) continue;
-		drawClip(context, clip, width);
-	}
-
-	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
-
-	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, 0, 2, height - 80);
 };
 
 const drawClip = (

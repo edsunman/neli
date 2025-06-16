@@ -5,67 +5,112 @@
 	let inputValue = $state<string>();
 	let selectedIndex = -1;
 
-	const commands = $state.raw([
+	const categories = $state.raw([
 		{
 			id: 1,
-			text: 'Import',
-			selected: false,
-			action: () => console.log(1)
+			name: 'App',
+			commands: [
+				{
+					id: 1,
+					text: 'Import',
+					selected: false,
+					action: () => console.log(1)
+				},
+				{
+					id: 2,
+					text: 'Export',
+					selected: false,
+					action: () => (page = 'export')
+				},
+				{
+					id: 3,
+					text: 'Settings',
+					selected: false,
+					action: () => console.log(2)
+				},
+				{
+					id: 4,
+					text: 'Welcome',
+					selected: false,
+					action: () => console.log(3)
+				}
+			]
 		},
 		{
 			id: 2,
-			text: 'Export',
-			selected: false,
-			action: () => (page = 'export')
-		},
-		{
-			id: 3,
-			text: 'Settings',
-			selected: false,
-			action: () => console.log(2)
-		},
-		{
-			id: 4,
-			text: 'Welcome',
-			selected: false,
-			action: () => console.log(3)
+			name: 'Timeline',
+			commands: [
+				{
+					id: 5,
+					text: 'Zoom in',
+					selected: false,
+					action: () => console.log(1)
+				},
+				{
+					id: 6,
+					text: 'Zoom out',
+					selected: false,
+					action: () => (page = 'export')
+				}
+			]
 		}
 	]);
 	let filtered = $derived.by(() => {
-		return commands.filter((command) =>
-			command.text.toLowerCase().includes(inputValue?.toLowerCase() ?? '')
-		);
+		return categories.map((category) => {
+			return {
+				...category,
+				commands: category.commands.filter((command) => {
+					return command.text.toLowerCase().includes(inputValue?.toLowerCase() ?? '');
+				})
+			};
+		});
 	});
 
 	$effect(() => {
 		inputValue;
 		untrack(() => {
 			if (typeof inputValue === 'undefined') return;
+			let filteredCount = 0;
+			filtered.forEach((category) => {
+				filteredCount += category.commands.length;
+			});
 			if (inputValue.length < 1) {
 				selectDataById(-1);
-			} else if (filtered.length > 0) selectDataById(filtered[0].id);
+			} else if (filteredCount > 0) selectDataByIndex(0);
 		});
 	});
 
 	const selectDataByIndex = (index: number) => {
-		if (index < 0 || filtered.length < index + 1) return;
-		filtered.forEach((command, i) => {
-			if (command.selected) command.selected = false;
-			if (index === i) {
-				command.selected = true;
-				selectedIndex = index;
-			}
+		let filteredCount = 0;
+		filtered.forEach((category) => {
+			filteredCount += category.commands.length;
+		});
+		if (index < 0 || filteredCount < index + 1) return;
+		let i = 0;
+		filtered.forEach((category) => {
+			category.commands.forEach((command) => {
+				if (command.selected) command.selected = false;
+				if (index === i) {
+					command.selected = true;
+					selectedIndex = index;
+				}
+				i++;
+			});
 		});
 		filtered = [...filtered];
 	};
 
 	const selectDataById = (id: number) => {
-		filtered.forEach((command, index) => {
-			if (command.selected) command.selected = false;
-			if (command.id === id) {
-				command.selected = true;
-				selectedIndex = index;
-			}
+		let i = -1;
+		filtered.forEach((category) => {
+			category.commands.forEach((command) => {
+				if (command.selected) command.selected = false;
+				if (command.id === id) {
+					command.selected = true;
+					selectedIndex = i;
+				}
+				i++;
+			});
 		});
 		filtered = [...filtered];
 	};
@@ -81,37 +126,60 @@
 <!-- svelte-ignore a11y_autofocus -->
 <form
 	onsubmit={() => {
-		for (const command of filtered) {
-			if (command.selected && command.action) {
-				command.action();
-				break;
+		for (const category of filtered) {
+			for (const command of category.commands) {
+				if (command.selected && command.action) {
+					command.action();
+					break;
+				}
 			}
 		}
 	}}
 >
 	<input
 		bind:value={inputValue}
-		class="placeholder-zinc-500 w-full p-5 text-zinc-50 focus:outline-hidden"
+		class="placeholder-zinc-500 w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 		type="text"
 		placeholder="Search commands"
 		autofocus
 	/>
 </form>
-{#each filtered as data}
-	<div class="my-2">
-		<!-- svelte-ignore a11y_mouse_events_have_key_events -->
-		<button
-			onmousemove={() => {
-				if (!data.selected) selectDataById(data.id);
-			}}
-			onclick={data.action}
-			class={[
-				'cursor-pointer w-full px-5 py-3 rounded-lg text-left',
-				data.selected ? 'text-zinc-800 bg-zinc-300' : 'bg-zinc-800 text-zinc-300'
-			]}
-		>
-			{@html formatString(data.text)}
-		</button>
+{#each filtered as category}
+	<div class="pb-4">
+		{#if category.commands.length > 0}
+			<div class="text-zinc-200 select-none text-sm">{category.name}</div>
+		{/if}
+		{#each category.commands as command}
+			<div class="my-2">
+				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
+				<button
+					onmousemove={() => {
+						if (!command.selected) selectDataById(command.id);
+					}}
+					onclick={command.action}
+					class={[
+						'cursor-pointer w-full px-4 py-2 rounded-lg text-left',
+						command.selected ? 'text-zinc-800 bg-zinc-300' : ' text-zinc-200'
+					]}
+					><svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="1.5"
+						stroke="currentColor"
+						class="size-5 inline mr-1"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM10.5 7.5v6m3-3h-6"
+						/>
+					</svg>
+
+					{@html formatString(command.text)}
+				</button>
+			</div>
+		{/each}
 	</div>
 {/each}
 <svelte:window

@@ -254,7 +254,7 @@ self.addEventListener('message', async function (e) {
 			{
 				if (!decoder) return;
 				if (seeking) {
-					console.log('still seeking');
+					//console.log('still seeking');
 					return;
 				}
 
