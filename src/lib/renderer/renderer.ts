@@ -1,3 +1,5 @@
+import vertexShader from './shaders/vertex.wgsl?raw';
+
 export class WebGPURenderer {
 	#canvas: HTMLCanvasElement | null = null;
 	#ctx: GPUCanvasContext | null = null;
@@ -10,40 +12,6 @@ export class WebGPURenderer {
 	#device: GPUDevice | null = null;
 	#pipeline: GPURenderPipeline | null = null;
 	#sampler: GPUSampler | null = null;
-
-	// Generates two triangles covering the whole canvas.
-	static vertexShaderSource = `
-    struct VertexOutput {
-      @builtin(position) Position: vec4<f32>,
-      @location(0) uv: vec2<f32>,
-    }
-
-    @vertex
-    fn vert_main(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
-      var pos = array<vec2<f32>, 6>(
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>( 1.0, -1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>(-1.0,  1.0)
-      );
-
-      var uv = array<vec2<f32>, 6>(
-        vec2<f32>(1.0, 0.0),
-        vec2<f32>(1.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 0.0)
-      );
-
-      var output : VertexOutput;
-      output.Position = vec4<f32>(pos[VertexIndex], 0.0, 1.0);
-      output.uv = uv[VertexIndex];
-      return output;
-    }
-  `;
 
 	// Samples the external texture using generated UVs.
 	static fragmentShaderSource = `
@@ -85,7 +53,7 @@ export class WebGPURenderer {
 			layout: 'auto',
 			vertex: {
 				module: this.#device.createShaderModule({
-					code: WebGPURenderer.vertexShaderSource
+					code: vertexShader
 				}),
 				entryPoint: 'vert_main'
 			},
@@ -128,7 +96,7 @@ export class WebGPURenderer {
 			colorAttachments: [
 				{
 					view: textureView,
-					clearValue: [1.0, 0.0, 0.0, 1.0],
+					clearValue: [0.0, 0.0, 0.0, 1.0],
 					loadOp: 'clear' as GPULoadOp,
 					storeOp: 'store' as GPUStoreOp
 				}

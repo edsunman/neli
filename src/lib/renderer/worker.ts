@@ -49,6 +49,7 @@ self.addEventListener('message', async function (e) {
 								frame.close();
 							}
 						} else {
+							//console.log(frame, selectedFrameTimestamp);
 							//frameQueue.push(frame);
 							if (frame.timestamp === selectedFrameTimestamp) {
 								renderer?.draw(frame);
@@ -61,7 +62,7 @@ self.addEventListener('message', async function (e) {
 
 						if (isFeedingPaused && /* frameQueue.length < 10 &&  */ decoder!.decodeQueueSize < 3) {
 							isFeedingPaused = false;
-							if (DEBUG_QUEUES) console.log('Decoder backpressure: Resuming feeding.', playing);
+							if (DEBUG_QUEUES) console.log('Decoder backpressure: Resuming feeding.');
 							feedDecoder();
 						}
 						if (DEBUG_QUEUES) console.log('Decoder queue size: ', decoder!.decodeQueueSize);
@@ -109,6 +110,8 @@ self.addEventListener('message', async function (e) {
 							decoder.decode(chunks[i]);
 						}
 					}
+
+					//console.log(chunks);
 				};
 
 				const reader = new FileReader();
@@ -297,7 +300,7 @@ const feedDecoder = () => {
 	// Check if we're hitting our backpressure limits
 	// 1. Too many decoded frames waiting to be rendered
 	// 2. Too many chunks already sent to the decoder, but not yet outputted
-	if (/* frameQueue.length >= 10 ||  */ decoder.decodeQueueSize >= 3) {
+	if (/* frameQueue.length >= 10 ||  */ decoder.decodeQueueSize >= 5) {
 		isFeedingPaused = true;
 		if (DEBUG_QUEUES)
 			console.log(
@@ -314,6 +317,7 @@ const feedDecoder = () => {
 		const chunk = encodedChunkBuffer.shift();
 		if (!chunk) return;
 		try {
+			if (DEBUG_QUEUES) console.log('Sending chunk to encoder: ', chunk.timestamp);
 			decoder.decode(chunk);
 			feedDecoder();
 		} catch (e) {
