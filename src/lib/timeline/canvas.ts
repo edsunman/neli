@@ -18,7 +18,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 			(timelineState.offset + padding) * width,
 			height - 40,
 			width / timelineState.zoom - paddingInPixels * 2,
-			15,
+			10,
 			8
 		);
 		context.fill();
@@ -32,6 +32,7 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
+	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
 	context.fillRect(playheadPosition, 0, 2, height - 60);

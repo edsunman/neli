@@ -2,7 +2,6 @@ import type { Source } from '../source/source';
 
 export class Clip {
 	id = '';
-	//videoClip: VideoClip;
 	source: Source;
 
 	start = 0;

@@ -3,7 +3,7 @@ import { appState } from '$lib/state.svelte';
 import { Source } from './source';
 import { createFile, MP4BoxBuffer, type Movie } from 'mp4box';
 
-export const createSource = async (file: File) => {
+export const createVideoSource = async (file: File) => {
 	const reader = new FileReader();
 	let mp4info: Movie;
 
@@ -17,7 +17,7 @@ export const createSource = async (file: File) => {
 		console.log(info);
 		foundInfo = true;
 		mp4info = info;
-		appState.sources.push(new Source(mp4info, file));
+		appState.sources.push(new Source('video', mp4info, file));
 		sendFileToWorker();
 	};
 
@@ -45,6 +45,10 @@ export const createSource = async (file: File) => {
 	}
 
 	readNextChunk();
+};
+
+export const createTextSource = () => {
+	appState.sources.push(new Source('text'));
 };
 
 export const getSourceFromId = (id: string) => {

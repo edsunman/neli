@@ -1,9 +1,5 @@
 <script lang="ts">
-	import * as core from '@diffusionstudio/core';
-	import { appState, timelineState } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
-	import { createSource } from '$lib/source/actions';
-	import { WebGPURenderer } from '$lib/renderer/renderer';
 	import { setupRenderer } from '$lib/renderer/actions';
 
 	let element = $state<HTMLCanvasElement>();
@@ -14,15 +10,6 @@
 	onMount(async () => {
 		if (!element) return;
 		setupRenderer(element);
-		//	console.log(appState.renderer);
-		/* if (!element || !appState.composition) return;
-
-		appState.composition.mount(element); */
-		//'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-		/* createSource(
-			'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-		); */
-		//createSource('/30p.mp4');
 	});
 </script>
 

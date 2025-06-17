@@ -131,7 +131,7 @@ export const resizeSelctedClip = () => {
 			clip.duration = timelineState.currentFrame - clip.start;
 		}
 
-		const maxLength = clip.source.duration - clip.sourceOffset;
+		const maxLength = clip.source.duration ? clip.source.duration - clip.sourceOffset : 1000;
 
 		//  sibling clips snap
 		let neighbour;

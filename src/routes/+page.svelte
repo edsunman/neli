@@ -6,7 +6,7 @@
 	import Project from '$lib/components/panels/Project.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
-	import Controls from '$lib/components/panels/ClipSettings.svelte';
+	import Controls from '$lib/components/panels/Settings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 
 	//appState.composition = new core.Composition({ width: 1920, height: 1080 });
