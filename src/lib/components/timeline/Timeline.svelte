@@ -13,7 +13,6 @@
 		moveSelectedClip,
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
-		updateClipCore,
 		removeInvalidAllClips,
 		trimSiblingClips,
 		splitClip,
@@ -128,11 +127,9 @@
 		}
 		if (dragging) {
 			trimSiblingClips();
-			updateClipCore(timelineState.selectedClip, 'offset');
 			dragging = false;
 		}
 		if (resizing) {
-			updateClipCore(timelineState.selectedClip, 'trim');
 			resizing = false;
 		}
 		if (scrolling) {

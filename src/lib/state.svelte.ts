@@ -26,6 +26,7 @@ class TimelineState {
 	dragOffset = 0; // pixels
 	dragStart = 0; // pixels
 	hoverClipId = '';
+	highlightTrack = 0;
 	invalidate = false;
 }
 

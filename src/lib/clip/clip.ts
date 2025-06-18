@@ -4,6 +4,7 @@ export class Clip {
 	id = '';
 	source: Source;
 
+	track = 0;
 	start = 0;
 	savedStart = 0;
 	sourceOffset = 0;
@@ -23,6 +24,7 @@ export class Clip {
 		sourceOffset = 0
 	) {
 		this.id = Math.random().toString(16).slice(2);
+		this.track = Math.floor(Math.random() * 3 + 1);
 		//this.videoClip = videoClip;
 		this.source = source;
 		this.start = start;

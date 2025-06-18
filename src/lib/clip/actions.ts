@@ -14,15 +14,6 @@ export const createClip = async (sourceId: string, start = 0, duration = 0, sour
 	appHistory.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 };
 
-export const updateClipCore = (clip: Clip | null, method: 'offset' | 'trim') => {
-	if (!clip) return;
-	if (method === 'offset') {
-		//clip.videoClip.offset(clip.start - clip.savedStart);
-	} else {
-		//clip.videoClip.trim(clip.start, clip.start + clip.duration);
-	}
-};
-
 export const moveSelectedClip = () => {
 	const frame = canvasPixelToFrame(timelineState.dragOffset, false);
 	const clip = timelineState.selectedClip;
@@ -41,7 +32,9 @@ export const moveSelectedClip = () => {
 
 	// sibling clips snap
 	for (const siblingClip of timelineState.clips) {
-		if (clip.id === siblingClip.id || siblingClip.deleted) continue;
+		if (clip.id === siblingClip.id || siblingClip.deleted /* || siblingClip.track !== clip.track */)
+			continue;
+
 		if (isFrameInSnapRange(clip.start, siblingClip.start + siblingClip.duration, snapRange)) {
 			clip.start = siblingClip.start + siblingClip.duration;
 		}
@@ -91,7 +84,8 @@ export const resizeSelctedClip = () => {
 		let neighbour;
 		let prevDistance = 10000;
 		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id || siblingClip.deleted) continue;
+			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
+				continue;
 			const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
 			if (distance < 0 || distance > clip.sourceOffset + clip.duration) continue;
 			if (distance < prevDistance) {
@@ -137,7 +131,8 @@ export const resizeSelctedClip = () => {
 		let neighbour;
 		let prevDistance = 10000;
 		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id || siblingClip.deleted) continue;
+			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
+				continue;
 			const distance = siblingClip.start - clip.start;
 			if (distance < 0 || distance > maxLength) continue;
 			if (distance < prevDistance) {
@@ -169,7 +164,8 @@ export const trimSiblingClips = () => {
 	if (!clip) return;
 	const clipsToRemove: string[] = [];
 	for (const siblingClip of timelineState.clips) {
-		if (siblingClip.id === clip.id || siblingClip.deleted) continue;
+		if (siblingClip.id === clip.id || siblingClip.deleted || siblingClip.track !== clip.track)
+			continue;
 		const clipEnd = clip.start + clip.duration;
 		const siblingEnd = siblingClip.start + siblingClip.duration;
 
@@ -189,7 +185,6 @@ export const trimSiblingClips = () => {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			updateClipCore(siblingClip, 'trim');
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
 			// need to trim start
@@ -197,7 +192,6 @@ export const trimSiblingClips = () => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			updateClipCore(siblingClip, 'trim');
 		}
 	}
 	for (const clipId of clipsToRemove) {
@@ -215,7 +209,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 
 	// trim clip
 	clip.duration = ogClipDuration;
-	updateClipCore(clip, 'trim');
 
 	// create new clip
 	createClip(clip.source.id, frame + gapSize, newClipDuration, newClipOffset);
@@ -249,7 +242,11 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		clip.hovered = false;
-		if (offsetY > 80 && offsetY < 115) {
+		if (
+			(offsetY > 100 && offsetY < 135 && clip.track === 1) ||
+			(offsetY > 150 && offsetY < 185 && clip.track === 2) ||
+			(offsetY > 200 && offsetY < 235 && clip.track === 3)
+		) {
 			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 				foundClip = clip;
 				clip.hovered = true;

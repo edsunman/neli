@@ -24,6 +24,41 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 		context.fill();
 	}
 
+	// tracks
+
+	const offsetInPixels = timelineState.width * timelineState.zoom * timelineState.offset;
+	context.fillStyle = '#131315';
+	context.beginPath();
+	context.roundRect(
+		Math.floor(-offsetInPixels),
+		100,
+		Math.floor(timelineState.width * timelineState.zoom),
+		35,
+		8
+	);
+	context.fill();
+
+	context.beginPath();
+	context.roundRect(
+		Math.floor(-offsetInPixels),
+		150,
+		Math.floor(timelineState.width * timelineState.zoom),
+		35,
+		8
+	);
+	context.fill();
+
+	context.beginPath();
+	context.roundRect(
+		Math.floor(-offsetInPixels),
+		200,
+		Math.floor(timelineState.width * timelineState.zoom),
+		35,
+		8
+	);
+	context.fill();
+
+	// clips
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
 		if (selected || clip.deleted) continue;
@@ -126,40 +161,95 @@ const drawClip = (
 	context.beginPath();
 
 	context.roundRect(
-		startPercent * width * timelineState.zoom + 1,
-		80,
-		durationPercent * width * timelineState.zoom - 2,
+		Math.round(startPercent * width * timelineState.zoom + 1),
+		50 + 50 * clip.track,
+		Math.round(durationPercent * width * timelineState.zoom - 2),
 		35,
 		8
 	);
-	//context.fill();
-	//context.closePath();
 
-	/// define this Path as clipping mask
+	// define this Path as clipping mask
 	context.clip();
 
-	if (selected) {
-		context.fillStyle = 'oklch(58.6% 0.253 17.585)';
-	} else {
-		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
-	}
+	context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+
 	if (clip.invalid) {
-		context.fillStyle = 'red';
+		//context.fillStyle = 'red';
 	}
 
 	context.fillRect(
 		startPercent * width * timelineState.zoom,
-		80,
+		50 + 50 * clip.track,
 		durationPercent * width * timelineState.zoom,
 		35
 	);
 
+	context.restore();
+
 	if (selected || clip.hovered) {
 		// handles
-		context.fillStyle = 'white';
-		context.fillRect(Math.floor(startPercent * width * timelineState.zoom), 80, 10, 35);
-		context.fillRect(Math.floor(endPercent * width * timelineState.zoom) - 10, 80, 10, 35);
-	}
 
-	context.restore();
+		context.save();
+
+		context.beginPath();
+
+		context.roundRect(
+			Math.round(startPercent * width * timelineState.zoom + 4),
+			50 + 50 * clip.track + 3,
+			durationPercent * width * timelineState.zoom - 8,
+			29,
+			5
+		);
+
+		// define this Path as clipping mask
+		context.clip();
+
+		context.fillStyle = '#131315';
+		context.fillRect(
+			Math.round(startPercent * width * timelineState.zoom),
+			50 + 50 * clip.track,
+			15,
+			35
+		);
+		context.fillRect(
+			Math.round(endPercent * width * timelineState.zoom) - 15,
+			50 + 50 * clip.track,
+			15,
+			35
+		);
+
+		context.restore();
+
+		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+
+		context.fillRect(
+			Math.round(startPercent * width * timelineState.zoom + 8),
+			50 + 50 * clip.track + 10,
+			3,
+			15
+		);
+
+		context.fillRect(
+			Math.round(endPercent * width * timelineState.zoom) - 11,
+			50 + 50 * clip.track + 10,
+			3,
+			15
+		);
+
+		context.fillStyle = '#131315';
+
+		if (selected) {
+			context.beginPath();
+			context.roundRect(
+				Math.round(startPercent * width * timelineState.zoom + 5),
+				50 + 50 * clip.track + 4,
+				Math.ceil(durationPercent * width * timelineState.zoom - 10),
+				27,
+				5
+			);
+			context.strokeStyle = '#131315';
+			context.lineWidth = 2;
+			context.stroke();
+		}
+	}
 };
