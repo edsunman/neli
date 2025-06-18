@@ -8,6 +8,7 @@
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
 	import Controls from '$lib/components/panels/Settings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
+	import { createTextSource } from '$lib/source/actions';
 
 	//appState.composition = new core.Composition({ width: 1920, height: 1080 });
 
@@ -20,10 +21,7 @@
 	});
 
 	onMount(async () => {
-		/* if (!appState.composition) return;
-		appState.composition.on('currentframe', (event) => {
-			timelineState.currentFrame = event.detail;
-		}); */
+		createTextSource();
 	});
 </script>
 

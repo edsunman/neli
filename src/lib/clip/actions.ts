@@ -3,11 +3,17 @@ import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip';
 
-export const createClip = async (sourceId: string, start = 0, duration = 0, sourceOffset = 0) => {
+export const createClip = async (
+	sourceId: string,
+	track: number,
+	start = 0,
+	duration = 0,
+	sourceOffset = 0
+) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	const clip = new Clip(source, start, duration ? duration : source.duration, sourceOffset);
+	const clip = new Clip(source, track, start, duration ? duration : source.duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 
@@ -211,7 +217,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	clip.duration = ogClipDuration;
 
 	// create new clip
-	createClip(clip.source.id, frame + gapSize, newClipDuration, newClipOffset);
+	createClip(clip.source.id, clip.track, frame + gapSize, newClipDuration, newClipOffset);
 };
 
 export const deleteClip = (id: string, unDelete = false, noHistory = false) => {

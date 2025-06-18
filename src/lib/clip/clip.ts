@@ -19,12 +19,13 @@ export class Clip {
 
 	constructor(
 		/* videoClip: VideoClip,  */ source: Source,
+		track: number,
 		start = 0,
 		duration = 0,
 		sourceOffset = 0
 	) {
 		this.id = Math.random().toString(16).slice(2);
-		this.track = Math.floor(Math.random() * 3 + 1);
+		this.track = track ? track : Math.floor(Math.random() * 3 + 1);
 		//this.videoClip = videoClip;
 		this.source = source;
 		this.start = start;

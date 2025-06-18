@@ -36,7 +36,7 @@
 		{#each appState.sources as source}
 			<tr
 				class="group hover:bg-zinc-800"
-				onclick={() => createClip(source.id, timelineState.currentFrame, 500)}
+				onclick={() => createClip(source.id, 0, timelineState.currentFrame, 500)}
 			>
 				<td class="py-2 rounded-l pl-2"
 					><div
