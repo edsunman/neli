@@ -253,6 +253,7 @@ self.addEventListener('message', async function (e) {
 		case 'seek':
 			{
 				if (!decoder) return;
+
 				if (seeking) {
 					//console.log('still seeking');
 					return;
@@ -260,6 +261,11 @@ self.addEventListener('message', async function (e) {
 
 				seeking = true;
 
+				await renderer?.drawShape(e.data.foundClip ? 0 : 1);
+
+				seeking = false;
+
+				return;
 				targetFrame = Math.floor(e.data.targetFrame * 33333.3333333) + 33333 / 2;
 
 				let targetFrameIndex = 0;

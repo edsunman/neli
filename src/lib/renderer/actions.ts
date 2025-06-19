@@ -1,4 +1,4 @@
-import { appState } from '$lib/state.svelte';
+import { appState, timelineState } from '$lib/state.svelte';
 import MediaWorker from './worker?worker';
 
 export const setupRenderer = (canvas: HTMLCanvasElement) => {
@@ -23,9 +23,18 @@ export const sendFileToWorker = () => {
 };
 
 export const seek = (frame: number) => {
+	let playheadOnClip = false;
+	for (const clip of timelineState.clips) {
+		if (clip.start < frame && clip.start + clip.duration > frame) {
+			playheadOnClip = true;
+			continue;
+		}
+	}
+
 	appState.mediaWorker?.postMessage({
 		command: 'seek',
-		targetFrame: frame
+		targetFrame: frame,
+		foundClip: playheadOnClip
 	});
 };
 

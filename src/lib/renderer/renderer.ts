@@ -1,4 +1,5 @@
 import vertexShader from './shaders/vertex.wgsl?raw';
+import shapeShader from './shaders/shape.wgsl?raw';
 
 export class WebGPURenderer {
 	#canvas: HTMLCanvasElement | null = null;
@@ -11,7 +12,10 @@ export class WebGPURenderer {
 	#format: GPUTextureFormat | null = null;
 	#device: GPUDevice | null = null;
 	#pipeline: GPURenderPipeline | null = null;
+	#shapePipeline: GPURenderPipeline | null = null;
 	#sampler: GPUSampler | null = null;
+
+	#uniformArray = new Float32Array([0]);
 
 	// Samples the external texture using generated UVs.
 	static fragmentShaderSource = `
@@ -46,6 +50,26 @@ export class WebGPURenderer {
 			device: this.#device,
 			format: this.#format,
 			alphaMode: 'opaque'
+		});
+
+		this.#shapePipeline = this.#device.createRenderPipeline({
+			layout: 'auto',
+			vertex: {
+				module: this.#device.createShaderModule({
+					code: shapeShader
+				}),
+				entryPoint: 'vert_main'
+			},
+			fragment: {
+				module: this.#device.createShaderModule({
+					code: shapeShader
+				}),
+				entryPoint: 'frag_main',
+				targets: [{ format: this.#format }]
+			},
+			primitive: {
+				topology: 'triangle-list'
+			}
 		});
 
 		this.#pipeline = this.#device.createRenderPipeline({
@@ -88,6 +112,53 @@ export class WebGPURenderer {
 		});
 		pass.end();
 		this.#device.queue.submit([encoder.finish()]);
+	}
+
+	drawShape(redValue: number) {
+		if (!this.#device || !this.#shapePipeline || !this.#sampler || !this.#ctx || !this.#format)
+			return;
+
+		this.#uniformArray.set([redValue], 0);
+
+		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT; // Size for one f32
+		const uniformBuffer = this.#device.createBuffer({
+			size: uniformBufferSize,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		this.#device.queue.writeBuffer(
+			uniformBuffer,
+			0,
+			this.#uniformArray.buffer,
+			0,
+			this.#uniformArray.byteLength
+		);
+		//console.log(uniformBuffer);
+		const uniformBindGroup = this.#device.createBindGroup({
+			layout: this.#shapePipeline.getBindGroupLayout(0),
+			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
+		});
+
+		const commandEncoder = this.#device.createCommandEncoder();
+		const textureView = this.#ctx.getCurrentTexture().createView();
+		const renderPassDescriptor = {
+			colorAttachments: [
+				{
+					view: textureView,
+					clearValue: [0.0, 0.0, 0.0, 1.0],
+					loadOp: 'clear' as GPULoadOp,
+					storeOp: 'store' as GPUStoreOp
+				}
+			]
+		};
+
+		const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+		passEncoder.setPipeline(this.#shapePipeline);
+		passEncoder.setBindGroup(0, uniformBindGroup);
+		passEncoder.draw(6, 1, 0, 0);
+		passEncoder.end();
+		this.#device.queue.submit([commandEncoder.finish()]);
+		return this.#device.queue.onSubmittedWorkDone();
 	}
 
 	async draw(frame: VideoFrame) {
