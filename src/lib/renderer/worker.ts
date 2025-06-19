@@ -8,6 +8,7 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 import { WebGPURenderer } from './renderer';
+import type { Clip } from '$lib/clip/clip';
 
 const DEBUG_QUEUES = false;
 
@@ -24,6 +25,8 @@ let frameQueue: VideoFrame[] = []; // Holds decoded VideoFrames waiting to be re
 let encodedChunkBuffer: EncodedVideoChunk[] = []; // Holds EncodedVideoChunks ready to be fed to the decoder
 let isFeedingPaused = false;
 let lastChunkIndex = 0;
+
+const clips: Clip[] = [];
 
 let seeking = false;
 
@@ -231,8 +234,6 @@ self.addEventListener('message', async function (e) {
 				self.requestAnimationFrame(loop);
 			}
 			break;
-
-			break;
 		case 'pause':
 			playing = false;
 			feedMoreFrames = false;
@@ -253,15 +254,18 @@ self.addEventListener('message', async function (e) {
 		case 'seek':
 			{
 				if (!decoder) return;
-
-				if (seeking) {
-					//console.log('still seeking');
-					return;
-				}
-
+				if (seeking) return;
 				seeking = true;
 
-				await renderer?.drawShape(e.data.foundClip ? 0 : 1);
+				let playheadOnClip = false;
+				for (const clip of clips) {
+					if (clip.start < e.data.frame && clip.start + clip.duration > e.data.frame) {
+						playheadOnClip = true;
+						continue;
+					}
+				}
+
+				await renderer?.drawShape(playheadOnClip ? 1 : 0);
 
 				seeking = false;
 
@@ -295,6 +299,16 @@ self.addEventListener('message', async function (e) {
 				feedDecoder();
 			}
 			break;
+		case 'clip': {
+			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
+
+			if (foundClipIndex > -1) {
+				clips[foundClipIndex] = e.data.clip;
+			} else {
+				clips.push(e.data.clip);
+			}
+			console.log(clips);
+		}
 	}
 });
 

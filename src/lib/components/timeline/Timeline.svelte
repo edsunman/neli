@@ -22,6 +22,7 @@
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
+	import { updateWorkerClip } from '$lib/renderer/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let height = $state(0);
@@ -126,11 +127,13 @@
 			setFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
-			trimSiblingClips();
 			dragging = false;
+			trimSiblingClips();
+			updateWorkerClip(timelineState.selectedClip);
 		}
 		if (resizing) {
 			resizing = false;
+			updateWorkerClip(timelineState.selectedClip);
 		}
 		if (scrolling) {
 			scrolling = false;

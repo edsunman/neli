@@ -2,6 +2,7 @@ import { appHistory, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip';
+import { updateWorkerClip } from '$lib/renderer/actions';
 
 export const createClip = async (
 	sourceId: string,
@@ -17,6 +18,7 @@ export const createClip = async (
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 
+	updateWorkerClip(clip);
 	appHistory.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 };
 
