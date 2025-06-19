@@ -1,5 +1,5 @@
-import type { Clip } from '$lib/clip/clip';
-import { appState } from '$lib/state.svelte';
+import type { Clip } from '$lib/clip/clip.svelte';
+import { appState, timelineState } from '$lib/state.svelte';
 import MediaWorker from './worker?worker';
 
 export const setupRenderer = (canvas: HTMLCanvasElement) => {
@@ -27,11 +27,14 @@ export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
 	appState.mediaWorker?.postMessage({
 		command: 'clip',
+		frame: timelineState.currentFrame,
 		clip: {
 			id: clip.id,
 			start: clip.start,
 			duration: clip.duration,
-			ourceOffset: clip.sourceOffset
+			sourceOffset: clip.sourceOffset,
+			scaleX: clip.scaleX,
+			scaleY: clip.scaleY
 		}
 	});
 };

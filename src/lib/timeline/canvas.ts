@@ -1,4 +1,4 @@
-import type { Clip } from '$lib/clip/clip';
+import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 

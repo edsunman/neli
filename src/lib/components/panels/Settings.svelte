@@ -1,6 +1,16 @@
 <script lang="ts">
+	import { updateWorkerClip } from '$lib/renderer/actions';
 	import { timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
+	import { untrack } from 'svelte';
+
+	$effect(() => {
+		timelineState.selectedClip?.scaleX;
+		timelineState.selectedClip?.scaleY;
+		untrack(() => {
+			if (timelineState.selectedClip) updateWorkerClip(timelineState.selectedClip);
+		});
+	});
 </script>
 
 {#if !timelineState.selectedClip}
@@ -40,11 +50,21 @@
 	</div>
 {/if}
 
-{#each timelineState.clips as clip}
-	{#if clip.id === timelineState.selectedClip?.id}
-		<div class="flex flex-col mt-12 mr-[calc(100svw/20)] ml-[30%] rounded text-zinc-500 text-right">
-			<div class="text-lg">{clip.source.type}</div>
-			<div class="flex flex-col gap-3 mt-4">
+{#if timelineState.selectedClip}
+	{@const clip = timelineState.selectedClip}
+	<div class="flex flex-col mt-12 mr-[calc(100svw/20)] ml-[30%] rounded text-zinc-500 text-right">
+		<div class="text-lg">{clip.source.type}</div>
+		<div class="flex flex-col gap-3 mt-4">
+			<div class="flex items-center justify-between text-sm font-medium">
+				<span>Height</span>
+				<span><input type="text" bind:value={clip.scaleX} class="w-12 text-right" /></span>
+			</div>
+			<div class="flex items-center justify-between text-sm font-medium">
+				<span>Width</span>
+				<span><input type="text" bind:value={clip.scaleY} class="w-12 text-right" /></span>
+			</div>
+		</div>
+		<!-- <div class="flex flex-col gap-3 mt-4">
 				<div class="flex items-center justify-between text-sm font-medium">
 					<span>Volume</span>
 					<span>50%</span>
@@ -64,7 +84,6 @@
 						class={'bg-rose-600 ring-white focus-visible:ring-2  ring-offset-transparent focus-visible:ring-foreground focus-visible:outline-hidden block size-[15px] cursor-pointer rounded-full  '}
 					/>
 				</Slider.Root>
-			</div>
-		</div>
-	{/if}
-{/each}
+			</div> -->
+	</div>
+{/if}

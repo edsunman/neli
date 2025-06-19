@@ -12,6 +12,9 @@ export class Clip {
 	duration = 0;
 	savedDuration = 0;
 
+	scaleX = $state(0.5);
+	scaleY = $state(0.5);
+
 	deleted = false;
 	invalid = false;
 	hovered = false;
@@ -26,15 +29,11 @@ export class Clip {
 	) {
 		this.id = Math.random().toString(16).slice(2);
 		this.track = track ? track : Math.floor(Math.random() * 3 + 1);
-		//this.videoClip = videoClip;
+
 		this.source = source;
 		this.start = start;
 		this.sourceOffset = sourceOffset;
 
-		if (duration > 0) {
-			this.duration = duration;
-		} /* else {
-			this.duration = source.videoSource.duration?.frames ?? 0;
-		} */
+		if (duration > 0) this.duration = duration;
 	}
 }

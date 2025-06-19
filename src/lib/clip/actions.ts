@@ -1,7 +1,7 @@
 import { appHistory, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
-import { Clip } from './clip';
+import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/renderer/actions';
 
 export const createClip = async (

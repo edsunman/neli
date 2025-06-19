@@ -1,5 +1,6 @@
 struct MyUniforms {
     myNumber: f32,
+    scale: vec2f
 };
 
 @group(0) @binding(0) var<uniform> uniforms: MyUniforms;
@@ -36,7 +37,7 @@ fn vert_main(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
     );
 
     var output : VertexOutput;
-    output.Position = vec4<f32>(pos[VertexIndex] * vec2<f32>(1,1), 0.0, 1.0);
+    output.Position = vec4<f32>(pos[VertexIndex] * vec2<f32>(uniforms.scale.x,uniforms.scale.y), 0.0, 1.0);
     output.uv = uv[VertexIndex];
     return output;
 }

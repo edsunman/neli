@@ -10,6 +10,9 @@ export class Source {
 	file?: File;
 	fileInfo?: Movie;
 
+	width = 1920;
+	height = 1080;
+
 	constructor(type: SourceType, info?: Movie, file?: File) {
 		this.id = Math.random().toString(16).slice(2);
 		this.type = type;

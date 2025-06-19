@@ -8,7 +8,6 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 import { WebGPURenderer } from './renderer';
-import type { Clip } from '$lib/clip/clip';
 
 const DEBUG_QUEUES = false;
 
@@ -26,7 +25,7 @@ let encodedChunkBuffer: EncodedVideoChunk[] = []; // Holds EncodedVideoChunks re
 let isFeedingPaused = false;
 let lastChunkIndex = 0;
 
-const clips: Clip[] = [];
+const clips: any[] = [];
 
 let seeking = false;
 
@@ -257,15 +256,7 @@ self.addEventListener('message', async function (e) {
 				if (seeking) return;
 				seeking = true;
 
-				let playheadOnClip = false;
-				for (const clip of clips) {
-					if (clip.start < e.data.frame && clip.start + clip.duration > e.data.frame) {
-						playheadOnClip = true;
-						continue;
-					}
-				}
-
-				await renderer?.drawShape(playheadOnClip ? 1 : 0);
+				await drawFrame(e.data.frame);
 
 				seeking = false;
 
@@ -307,10 +298,28 @@ self.addEventListener('message', async function (e) {
 			} else {
 				clips.push(e.data.clip);
 			}
-			console.log(clips);
+
+			await drawFrame(e.data.frame);
+			//
+			//console.log(clips);
 		}
 	}
 });
+
+const drawFrame = async (frame: number) => {
+	let foundClip = null;
+	for (const clip of clips) {
+		if (clip.start < frame && clip.start + clip.duration > frame) {
+			foundClip = clip;
+			continue;
+		}
+	}
+	if (foundClip) {
+		await renderer?.drawShape(1, foundClip.scaleX, foundClip.scaleY);
+	} else {
+		await renderer?.drawShape(0, 1, 1);
+	}
+};
 
 const feedDecoder = () => {
 	if (isFeedingPaused || !decoder || decoder.state !== 'configured') {
