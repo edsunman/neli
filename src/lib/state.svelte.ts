@@ -8,6 +8,7 @@ class AppState {
 	mediaWorker: Worker | null = null;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
+	disableKeyboardShortcuts = false;
 }
 
 export const appState = new AppState();

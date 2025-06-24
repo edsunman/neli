@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { updateWorkerClip } from '$lib/renderer/actions';
-	import { timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';
 
 	$effect(() => {
 		timelineState.selectedClip?.scaleX;
 		timelineState.selectedClip?.scaleY;
+		timelineState.selectedClip?.positionX;
+		timelineState.selectedClip?.positionY;
 		untrack(() => {
 			if (timelineState.selectedClip) updateWorkerClip(timelineState.selectedClip);
 		});
@@ -56,12 +58,72 @@
 		<div class="text-lg">{clip.source.type}</div>
 		<div class="flex flex-col gap-3 mt-4">
 			<div class="flex items-center justify-between text-sm font-medium">
-				<span>Height</span>
-				<span><input type="text" bind:value={clip.scaleX} class="w-12 text-right" /></span>
+				<span>Width</span>
+				<span
+					><input
+						type="text"
+						onfocus={() => {
+							appState.disableKeyboardShortcuts = true;
+						}}
+						onblur={() => {
+							appState.disableKeyboardShortcuts = false;
+							if (!clip.scaleX) clip.scaleX = 0;
+						}}
+						bind:value={clip.scaleX}
+						class="w-12 text-right"
+					/></span
+				>
 			</div>
 			<div class="flex items-center justify-between text-sm font-medium">
-				<span>Width</span>
-				<span><input type="text" bind:value={clip.scaleY} class="w-12 text-right" /></span>
+				<span>Height</span>
+				<span
+					><input
+						type="text"
+						onfocus={() => {
+							appState.disableKeyboardShortcuts = true;
+						}}
+						onblur={() => {
+							appState.disableKeyboardShortcuts = false;
+							if (!clip.scaleY) clip.scaleY = 0;
+						}}
+						bind:value={clip.scaleY}
+						class="w-12 text-right"
+					/></span
+				>
+			</div>
+			<div class="flex items-center justify-between text-sm font-medium">
+				<span>Position X</span>
+				<span
+					><input
+						type="text"
+						onfocus={() => {
+							appState.disableKeyboardShortcuts = true;
+						}}
+						onblur={() => {
+							appState.disableKeyboardShortcuts = false;
+							//if (!clip.translateY) clip.scaleY = 0;
+						}}
+						bind:value={clip.positionX}
+						class="w-12 text-right"
+					/></span
+				>
+			</div>
+			<div class="flex items-center justify-between text-sm font-medium">
+				<span>Position Y</span>
+				<span
+					><input
+						type="text"
+						onfocus={() => {
+							appState.disableKeyboardShortcuts = true;
+						}}
+						onblur={() => {
+							appState.disableKeyboardShortcuts = false;
+							//if (!clip.scaleY) clip.scaleY = 0;
+						}}
+						bind:value={clip.positionY}
+						class="w-12 text-right"
+					/></span
+				>
 			</div>
 		</div>
 		<!-- <div class="flex flex-col gap-3 mt-4">

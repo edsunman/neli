@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setFrameFromOffset,
@@ -191,6 +191,7 @@
 </div>
 <svelte:window
 	onkeydown={(event) => {
+		if (appState.disableKeyboardShortcuts) return;
 		switch (event.code) {
 			case 'ArrowLeft':
 				setCurrentFrame(timelineState.currentFrame - 1);

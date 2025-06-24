@@ -34,7 +34,9 @@ export const updateWorkerClip = (clip: Clip | null) => {
 			duration: clip.duration,
 			sourceOffset: clip.sourceOffset,
 			scaleX: clip.scaleX,
-			scaleY: clip.scaleY
+			scaleY: clip.scaleY,
+			positionX: clip.positionX,
+			positionY: clip.positionY
 		}
 	});
 };

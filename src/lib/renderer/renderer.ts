@@ -15,7 +15,7 @@ export class WebGPURenderer {
 	#shapePipeline: GPURenderPipeline | null = null;
 	#sampler: GPUSampler | null = null;
 
-	#uniformArray = new Float32Array([0, 0, 0, 0]);
+	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
 	// Samples the external texture using generated UVs.
 	static fragmentShaderSource = `
@@ -114,13 +114,19 @@ export class WebGPURenderer {
 		this.#device.queue.submit([encoder.finish()]);
 	}
 
-	drawShape(redValue: number, scaleX: number, scaleY: number) {
+	drawShape(
+		redValue: number,
+		scaleX: number,
+		scaleY: number,
+		positionX: number,
+		positionY: number
+	) {
 		if (!this.#device || !this.#shapePipeline || !this.#sampler || !this.#ctx || !this.#format)
 			return;
 
-		this.#uniformArray.set([redValue, 0, scaleX, scaleY], 0);
+		this.#uniformArray.set([redValue, 0, scaleX, scaleY, positionX, positionY], 0);
 
-		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 4; // Size for three f32
+		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 6; // Size for three f32
 		const uniformBuffer = this.#device.createBuffer({
 			size: uniformBufferSize,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST

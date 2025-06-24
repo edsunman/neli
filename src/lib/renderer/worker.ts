@@ -314,10 +314,17 @@ const drawFrame = async (frame: number) => {
 			continue;
 		}
 	}
+
 	if (foundClip) {
-		await renderer?.drawShape(1, foundClip.scaleX, foundClip.scaleY);
+		await renderer?.drawShape(
+			1,
+			foundClip.scaleX,
+			foundClip.scaleY,
+			foundClip.positionX,
+			foundClip.positionY
+		);
 	} else {
-		await renderer?.drawShape(0, 1, 1);
+		await renderer?.drawShape(0, 1, 1, 1, 1);
 	}
 };
 
