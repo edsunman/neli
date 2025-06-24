@@ -291,6 +291,9 @@ self.addEventListener('message', async function (e) {
 			}
 			break;
 		case 'clip': {
+			if (seeking) return;
+			seeking = true;
+
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
@@ -300,6 +303,8 @@ self.addEventListener('message', async function (e) {
 			}
 
 			await drawFrame(e.data.frame);
+
+			seeking = false;
 			//
 			//console.log(clips);
 		}

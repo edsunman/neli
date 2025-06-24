@@ -8,6 +8,10 @@
 	let height = $state(0);
 	let scale = $state(35);
 
+	let draggedOffset = { x: 0, y: 0 };
+	let mouseDownPosition = { x: 0, y: 0 };
+	let savedClipPosition = { x: 0, y: 0 };
+
 	onMount(async () => {
 		if (!element) return;
 		setupRenderer(element);
@@ -37,6 +41,21 @@
 			style:width={`${boxSizeX}px`}
 			style:height={`${boxSizeY}px`}
 			class="border-2 border-amber-200 absolute top-0 left-0"
+			onmousedown={(e) => {
+				savedClipPosition = { x: clip.positionX, y: clip.positionY };
+				//	console.log(clip.positionX);
+				mouseDownPosition = { x: e.clientX, y: e.clientY };
+			}}
+			onmousemove={(e) => {
+				if (e.buttons < 1) return;
+				draggedOffset.x = e.clientX - mouseDownPosition.x;
+				draggedOffset.y = e.clientY - mouseDownPosition.y;
+				//console.log(draggedOffset.x);
+				clip.positionX = savedClipPosition.x + (draggedOffset.x / (scale / 100) / 1920) * 2;
+				clip.positionY = savedClipPosition.y - (draggedOffset.y / (scale / 100) / 1080) * 2;
+				//(savedClipPosition.x + draggedOffset.x) / (clip.source.width * (scale / 50));
+				//console.log(((savedClipPosition.x + draggedOffset.x) / (scale / 100) / 1920) * 2);
+			}}
 		></div>
 	{/if}
 </div>

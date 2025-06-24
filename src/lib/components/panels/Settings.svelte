@@ -95,7 +95,7 @@
 				<span>Position X</span>
 				<span
 					><input
-						type="text"
+						type="number"
 						onfocus={() => {
 							appState.disableKeyboardShortcuts = true;
 						}}
@@ -104,7 +104,7 @@
 							//if (!clip.translateY) clip.scaleY = 0;
 						}}
 						bind:value={clip.positionX}
-						class="w-12 text-right"
+						class="w-12 text-right [&::-webkit-inner-spin-button]:appearance-none"
 					/></span
 				>
 			</div>
@@ -112,7 +112,7 @@
 				<span>Position Y</span>
 				<span
 					><input
-						type="text"
+						type="number"
 						onfocus={() => {
 							appState.disableKeyboardShortcuts = true;
 						}}
