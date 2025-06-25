@@ -20,6 +20,7 @@ export class Decoder {
 	#mp4File: ISOFile | null = null;
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 	#targetFrameTimestamp = 0;
+	#feedingPaused = false;
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}
@@ -74,9 +75,8 @@ export class Decoder {
 
 		return promise;
 	}
-	decodeFrame(frameNumber: number): Promise<VideoFrame> | null {
+	decodeFrame(frameNumber: number): Promise<VideoFrame | null> | null {
 		if (!this.#ready) return null;
-		console.log('trying to decode frame');
 		/* const promise = new Promise((resolve) => {
 			this.#frameIsReady = resolve;
 		}); */
@@ -85,11 +85,14 @@ export class Decoder {
 		let targetFrameIndex = 0;
 		let keyFrameIndex = 0;
 		let scanForKeyframe = false;
+		let maxTimestamp;
 		for (let i = this.#chunks.length - 1; i >= 0; i--) {
+			if (i === this.#chunks.length - 1) {
+				maxTimestamp = this.#chunks[i].timestamp;
+			}
 			if (!scanForKeyframe && this.#chunks[i].timestamp < frameTimestamp) {
 				targetFrameIndex = i;
 				this.#targetFrameTimestamp = this.#chunks[i].timestamp;
-
 				scanForKeyframe = true;
 			}
 			if (scanForKeyframe) {
@@ -100,14 +103,20 @@ export class Decoder {
 			}
 		}
 
+		if (maxTimestamp && maxTimestamp + 33333 < frameTimestamp) {
+			// out of bounds
+			return Promise.resolve(null);
+		}
+
 		this.#chunkBuffer = [];
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
 			this.#chunkBuffer.push(this.#chunks[i]);
 			//lastChunkIndex = i;
 		}
 
-		console.log(this.#chunkBuffer);
-		console.log(this.#targetFrameTimestamp);
+		//const cb = [...this.#chunkBuffer];
+		//console.log(cb);
+		//console.log(this.#targetFrameTimestamp);
 
 		this.#feedDecoder();
 
@@ -118,6 +127,18 @@ export class Decoder {
 
 	// runs in a loop until chunk buffer is empty
 	#feedDecoder() {
+		if (this.#feedingPaused) return;
+		if (this.#decoder.decodeQueueSize >= 5) {
+			this.#feedingPaused = true;
+			if (DEBUG_QUEUES)
+				console.log(
+					'Decoder backpressure: Pausing feeding. frameQueue:',
+					//frameQueue.length,
+					'decodeQueueSize:',
+					this.#decoder.decodeQueueSize
+				);
+			return; // Stop feeding for now
+		}
 		if (this.#chunkBuffer.length > 0) {
 			const chunk = this.#chunkBuffer.shift();
 			if (!chunk) return;
@@ -134,6 +155,7 @@ export class Decoder {
 		}
 	}
 	#onFrame = (frame: VideoFrame) => {
+		//console.log(frame);
 		if (frame.timestamp === this.#targetFrameTimestamp) {
 			this.#frameIsReady(frame);
 			//renderer?.draw(frame);
@@ -141,6 +163,11 @@ export class Decoder {
 			//frame.close();
 		} else {
 			frame.close();
+		}
+		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
+			this.#feedingPaused = false;
+			if (DEBUG_QUEUES) console.log('Decoder backpressure: Resuming feeding.');
+			this.#feedDecoder();
 		}
 	};
 	#onError = (e: DOMException) => {

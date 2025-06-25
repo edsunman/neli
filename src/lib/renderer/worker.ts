@@ -259,7 +259,7 @@ self.addEventListener('message', async function (e) {
 		case 'seek': {
 			if (!decoder) return;
 			if (seeking) {
-				console.log('stuck');
+				//console.log('stuck');
 				return;
 			}
 			seeking = true;
@@ -387,7 +387,7 @@ const feedDecoder = () => {
 	}
 };
 
-const getDescription = (file: ISOFile | null) => {
+/* const getDescription = (file: ISOFile | null) => {
 	if (!file) return;
 	// TODO: dont hardcode this track number
 	const trak = file.getTrackById(1);
@@ -402,4 +402,4 @@ const getDescription = (file: ISOFile | null) => {
 		}
 	}
 	throw new Error('avcC, hvcC, vpcC, or av1C box not found');
-};
+}; */
