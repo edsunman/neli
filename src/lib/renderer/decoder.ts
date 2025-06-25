@@ -13,22 +13,29 @@ const DEBUG_QUEUES = false;
 export class Decoder {
 	#decoder;
 	#ready = false;
+	#running = false;
+	#mp4File: ISOFile | null = null;
+
 	/* all chunks */
 	#chunks: EncodedVideoChunk[] = [];
 	/* chunks waiting to be decoded */
 	#chunkBuffer: EncodedVideoChunk[] = [];
-	#mp4File: ISOFile | null = null;
+	#frameQueue: VideoFrame[] = [];
+
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
+
+	/* used when seeking */
 	#targetFrameTimestamp = 0;
-	#feedingPaused = false;
-	#lastChunkIndex = 0;
-	#running = false;
-	frameQueue: VideoFrame[] = [];
-	#startToQueueFrames = false;
+	/* used when playing */
 	#startingFrameTimeStamp = 0;
+	#lastChunkIndex = 0;
+	#feedingPaused = false;
+	#startToQueueFrames = false;
+
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}
+
 	async loadFile(file: File) {
 		let fileLoaded: (value: unknown) => void;
 		const promise = new Promise((resolve) => {
@@ -48,7 +55,6 @@ export class Decoder {
 			});
 		};
 		this.#mp4File.onSamples = (id, user, samples) => {
-			//console.log(`adding new ${samples.length} samples `);
 			for (const sample of samples) {
 				const chunk = new EncodedVideoChunk({
 					type: sample.is_sync ? 'key' : 'delta',
@@ -80,6 +86,7 @@ export class Decoder {
 
 		return promise;
 	}
+
 	decodeFrame(frameNumber: number): Promise<VideoFrame | null> | null {
 		if (!this.#ready) return null;
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -118,36 +125,31 @@ export class Decoder {
 			this.#chunkBuffer.push(this.#chunks[i]);
 			this.#lastChunkIndex = i;
 		}
-		//console.log([...this.#chunkBuffer]);
-		//console.log(this.#lastChunkIndex);
 		this.#feedDecoder();
 	}
+
 	// called every RAF during playback to keep frame queue full
 	run(elapsedTimeMs: number) {
 		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
 
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
-		for (let i = 0; i < this.frameQueue.length; i++) {
-			const time_delta = Math.abs(frameTime - this.frameQueue[i].timestamp);
+		for (let i = 0; i < this.#frameQueue.length; i++) {
+			const time_delta = Math.abs(frameTime - this.#frameQueue[i].timestamp);
 			if (time_delta < minTimeDelta) {
 				minTimeDelta = time_delta;
 				frameIndex = i;
-				//selectedFrameTimestamp = chunks[i].timestamp;
 			} else {
 				break;
 			}
 		}
 
 		for (let i = 0; i < frameIndex; i++) {
-			const staleFrame = this.frameQueue.shift();
-			//console.log('stale frame was closed: ', staleFrame?.format);
+			const staleFrame = this.#frameQueue.shift();
 			staleFrame?.close();
 		}
 
-		const chosenFrame = this.frameQueue[0];
-
-		//lastFramePlayed = chosenFrame;
+		const chosenFrame = this.#frameQueue[0];
 
 		if (this.#chunkBuffer.length < 5) {
 			if (DEBUG_QUEUES)
@@ -157,7 +159,7 @@ export class Decoder {
 				this.#chunkBuffer.push(this.#chunks[i]);
 				this.#lastChunkIndex = i;
 			}
-			//console.log([...this.#chunkBuffer]);
+
 			this.#feedDecoder();
 		}
 
@@ -170,10 +172,19 @@ export class Decoder {
 					chosenFrame.timestamp
 				);
 			return chosenFrame;
-			//console.log(chosenFrame);
-			//targetFrame = newDecoder.frameQueue[0].timestamp;
-			//renderer?.draw(chosenFrame);
 		}
+	}
+
+	pause() {
+		this.#running = false;
+		if (DEBUG_QUEUES) console.log('Paused. Frames left in queue:', this.#frameQueue.length);
+
+		for (let i = 0; i < this.#frameQueue.length; i++) {
+			this.#frameQueue[i].close();
+		}
+		this.#frameQueue = [];
+		this.#chunkBuffer = [];
+		this.#startToQueueFrames = false;
 	}
 
 	// runs in a loop until chunk buffer is empty
@@ -183,8 +194,8 @@ export class Decoder {
 			this.#feedingPaused = true;
 			if (DEBUG_QUEUES)
 				console.log(
-					'Decoder backpressure: Pausing feeding. frameQueue:',
-					this.frameQueue.length,
+					'Decoder backpressure: Pausing feeding. #frameQueue:',
+					this.#frameQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
 				);
@@ -202,17 +213,17 @@ export class Decoder {
 			}
 		} else {
 			if (DEBUG_QUEUES) console.log('No more chunks in the buffer to feed');
-			/* seeking = false; */
 		}
 	}
+
 	#onFrame = (frame: VideoFrame) => {
 		//console.log(frame);
 		if (this.#running) {
 			if (this.#startToQueueFrames) {
-				this.frameQueue.push(frame);
+				this.#frameQueue.push(frame);
 			} else if (frame.timestamp === this.#startingFrameTimeStamp) {
 				this.#startToQueueFrames = true;
-				this.frameQueue.push(frame);
+				this.#frameQueue.push(frame);
 			} else {
 				frame.close();
 			}
@@ -227,9 +238,11 @@ export class Decoder {
 			this.#feedDecoder();
 		}
 	};
+
 	#onError = (e: DOMException) => {
 		console.log(e);
 	};
+
 	#getKeyFrameIndex(frameTimestamp: number) {
 		let targetFrameIndex = 0;
 		let keyFrameIndex = 0;
@@ -257,6 +270,7 @@ export class Decoder {
 			maxTimestamp
 		};
 	}
+
 	#getDescription(file: ISOFile | null) {
 		if (!file) return;
 		// TODO: dont hardcode this track number

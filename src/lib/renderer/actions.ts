@@ -50,10 +50,10 @@ export const seek = (frame: number) => {
 };
 
 // @ts-expect-error fds
-window.play = (frame: number) => {
+window.play = (/* frame: number */) => {
 	appState.mediaWorker?.postMessage({
 		command: 'play',
-		frame: /* timelineState.currentFrame */ frame
+		frame: timelineState.currentFrame
 	});
 };
 
