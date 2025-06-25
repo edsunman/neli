@@ -8,12 +8,14 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 import { WebGPURenderer } from './renderer';
+import { Decoder } from './decoder';
 
 const DEBUG_QUEUES = false;
 
 const chunks: EncodedVideoChunk[] = [];
 let renderer: WebGPURenderer | null = null;
 let decoder: VideoDecoder | null = null;
+let newDecoder: Decoder;
 let mp4file: ISOFile | null = null;
 let file: File | null = null;
 let targetFrame = 0;
@@ -35,6 +37,7 @@ self.addEventListener('message', async function (e) {
 	switch (e.data.command) {
 		case 'initialize':
 			{
+				newDecoder = new Decoder();
 				renderer = new WebGPURenderer(e.data.canvas);
 				decoder = new VideoDecoder({
 					output(frame) {
@@ -77,8 +80,10 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
-				console.log(e.data);
-				mp4file = createFile();
+				await newDecoder.loadFile(e.data.file).then((e) => console.log(e));
+
+				//console.log(e.data);
+				/* mp4file = createFile();
 				mp4file.onReady = (info) => {
 					console.log(info);
 
@@ -131,7 +136,7 @@ self.addEventListener('message', async function (e) {
 				};
 				file = e.data.file as File;
 
-				reader.readAsArrayBuffer(file);
+				reader.readAsArrayBuffer(file); */
 			}
 			break;
 		case 'play':
@@ -251,19 +256,30 @@ self.addEventListener('message', async function (e) {
 			frameQueue = [];
 
 			break;
-		case 'seek':
-			{
-				if (!decoder) return;
-				if (seeking) return;
-				seeking = true;
+		case 'seek': {
+			if (!decoder) return;
+			if (seeking) {
+				console.log('stuck');
+				return;
+			}
+			seeking = true;
 
-				//await drawFrame(e.data.frame);
+			//const startTime = performance.now();
 
-				//seeking = false;
+			await newDecoder.decodeFrame(e.data.frame)?.then((frame) => {
+				if (frame) renderer?.draw(frame);
+			});
 
-				//return;
-				targetFrame = Math.floor(e.data.frame * 33333.3333333) + 33333 / 2;
-				console.log(targetFrame);
+			//const endTime = performance.now();
+
+			//console.log(`Call to doSomething took ${endTime - startTime} milliseconds`);
+			//await drawFrame(e.data.frame);
+
+			seeking = false;
+
+			//return;
+			/* 		targetFrame = Math.floor(e.data.frame * 33333.3333333) + 33333 / 2;
+
 				let targetFrameIndex = 0;
 				let keyFrameIndex = 0;
 				let scanForKeyframe = false;
@@ -305,7 +321,7 @@ self.addEventListener('message', async function (e) {
 
 			await drawFrame(e.data.frame);
 
-			seeking = false;
+			seeking = false; */
 			//
 			//console.log(clips);
 		}
