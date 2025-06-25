@@ -77,6 +77,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
+				console.log(e.data);
 				mp4file = createFile();
 				mp4file.onReady = (info) => {
 					console.log(info);
@@ -91,7 +92,7 @@ self.addEventListener('message', async function (e) {
 					});
 				};
 				mp4file.onSamples = (id, user, samples) => {
-					//console.log(`adding new ${samples.length} samples `);
+					console.log(`adding new ${samples.length} samples `);
 					for (const sample of samples) {
 						const chunk = new EncodedVideoChunk({
 							type: sample.is_sync ? 'key' : 'delta',
@@ -256,13 +257,13 @@ self.addEventListener('message', async function (e) {
 				if (seeking) return;
 				seeking = true;
 
-				await drawFrame(e.data.frame);
+				//await drawFrame(e.data.frame);
 
-				seeking = false;
+				//seeking = false;
 
-				return;
-				targetFrame = Math.floor(e.data.targetFrame * 33333.3333333) + 33333 / 2;
-
+				//return;
+				targetFrame = Math.floor(e.data.frame * 33333.3333333) + 33333 / 2;
+				console.log(targetFrame);
 				let targetFrameIndex = 0;
 				let keyFrameIndex = 0;
 				let scanForKeyframe = false;

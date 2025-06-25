@@ -17,8 +17,9 @@ export const createVideoSource = async (file: File) => {
 		console.log(info);
 		foundInfo = true;
 		mp4info = info;
-		appState.sources.push(new Source('video', mp4info, file));
-		sendFileToWorker();
+		const newSource = new Source('video', mp4info, file);
+		appState.sources.push(newSource);
+		sendFileToWorker(newSource);
 	};
 
 	reader.onload = function (e) {

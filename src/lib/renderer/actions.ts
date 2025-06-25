@@ -1,4 +1,5 @@
 import type { Clip } from '$lib/clip/clip.svelte';
+import type { Source } from '$lib/source/source';
 import { appState, timelineState } from '$lib/state.svelte';
 import MediaWorker from './worker?worker';
 
@@ -15,11 +16,11 @@ export const setupRenderer = (canvas: HTMLCanvasElement) => {
 	);
 };
 
-export const sendFileToWorker = () => {
+export const sendFileToWorker = (source: Source) => {
 	appState.mediaWorker?.postMessage({
 		command: 'load-file',
-		file: appState.sources[0].file,
-		info: appState.sources[0].fileInfo
+		file: source.file,
+		info: source.fileInfo
 	});
 };
 
