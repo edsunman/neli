@@ -21,6 +21,11 @@ export class Decoder {
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 	#targetFrameTimestamp = 0;
 	#feedingPaused = false;
+	#lastChunkIndex = 0;
+	#running = false;
+	frameQueue: VideoFrame[] = [];
+	#startToQueueFrames = false;
+	#startingFrameTimeStamp = 0;
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}
@@ -77,31 +82,12 @@ export class Decoder {
 	}
 	decodeFrame(frameNumber: number): Promise<VideoFrame | null> | null {
 		if (!this.#ready) return null;
-		/* const promise = new Promise((resolve) => {
-			this.#frameIsReady = resolve;
-		}); */
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
-		let targetFrameIndex = 0;
-		let keyFrameIndex = 0;
-		let scanForKeyframe = false;
-		let maxTimestamp;
-		for (let i = this.#chunks.length - 1; i >= 0; i--) {
-			if (i === this.#chunks.length - 1) {
-				maxTimestamp = this.#chunks[i].timestamp;
-			}
-			if (!scanForKeyframe && this.#chunks[i].timestamp < frameTimestamp) {
-				targetFrameIndex = i;
-				this.#targetFrameTimestamp = this.#chunks[i].timestamp;
-				scanForKeyframe = true;
-			}
-			if (scanForKeyframe) {
-				if (this.#chunks[i].type === 'key') {
-					keyFrameIndex = i;
-					break;
-				}
-			}
-		}
+		const { targetFrameIndex, keyFrameIndex, maxTimestamp } =
+			this.#getKeyFrameIndex(frameTimestamp);
+
+		this.#targetFrameTimestamp = this.#chunks[targetFrameIndex].timestamp;
 
 		if (maxTimestamp && maxTimestamp + 33333 < frameTimestamp) {
 			// out of bounds
@@ -111,18 +97,83 @@ export class Decoder {
 		this.#chunkBuffer = [];
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
 			this.#chunkBuffer.push(this.#chunks[i]);
-			//lastChunkIndex = i;
 		}
-
-		//const cb = [...this.#chunkBuffer];
-		//console.log(cb);
-		//console.log(this.#targetFrameTimestamp);
 
 		this.#feedDecoder();
 
 		return new Promise((resolve) => {
 			this.#frameIsReady = resolve;
 		});
+	}
+	play(frameNumber: number) {
+		this.#running = true;
+
+		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
+		const { targetFrameIndex, keyFrameIndex } = this.#getKeyFrameIndex(frameTimestamp);
+
+		this.#startingFrameTimeStamp = this.#chunks[targetFrameIndex].timestamp;
+
+		this.#chunkBuffer = [];
+		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
+			this.#chunkBuffer.push(this.#chunks[i]);
+			this.#lastChunkIndex = i;
+		}
+		//console.log([...this.#chunkBuffer]);
+		//console.log(this.#lastChunkIndex);
+		this.#feedDecoder();
+	}
+	// called every RAF during playback to keep frame queue full
+	run(elapsedTimeMs: number) {
+		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
+
+		let minTimeDelta = Infinity;
+		let frameIndex = -1;
+		for (let i = 0; i < this.frameQueue.length; i++) {
+			const time_delta = Math.abs(frameTime - this.frameQueue[i].timestamp);
+			if (time_delta < minTimeDelta) {
+				minTimeDelta = time_delta;
+				frameIndex = i;
+				//selectedFrameTimestamp = chunks[i].timestamp;
+			} else {
+				break;
+			}
+		}
+
+		for (let i = 0; i < frameIndex; i++) {
+			const staleFrame = this.frameQueue.shift();
+			//console.log('stale frame was closed: ', staleFrame?.format);
+			staleFrame?.close();
+		}
+
+		const chosenFrame = this.frameQueue[0];
+
+		//lastFramePlayed = chosenFrame;
+
+		if (this.#chunkBuffer.length < 5) {
+			if (DEBUG_QUEUES)
+				console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
+
+			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
+				this.#chunkBuffer.push(this.#chunks[i]);
+				this.#lastChunkIndex = i;
+			}
+			//console.log([...this.#chunkBuffer]);
+			this.#feedDecoder();
+		}
+
+		if (chosenFrame && chosenFrame.format) {
+			if (DEBUG_QUEUES)
+				console.log(
+					'Returning frame. Frame time delta = %dms (%d vs %d)',
+					minTimeDelta / 1000,
+					frameTime,
+					chosenFrame.timestamp
+				);
+			return chosenFrame;
+			//console.log(chosenFrame);
+			//targetFrame = newDecoder.frameQueue[0].timestamp;
+			//renderer?.draw(chosenFrame);
+		}
 	}
 
 	// runs in a loop until chunk buffer is empty
@@ -133,7 +184,7 @@ export class Decoder {
 			if (DEBUG_QUEUES)
 				console.log(
 					'Decoder backpressure: Pausing feeding. frameQueue:',
-					//frameQueue.length,
+					this.frameQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
 				);
@@ -156,11 +207,17 @@ export class Decoder {
 	}
 	#onFrame = (frame: VideoFrame) => {
 		//console.log(frame);
-		if (frame.timestamp === this.#targetFrameTimestamp) {
+		if (this.#running) {
+			if (this.#startToQueueFrames) {
+				this.frameQueue.push(frame);
+			} else if (frame.timestamp === this.#startingFrameTimeStamp) {
+				this.#startToQueueFrames = true;
+				this.frameQueue.push(frame);
+			} else {
+				frame.close();
+			}
+		} else if (frame.timestamp === this.#targetFrameTimestamp) {
 			this.#frameIsReady(frame);
-			//renderer?.draw(frame);
-			//seeking = false;
-			//frame.close();
 		} else {
 			frame.close();
 		}
@@ -173,6 +230,33 @@ export class Decoder {
 	#onError = (e: DOMException) => {
 		console.log(e);
 	};
+	#getKeyFrameIndex(frameTimestamp: number) {
+		let targetFrameIndex = 0;
+		let keyFrameIndex = 0;
+		let scanForKeyframe = false;
+		let maxTimestamp;
+		for (let i = this.#chunks.length - 1; i >= 0; i--) {
+			if (i === this.#chunks.length - 1) {
+				maxTimestamp = this.#chunks[i].timestamp;
+			}
+			if (!scanForKeyframe && this.#chunks[i].timestamp < frameTimestamp) {
+				targetFrameIndex = i;
+
+				scanForKeyframe = true;
+			}
+			if (scanForKeyframe) {
+				if (this.#chunks[i].type === 'key') {
+					keyFrameIndex = i;
+					break;
+				}
+			}
+		}
+		return {
+			targetFrameIndex,
+			keyFrameIndex,
+			maxTimestamp
+		};
+	}
 	#getDescription(file: ISOFile | null) {
 		if (!file) return;
 		// TODO: dont hardcode this track number

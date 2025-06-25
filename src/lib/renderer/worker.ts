@@ -1,12 +1,3 @@
-import {
-	createFile,
-	MP4BoxBuffer,
-	DataStream,
-	ISOFile,
-	Endianness,
-	VisualSampleEntry,
-	MultiBufferStream
-} from 'mp4box';
 import { WebGPURenderer } from './renderer';
 import { Decoder } from './decoder';
 
@@ -16,8 +7,7 @@ const chunks: EncodedVideoChunk[] = [];
 let renderer: WebGPURenderer | null = null;
 let decoder: VideoDecoder | null = null;
 let newDecoder: Decoder;
-let mp4file: ISOFile | null = null;
-let file: File | null = null;
+
 let targetFrame = 0;
 let selectedFrameTimestamp = 0;
 let playing = false;
@@ -142,11 +132,13 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				playing = true;
-				frameQueue = [];
-				encodedChunkBuffer = [];
+				newDecoder.play(e.data.frame);
+
+				// frameQueue = [];
+				//	encodedChunkBuffer = [];
 
 				let firstRAFTimestamp: number | null = null;
-				let targetFrameIndex = 0;
+				/*let targetFrameIndex = 0;
 				let keyFrameIndex = 0;
 				let scanForKeyframe = false;
 				for (let i = chunks.length - 1; i >= 0; i--) {
@@ -169,11 +161,60 @@ self.addEventListener('message', async function (e) {
 				}
 
 				feedDecoder();
-
+ */
 				const loop = (rafTimestamp: number) => {
 					if (!playing) return;
+
+					if (firstRAFTimestamp === null) {
+						firstRAFTimestamp = rafTimestamp;
+					}
+
+					const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
+					const frame = newDecoder.run(elapsedTimeMs);
+
+					if (frame) {
+						renderer?.draw(frame);
+					}
+					/*const frameTime = Math.floor(elapsedTimeMs * 1000) + selectedFrameTimestamp;
+
+					let minTimeDelta = Infinity;
+					let frameIndex = -1;
+					for (let i = 0; i < newDecoder.frameQueue.length; i++) {
+						const time_delta = Math.abs(frameTime - newDecoder.frameQueue[i].timestamp);
+						if (time_delta < minTimeDelta) {
+							minTimeDelta = time_delta;
+							frameIndex = i;
+							//selectedFrameTimestamp = chunks[i].timestamp;
+						} else {
+							break;
+						}
+					}
+
+					for (let i = 0; i < frameIndex; i++) {
+						/* const staleFrame = */ //newDecoder.frameQueue.shift();
+					//console.log('stale frame was closed: ', staleFrame?.format);
+					//staleFrame?.close();
+					//}
+
+					/*const chosenFrame = newDecoder.frameQueue[0];
+					console.log(chosenFrame);
+					//lastFramePlayed = chosenFrame;
+
+					if (chosenFrame && chosenFrame.format) {
+						if (DEBUG_QUEUES)
+							console.log(
+								'Sending to render. Frame time delta = %dms (%d vs %d)',
+								minTimeDelta / 1000,
+								frameTime,
+								chosenFrame.timestamp
+							);
+						//console.log(chosenFrame);
+						//targetFrame = newDecoder.frameQueue[0].timestamp;
+						renderer?.draw(chosenFrame);
+					} */
+
 					//console.log(rafTimestamp);
-					if (feedMoreFrames) {
+					/* 	if (feedMoreFrames) {
 						if (firstRAFTimestamp === null) {
 							firstRAFTimestamp = rafTimestamp;
 						}
@@ -198,7 +239,7 @@ self.addEventListener('message', async function (e) {
 						}
 
 						for (let i = 0; i < frameIndex; i++) {
-							/* const staleFrame =  */ frameQueue.shift();
+							/* const staleFrame =   frameQueue.shift();
 							//console.log('stale frame was closed: ', staleFrame?.format);
 							//staleFrame?.close();
 						}
@@ -206,7 +247,7 @@ self.addEventListener('message', async function (e) {
 						const chosenFrame = frameQueue[0];
 						//lastFramePlayed = chosenFrame;
 
-						if (chosenFrame && chosenFrame.format) {
+						/* if (chosenFrame && chosenFrame.format) {
 							if (DEBUG_QUEUES)
 								console.log(
 									'Sending to render. Frame time delta = %dms (%d vs %d)',
@@ -217,9 +258,9 @@ self.addEventListener('message', async function (e) {
 							//console.log(chosenFrame);
 							targetFrame = frameQueue[0].timestamp;
 							renderer?.draw(chosenFrame);
-						}
+						} */
 
-						if (encodedChunkBuffer.length < 5) {
+					/* if (encodedChunkBuffer.length < 5) {
 							if (DEBUG_QUEUES)
 								console.log('fill chunk buffer starting with index ', lastChunkIndex + 1);
 
@@ -231,8 +272,8 @@ self.addEventListener('message', async function (e) {
 							}
 
 							feedDecoder();
-						}
-					}
+						} 
+					}*/
 
 					self.requestAnimationFrame(loop);
 				};
