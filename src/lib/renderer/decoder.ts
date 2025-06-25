@@ -8,8 +8,12 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 
-const DEBUG_QUEUES = false;
+const DEBUG = false;
 
+/**
+    Responsible for demuxing and stroung a sources video chunks, then
+    decoding video chunks and returning video frames.
+*/
 export class Decoder {
 	#decoder;
 	#ready = false;
@@ -112,6 +116,7 @@ export class Decoder {
 			this.#frameIsReady = resolve;
 		});
 	}
+
 	play(frameNumber: number) {
 		this.#running = true;
 
@@ -128,7 +133,7 @@ export class Decoder {
 		this.#feedDecoder();
 	}
 
-	// called every RAF during playback to keep frame queue full
+	/** Called every RAF during playback to keep frame queue full */
 	run(elapsedTimeMs: number) {
 		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
 
@@ -152,8 +157,7 @@ export class Decoder {
 		const chosenFrame = this.#frameQueue[0];
 
 		if (this.#chunkBuffer.length < 5) {
-			if (DEBUG_QUEUES)
-				console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
+			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
 
 			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
 				this.#chunkBuffer.push(this.#chunks[i]);
@@ -164,7 +168,7 @@ export class Decoder {
 		}
 
 		if (chosenFrame && chosenFrame.format) {
-			if (DEBUG_QUEUES)
+			if (DEBUG)
 				console.log(
 					'Returning frame. Frame time delta = %dms (%d vs %d)',
 					minTimeDelta / 1000,
@@ -177,7 +181,7 @@ export class Decoder {
 
 	pause() {
 		this.#running = false;
-		if (DEBUG_QUEUES) console.log('Paused. Frames left in queue:', this.#frameQueue.length);
+		if (DEBUG) console.log('Paused. Frames left in queue:', this.#frameQueue.length);
 
 		for (let i = 0; i < this.#frameQueue.length; i++) {
 			this.#frameQueue[i].close();
@@ -192,7 +196,7 @@ export class Decoder {
 		if (this.#feedingPaused) return;
 		if (this.#decoder.decodeQueueSize >= 5) {
 			this.#feedingPaused = true;
-			if (DEBUG_QUEUES)
+			if (DEBUG)
 				console.log(
 					'Decoder backpressure: Pausing feeding. #frameQueue:',
 					this.#frameQueue.length,
@@ -205,14 +209,14 @@ export class Decoder {
 			const chunk = this.#chunkBuffer.shift();
 			if (!chunk) return;
 			try {
-				if (DEBUG_QUEUES) console.log('Sending chunk to encoder: ', chunk.timestamp);
+				if (DEBUG) console.log('Sending chunk to encoder: ', chunk.timestamp);
 				this.#decoder.decode(chunk);
 				this.#feedDecoder();
 			} catch (e) {
 				console.error('Error decoding chunk:', e);
 			}
 		} else {
-			if (DEBUG_QUEUES) console.log('No more chunks in the buffer to feed');
+			if (DEBUG) console.log('No more chunks in the buffer to feed');
 		}
 	}
 
@@ -234,7 +238,7 @@ export class Decoder {
 		}
 		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;
-			if (DEBUG_QUEUES) console.log('Decoder backpressure: Resuming feeding.');
+			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
 			this.#feedDecoder();
 		}
 	};
@@ -273,7 +277,7 @@ export class Decoder {
 
 	#getDescription(file: ISOFile | null) {
 		if (!file) return;
-		// TODO: dont hardcode this track number
+		// TODO: don't hardcode this track number
 		const trak = file.getTrackById(1);
 		for (const entry of trak.mdia.minf.stbl.stsd.entries) {
 			const e = entry as VisualSampleEntry;

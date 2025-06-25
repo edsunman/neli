@@ -6,7 +6,18 @@ let decoder: Decoder;
 
 let playing = false;
 
-const clips: any[] = [];
+type WorkerClip = {
+	id: string;
+	start: number;
+	duration: number;
+	sourceOffset: number;
+	scaleX: number;
+	scaleY: number;
+	positionX: number;
+	positionY: number;
+};
+
+const clips: WorkerClip[] = [];
 
 let seeking = false;
 
