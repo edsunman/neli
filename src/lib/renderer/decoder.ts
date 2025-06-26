@@ -11,11 +11,12 @@ import {
 const DEBUG = false;
 
 /**
-    Responsible for demuxing and stroung a sources video chunks, then
-    decoding video chunks and returning video frames.
-*/
+ * Responsible for demuxing and storing video chunks, then
+ * decoding video chunks and returning video frames.
+ */
 export class Decoder {
 	#decoder;
+	#decoderConfig: VideoDecoderConfig | null = null;
 	#ready = false;
 	#running = false;
 	#mp4File: ISOFile | null = null;
@@ -50,13 +51,15 @@ export class Decoder {
 		this.#mp4File.onReady = (info) => {
 			console.log(info);
 
-			this.#decoder.configure({
+			this.#decoderConfig = {
 				codec: info.videoTracks[0].codec.startsWith('vp08') ? 'vp8' : info.videoTracks[0].codec,
 				codedHeight: info.videoTracks[0].track_height,
 				codedWidth: info.videoTracks[0].track_width,
 				description: this.#getDescription(this.#mp4File),
 				optimizeForLatency: true
-			});
+			};
+
+			this.#decoder.configure(this.#decoderConfig);
 		};
 		this.#mp4File.onSamples = (id, user, samples) => {
 			for (const sample of samples) {
@@ -91,8 +94,14 @@ export class Decoder {
 		return promise;
 	}
 
-	decodeFrame(frameNumber: number): Promise<VideoFrame | null> | null {
+	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
+		//console.log('new seek');
+		await this.#decoder.flush();
+		//console.log('flushed');
+		this.#decoder.reset();
+		this.#decoder.configure(this.#decoderConfig!);
+
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
 		const { targetFrameIndex, keyFrameIndex, maxTimestamp } =
@@ -213,7 +222,7 @@ export class Decoder {
 				this.#decoder.decode(chunk);
 				this.#feedDecoder();
 			} catch (e) {
-				console.error('Error decoding chunk:', e);
+				if (DEBUG) console.error('Error decoding chunk:', e);
 			}
 		} else {
 			if (DEBUG) console.log('No more chunks in the buffer to feed');
@@ -236,12 +245,12 @@ export class Decoder {
 		} else {
 			frame.close();
 		}
-		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
+		if (/* this.#allowFeeding && */ this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;
 			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
 			this.#feedDecoder();
 		}
-		if (DEBUG) console.log('frame queue', this.#frameQueue);
+		//if (DEBUG) console.log('frame queue', this.#frameQueue);
 	};
 
 	#onError = (e: DOMException) => {

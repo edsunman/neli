@@ -43,6 +43,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'encode':
 			{
+				encoder.setup();
 				decoder.play(0);
 
 				let i = 0;
@@ -63,6 +64,7 @@ self.addEventListener('message', async function (e) {
 					if (i < 900) {
 						setTimeout(decodeLoop, 0);
 					} else {
+						decoder.pause();
 						const url = await encoder.finalize();
 						self.postMessage({ name: 'download-link', link: url });
 					}
