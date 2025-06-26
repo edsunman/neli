@@ -8,7 +8,7 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 
-const DEBUG = true;
+const DEBUG = false;
 
 /**
     Responsible for demuxing and stroung a sources video chunks, then
@@ -132,10 +132,16 @@ export class Decoder {
 		}
 		this.#feedDecoder();
 	}
+	/** Called after play when we need the next frame ASAP */
+	nextFrame(frameNumber: number) {
+		// make sure encoder has 10 chunks ahead to work with
+		// is the next frame in the queue?
+		// yes - return it
+		// no
+	}
 
 	/** Called every RAF during playback to keep frame queue full */
 	run(elapsedTimeMs: number) {
-		console.log(elapsedTimeMs);
 		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
 
 		let minTimeDelta = Infinity;
@@ -242,6 +248,7 @@ export class Decoder {
 			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
 			this.#feedDecoder();
 		}
+		if (DEBUG) console.log('frame queue', this.#frameQueue);
 	};
 
 	#onError = (e: DOMException) => {
