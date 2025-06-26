@@ -1,9 +1,10 @@
 import { WebGPURenderer } from './renderer';
 import { Decoder } from './decoder';
-import * as Mp4Muxer from 'mp4-muxer';
+import { Encoder } from './encoder';
 
 let renderer: WebGPURenderer;
 let decoder: Decoder;
+let encoder: Encoder;
 let canvas: OffscreenCanvas;
 
 let playing = false;
@@ -30,6 +31,7 @@ self.addEventListener('message', async function (e) {
 		case 'initialize':
 			{
 				decoder = new Decoder();
+				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
 			}
@@ -41,68 +43,27 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'encode':
 			{
-				const muxer = new Mp4Muxer.Muxer({
-					target: new Mp4Muxer.ArrayBufferTarget(),
-
-					video: {
-						// If you change this, make sure to change the VideoEncoder codec as well
-						codec: 'avc',
-						width: 1920,
-						height: 1080
-					},
-
-					// mp4-muxer docs claim you should always use this with ArrayBufferTarget
-					fastStart: 'in-memory'
-				});
-
-				const videoEncoder = new VideoEncoder({
-					output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-					error: (e) => console.error(e)
-				});
-				//const blob = await canvas.convertToBlob({ type: 'image/png' });
-				//console.log(canvas.transferToImageBitmap());
-				// This codec should work in most browsers
-				// See https://dmnsgn.github.io/media-codecs for list of codecs and see if your browser supports
-				videoEncoder.configure({
-					codec: 'avc1.420029',
-					width: 1920,
-					height: 1080,
-					bitrate: 10_000_000,
-					bitrateMode: 'constant'
-				});
-
 				decoder.play(0);
 
 				let i = 0;
 				const decodeLoop = async () => {
-					//console.log('trying');
 					const frame = decoder.run(i * 33.33333333);
-					if (frame) {
-						//console.log(frame.timestamp);
-						renderer.draw(frame);
 
+					if (frame) {
+						renderer.draw(frame);
 						const newFrame = new VideoFrame(canvas, {
-							// Equally spaces frames out depending on frames per second
 							timestamp: (i * 1e6) / 30,
 							alpha: 'discard'
 						});
 
-						videoEncoder.encode(newFrame);
+						encoder.encode(newFrame);
 						newFrame.close();
 						i++;
 					}
 					if (i < 900) {
 						setTimeout(decodeLoop, 0);
 					} else {
-						await videoEncoder.flush();
-
-						muxer.finalize();
-
-						const buffer = muxer.target.buffer;
-						console.log(new Blob([buffer]));
-						const blob = new Blob([buffer]);
-						//onst file = new File([blob], 'name');
-						const url = URL.createObjectURL(blob);
+						const url = await encoder.finalize();
 						self.postMessage({ name: 'download-link', link: url });
 					}
 				};

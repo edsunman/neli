@@ -132,15 +132,8 @@ export class Decoder {
 		}
 		this.#feedDecoder();
 	}
-	/** Called after play when we need the next frame ASAP */
-	nextFrame(frameNumber: number) {
-		// make sure encoder has 10 chunks ahead to work with
-		// is the next frame in the queue?
-		// yes - return it
-		// no
-	}
 
-	/** Called every RAF during playback to keep frame queue full */
+	/** Called every quickly during playback and encoding to keep frame queue full */
 	run(elapsedTimeMs: number) {
 		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
 

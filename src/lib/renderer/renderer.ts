@@ -5,9 +5,6 @@ export class WebGPURenderer {
 	#canvas: OffscreenCanvas | null = null;
 	#ctx: GPUCanvasContext | null = null;
 
-	// Promise for `#start()`, WebGPU setup is asynchronous.
-	#started: Promise<void> | null = null;
-
 	// WebGPU state shared between setup and drawing.
 	#format: GPUTextureFormat | null = null;
 	#device: GPUDevice | null = null;
@@ -30,7 +27,7 @@ export class WebGPURenderer {
 
 	constructor(canvas: OffscreenCanvas) {
 		this.#canvas = canvas;
-		this.#started = this.#start();
+		this.#start();
 	}
 
 	async #start() {
@@ -106,24 +103,6 @@ export class WebGPURenderer {
 				{
 					view: this.#ctx.getCurrentTexture().createView(),
 					loadOp: 'clear',
-					//clearValue: { r: 0, g: 1, b: 1, a: 1 },
-					storeOp: 'store'
-				}
-			]
-		});
-		pass.end();
-		this.#device.queue.submit([encoder.finish()]);
-	}
-
-	blueFrame() {
-		if (!this.#device || !this.#pipeline || !this.#sampler || !this.#ctx || !this.#format) return;
-		const encoder = this.#device.createCommandEncoder();
-		const pass = encoder.beginRenderPass({
-			colorAttachments: [
-				{
-					view: this.#ctx.getCurrentTexture().createView(),
-					loadOp: 'clear',
-					clearValue: { r: 0, g: 1, b: 1, a: 1 },
 					storeOp: 'store'
 				}
 			]
