@@ -8,9 +8,6 @@ importers:
 
   .:
     devDependencies:
-      '@diffusionstudio/core':
-        specifier: ^3.8.2
-        version: 3.8.2
       '@eslint/compat':
         specifier: ^1.2.5
         version: 1.2.9(eslint@9.27.0(jiti@2.4.2))
@@ -47,6 +44,9 @@ importers:
       globals:
         specifier: ^16.0.0
         version: 16.1.0
+      mp4-muxer:
+        specifier: ^5.2.1
+        version: 5.2.1
       mp4box:
         specifier: ^0.6.5
         version: 0.6.5
@@ -80,9 +80,6 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
-
-  '@diffusionstudio/core@3.8.2':
-    resolution: {integrity: sha512-/gNjvu8GIsGC2BpD7A/BZZnYKs4lh6WG5zOKvUKnrFZN7z3RSaj2nlw8QbuAynIFx4W9P9yZ6v/F0aYWIoxR0Q==}
 
   '@esbuild/aix-ppc64@0.25.4':
     resolution: {integrity: sha512-1VCICWypeQKhVbE9oW/sJaAmjLxhVqacdkvPLEjwlttjfwENRSClS8EjBz0KzRyFSCPDIkuXW34Je/vk7zdB7Q==}
@@ -580,11 +577,17 @@ packages:
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
+  '@types/dom-webcodecs@0.1.15':
+    resolution: {integrity: sha512-omOlCPvTWyPm4ZE5bZUhlSvnHM2ZWM2U+1cPiYFL/e8aV5O9MouELp+L4dMKNTON0nTeHqEg+KWDfFQMY5Wkaw==}
+
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/wicg-file-system-access@2020.9.8':
+    resolution: {integrity: sha512-ggMz8nOygG7d/stpH40WVaNvBwuyYLnrg5Mbyf6bmsj/8+gb6Ei4ZZ9/4PNpcPNTT8th9Q8sM8wYmWGjMWLX/A==}
 
   '@typescript-eslint/eslint-plugin@8.32.1':
     resolution: {integrity: sha512-6u6Plg9nP/J1GRpe/vcjjabo6Uc5YQPAMxsgQyGC/I0RuukiG1wIe3+Vtg3IrSCVJDmqK3j8adrtzXSENRtFgg==}
@@ -1077,6 +1080,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  mp4-muxer@5.2.1:
+    resolution: {integrity: sha512-O9eNqyzUivPJvNinPzBtEnPo7epPeYrryiCB+/+3/ktIXgTIeIB7o8tC+5i+8Zi3JthKGDws9jx7ceIY3PKhXw==}
+
   mp4box@0.6.5:
     resolution: {integrity: sha512-smgG2wwO/O6NnQ7KNGQnTPngawFGhrbJaLlQP7QD9bWY136nN+w6pxsxmSvdJJsSNqlwZZ2W5uoWN/wd2kiQXA==}
     engines: {node: '>=20.8.1'}
@@ -1415,8 +1421,6 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
-
-  '@diffusionstudio/core@3.8.2': {}
 
   '@esbuild/aix-ppc64@0.25.4':
     optional: true
@@ -1789,9 +1793,13 @@ snapshots:
 
   '@types/cookie@0.6.0': {}
 
+  '@types/dom-webcodecs@0.1.15': {}
+
   '@types/estree@1.0.7': {}
 
   '@types/json-schema@7.0.15': {}
+
+  '@types/wicg-file-system-access@2020.9.8': {}
 
   '@typescript-eslint/eslint-plugin@8.32.1(@typescript-eslint/parser@8.32.1(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3)':
     dependencies:
@@ -2294,6 +2302,11 @@ snapshots:
       minipass: 7.1.2
 
   mkdirp@3.0.1: {}
+
+  mp4-muxer@5.2.1:
+    dependencies:
+      '@types/dom-webcodecs': 0.1.15
+      '@types/wicg-file-system-access': 2020.9.8
 
   mp4box@0.6.5: {}
 

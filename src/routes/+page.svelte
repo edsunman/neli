@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as core from '@diffusionstudio/core';
 	import { onMount } from 'svelte';
 	import { appState, timelineState, appHistory } from '$lib/state.svelte';
 

@@ -8,7 +8,7 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 
-const DEBUG = false;
+const DEBUG = true;
 
 /**
     Responsible for demuxing and stroung a sources video chunks, then
@@ -135,6 +135,7 @@ export class Decoder {
 
 	/** Called every RAF during playback to keep frame queue full */
 	run(elapsedTimeMs: number) {
+		console.log(elapsedTimeMs);
 		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
 
 		let minTimeDelta = Infinity;

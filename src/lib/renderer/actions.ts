@@ -3,7 +3,7 @@ import type { Source } from '$lib/source/source';
 import { appState, timelineState } from '$lib/state.svelte';
 import MediaWorker from './worker?worker';
 
-export const setupRenderer = (canvas: HTMLCanvasElement) => {
+export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker = new MediaWorker();
 	const offscreenCanvas = canvas.transferControlToOffscreen();
 
@@ -14,6 +14,19 @@ export const setupRenderer = (canvas: HTMLCanvasElement) => {
 		},
 		{ transfer: [offscreenCanvas] }
 	);
+	appState.mediaWorker.addEventListener('message', (event) => {
+		console.log(event.data);
+		const a = document.createElement('a');
+		a.href = event.data.link;
+		a.download = 'download.mp4';
+		a.style.display = 'none'; // Keep it hidden
+
+		document.body.appendChild(a);
+		a.click();
+
+		document.body.removeChild(a);
+		URL.revokeObjectURL(event.data.link); // Clean up the URL
+	});
 };
 
 export const sendFileToWorker = (source: Source) => {
@@ -61,5 +74,12 @@ window.play = (/* frame: number */) => {
 window.pause = () => {
 	appState.mediaWorker?.postMessage({
 		command: 'pause'
+	});
+};
+
+// @ts-expect-error fds
+window.encode = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'encode'
 	});
 };

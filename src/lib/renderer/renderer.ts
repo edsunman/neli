@@ -2,7 +2,7 @@ import vertexShader from './shaders/vertex.wgsl?raw';
 import shapeShader from './shaders/shape.wgsl?raw';
 
 export class WebGPURenderer {
-	#canvas: HTMLCanvasElement | null = null;
+	#canvas: OffscreenCanvas | null = null;
 	#ctx: GPUCanvasContext | null = null;
 
 	// Promise for `#start()`, WebGPU setup is asynchronous.
@@ -28,7 +28,7 @@ export class WebGPURenderer {
     }
   `;
 
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: OffscreenCanvas) {
 		this.#canvas = canvas;
 		this.#started = this.#start();
 	}
@@ -106,6 +106,24 @@ export class WebGPURenderer {
 				{
 					view: this.#ctx.getCurrentTexture().createView(),
 					loadOp: 'clear',
+					//clearValue: { r: 0, g: 1, b: 1, a: 1 },
+					storeOp: 'store'
+				}
+			]
+		});
+		pass.end();
+		this.#device.queue.submit([encoder.finish()]);
+	}
+
+	blueFrame() {
+		if (!this.#device || !this.#pipeline || !this.#sampler || !this.#ctx || !this.#format) return;
+		const encoder = this.#device.createCommandEncoder();
+		const pass = encoder.beginRenderPass({
+			colorAttachments: [
+				{
+					view: this.#ctx.getCurrentTexture().createView(),
+					loadOp: 'clear',
+					clearValue: { r: 0, g: 1, b: 1, a: 1 },
 					storeOp: 'store'
 				}
 			]
@@ -167,11 +185,11 @@ export class WebGPURenderer {
 		return this.#device.queue.onSubmittedWorkDone();
 	}
 
-	async draw(frame: VideoFrame) {
+	draw(frame: VideoFrame) {
 		// Don't try to draw any frames until the context is configured.
-		await this.#started;
+		//await this.#started;
 
-		if (!this.#canvas || !this.#ctx || !this.#device || !this.#pipeline || !this.#sampler) return;
+		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler) return;
 		const uniformBindGroup = this.#device.createBindGroup({
 			layout: this.#pipeline.getBindGroupLayout(0),
 			entries: [

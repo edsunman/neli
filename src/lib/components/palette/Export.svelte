@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Progress, useId } from 'bits-ui';
 	import { appState } from '$lib/state.svelte';
-	import { Encoder } from '@diffusionstudio/core';
+	/* 	import { Encoder } from '@diffusionstudio/core'; */
 
 	let { page = $bindable() } = $props();
 	let encoding = $state(false);
