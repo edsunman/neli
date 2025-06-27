@@ -1,6 +1,7 @@
 import { WebGPURenderer } from './renderer';
 import { Decoder } from './decoder';
 import { Encoder } from './encoder';
+import type { WorkerClip } from '$lib/types';
 
 let renderer: WebGPURenderer;
 let decoder: Decoder;
@@ -8,21 +9,9 @@ let encoder: Encoder;
 let canvas: OffscreenCanvas;
 
 let playing = false;
-
-type WorkerClip = {
-	id: string;
-	start: number;
-	duration: number;
-	sourceOffset: number;
-	scaleX: number;
-	scaleY: number;
-	positionX: number;
-	positionY: number;
-};
+let seeking = false;
 
 const clips: WorkerClip[] = [];
-
-let seeking = false;
 
 self.addEventListener('message', async function (e) {
 	//console.info(`Worker message: ${JSON.stringify(e.data)}`);
@@ -43,34 +32,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'encode':
 			{
-				encoder.setup();
-				decoder.play(0);
-
-				let i = 0;
-				const decodeLoop = async () => {
-					const frame = decoder.run(i * 33.33333333);
-
-					if (frame) {
-						renderer.draw(frame);
-						const newFrame = new VideoFrame(canvas, {
-							timestamp: (i * 1e6) / 30,
-							alpha: 'discard'
-						});
-
-						encoder.encode(newFrame);
-						newFrame.close();
-						i++;
-					}
-					if (i < 900) {
-						setTimeout(decodeLoop, 0);
-					} else {
-						decoder.pause();
-						const url = await encoder.finalize();
-						self.postMessage({ name: 'download-link', link: url });
-					}
-				};
-
-				decodeLoop();
+				encodeAndCreateFile();
 			}
 			break;
 		case 'play':
@@ -106,13 +68,12 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'seek': {
 			if (seeking) {
+				//console.log('stuck');
 				return;
 			}
 			seeking = true;
 
-			await decoder.decodeFrame(e.data.frame)?.then((frame) => {
-				if (frame) renderer?.draw(frame);
-			});
+			await buildAndDrawFrame(e.data.frame);
 
 			seeking = false;
 			break;
@@ -129,31 +90,72 @@ self.addEventListener('message', async function (e) {
 				clips.push(e.data.clip);
 			}
 
-			await drawFrame(e.data.frame);
+			await buildAndDrawFrame(e.data.frame);
 
 			seeking = false;
 		}
 	}
 });
 
-const drawFrame = async (frame: number) => {
+const buildAndDrawFrame = async (frame: number) => {
+	if (!renderer) return;
+
 	let foundClip = null;
 	for (const clip of clips) {
-		if (clip.start < frame && clip.start + clip.duration > frame) {
+		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			foundClip = clip;
 			continue;
 		}
 	}
 
-	if (foundClip) {
-		await renderer?.drawShape(
+	if (!foundClip) {
+		await renderer.blankFrame();
+		return;
+	}
+
+	const clipFrame = frame - foundClip.start + foundClip.sourceOffset;
+
+	if (foundClip.type === 'video') {
+		const f = await decoder.decodeFrame(clipFrame);
+		if (f) await renderer.draw(f);
+	} else {
+		await renderer.drawShape(
 			1,
 			foundClip.scaleX,
 			foundClip.scaleY,
 			foundClip.positionX,
 			foundClip.positionY
 		);
-	} else {
-		await renderer?.drawShape(0, 1, 1, 1, 1);
 	}
+};
+
+const encodeAndCreateFile = () => {
+	encoder.setup();
+	decoder.play(0);
+
+	let i = 0;
+	const decodeLoop = async () => {
+		const frame = decoder.run(i * 33.33333333);
+
+		if (frame) {
+			renderer.draw(frame);
+			const newFrame = new VideoFrame(canvas, {
+				timestamp: (i * 1e6) / 30,
+				alpha: 'discard'
+			});
+
+			encoder.encode(newFrame);
+			newFrame.close();
+			i++;
+		}
+		if (i < 900) {
+			setTimeout(decodeLoop, 0);
+		} else {
+			decoder.pause();
+			const url = await encoder.finalize();
+			self.postMessage({ name: 'download-link', link: url });
+		}
+	};
+
+	decodeLoop();
 };

@@ -171,7 +171,11 @@ const drawClip = (
 	// define this Path as clipping mask
 	context.clip();
 
-	context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+	if (clip.source.type === 'text') {
+		context.fillStyle = '#57babb';
+	} else {
+		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+	}
 
 	if (clip.invalid) {
 		//context.fillStyle = 'red';
@@ -220,7 +224,11 @@ const drawClip = (
 
 		context.restore();
 
-		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+		if (clip.source.type === 'text') {
+			context.fillStyle = '#57babb';
+		} else {
+			context.fillStyle = 'oklch(64.5% 0.246 16.439)';
+		}
 
 		context.fillRect(
 			Math.round(startPercent * width * timelineState.zoom + 8),

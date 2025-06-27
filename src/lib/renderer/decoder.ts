@@ -96,11 +96,11 @@ export class Decoder {
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
-		//console.log('new seek');
 		await this.#decoder.flush();
-		//console.log('flushed');
-		this.#decoder.reset();
-		this.#decoder.configure(this.#decoderConfig!);
+
+		// NOTE: do we need to reset and re-configure every time? Maybe? Maybe not?
+		//this.#decoder.reset();
+		//this.#decoder.configure(this.#decoderConfig!);
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
@@ -216,7 +216,12 @@ export class Decoder {
 		}
 		if (this.#chunkBuffer.length > 0) {
 			const chunk = this.#chunkBuffer.shift();
-			if (!chunk) return;
+			if (!chunk) {
+				// undefined chunks in buffer mean we are at the end of the video file,
+				// so flush the encoder to make sure last few chunks make it through
+				this.#decoder.flush();
+				return;
+			}
 			try {
 				if (DEBUG) console.log('Sending chunk to encoder: ', chunk.timestamp);
 				this.#decoder.decode(chunk);
@@ -254,6 +259,7 @@ export class Decoder {
 	};
 
 	#onError = (e: DOMException) => {
+		// TODO: encoder may be reclaimed and we should check for that
 		console.log(e);
 	};
 
@@ -278,6 +284,11 @@ export class Decoder {
 				}
 			}
 		}
+		if (DEBUG)
+			console.log(
+				`requesting frame: ${frameTimestamp}, so choosing ${this.#chunks[targetFrameIndex].timestamp}`
+			);
+
 		return {
 			targetFrameIndex,
 			keyFrameIndex,

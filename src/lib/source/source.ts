@@ -1,6 +1,5 @@
+import type { SourceType } from '$lib/types';
 import type { Movie } from 'mp4box';
-
-type SourceType = 'text' | 'video' | 'audio';
 
 export class Source {
 	id: string;

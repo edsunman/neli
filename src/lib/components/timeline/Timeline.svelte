@@ -5,7 +5,8 @@
 		setFrameFromOffset,
 		zoomOut,
 		zoomIn,
-		updateScrollPosition
+		updateScrollPosition,
+		setZoom
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -204,6 +205,13 @@
 				break;
 			case 'Equal':
 				zoomIn();
+				break;
+			case 'Digit0':
+				if (timelineState.zoom < 230.4) {
+					setZoom(230.4);
+				} else {
+					setZoom(0.9);
+				}
 				break;
 			case 'Backspace':
 				const selectedClip = timelineState.selectedClip;

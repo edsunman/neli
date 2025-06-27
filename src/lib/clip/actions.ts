@@ -14,7 +14,10 @@ export const createClip = async (
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	const clip = new Clip(source, track, start, duration ? duration : source.duration, sourceOffset);
+	if (duration < 500) duration = 500;
+	if (source.duration) duration = source.duration;
+
+	const clip = new Clip(source, track, start, duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 

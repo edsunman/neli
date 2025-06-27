@@ -109,6 +109,7 @@ export class WebGPURenderer {
 		});
 		pass.end();
 		this.#device.queue.submit([encoder.finish()]);
+		return this.#device.queue.onSubmittedWorkDone();
 	}
 
 	drawShape(
@@ -196,7 +197,7 @@ export class WebGPURenderer {
 		passEncoder.draw(6, 1, 0, 0);
 		passEncoder.end();
 		this.#device.queue.submit([commandEncoder.finish()]);
-
 		frame.close();
+		return this.#device.queue.onSubmittedWorkDone();
 	}
 }

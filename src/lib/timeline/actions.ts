@@ -3,8 +3,6 @@ import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 
 export const setCurrentFrame = (frame: number) => {
-	//frame;
-	//appState.composition?.seek(frame);
 	seek(frame);
 	timelineState.currentFrame = frame;
 };
@@ -47,6 +45,13 @@ export const zoomOut = () => {
 		timelineState.zoom = timelineState.zoom / 2;
 		timelineState.offset = center - 0.5 / timelineState.zoom;
 	}
+	checkViewBounds();
+	timelineState.invalidate = true;
+};
+
+export const setZoom = (zoomAmount: number) => {
+	timelineState.zoom = zoomAmount;
+	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
 };
