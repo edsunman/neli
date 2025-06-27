@@ -117,7 +117,14 @@ const buildAndDrawFrame = async (frame: number) => {
 
 	if (foundClip.type === 'video') {
 		const f = await decoder.decodeFrame(clipFrame);
-		if (f) await renderer.draw(f);
+		if (f)
+			await renderer.draw(
+				f,
+				foundClip.scaleX,
+				foundClip.scaleY,
+				foundClip.positionX,
+				foundClip.positionY
+			);
 	} else {
 		await renderer.drawShape(
 			1,
@@ -138,7 +145,7 @@ const encodeAndCreateFile = () => {
 		const frame = decoder.run(i * 33.33333333);
 
 		if (frame) {
-			renderer.draw(frame);
+			//renderer.draw(frame);
 			const newFrame = new VideoFrame(canvas, {
 				timestamp: (i * 1e6) / 30,
 				alpha: 'discard'

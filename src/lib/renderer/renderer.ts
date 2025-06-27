@@ -1,11 +1,10 @@
-import vertexShader from './shaders/vertex.wgsl?raw';
+import videoShader from './shaders/video.wgsl?raw';
 import shapeShader from './shaders/shape.wgsl?raw';
 
 export class WebGPURenderer {
 	#canvas: OffscreenCanvas | null = null;
 	#ctx: GPUCanvasContext | null = null;
 
-	// WebGPU state shared between setup and drawing.
 	#format: GPUTextureFormat | null = null;
 	#device: GPUDevice | null = null;
 	#pipeline: GPURenderPipeline | null = null;
@@ -13,17 +12,6 @@ export class WebGPURenderer {
 	#sampler: GPUSampler | null = null;
 
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
-
-	// Samples the external texture using generated UVs.
-	static fragmentShaderSource = `
-    @group(0) @binding(1) var mySampler: sampler;
-    @group(0) @binding(2) var myTexture: texture_external;
-    
-    @fragment
-    fn frag_main(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
-      return textureSampleBaseClampToEdge(myTexture, mySampler, uv);
-    }
-  `;
 
 	constructor(canvas: OffscreenCanvas) {
 		this.#canvas = canvas;
@@ -73,13 +61,13 @@ export class WebGPURenderer {
 			layout: 'auto',
 			vertex: {
 				module: this.#device.createShaderModule({
-					code: vertexShader
+					code: videoShader
 				}),
 				entryPoint: 'vert_main'
 			},
 			fragment: {
 				module: this.#device.createShaderModule({
-					code: WebGPURenderer.fragmentShaderSource
+					code: videoShader
 				}),
 				entryPoint: 'frag_main',
 				targets: [{ format: this.#format }]
@@ -165,14 +153,32 @@ export class WebGPURenderer {
 		return this.#device.queue.onSubmittedWorkDone();
 	}
 
-	draw(frame: VideoFrame) {
+	draw(frame: VideoFrame, scaleX: number, scaleY: number, positionX: number, positionY: number) {
 		// Don't try to draw any frames until the context is configured.
 		//await this.#started;
 
 		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler) return;
+
+		this.#uniformArray.set([0, 0, scaleX, scaleY, positionX, positionY], 0);
+
+		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 6; // Size for three f32
+		const uniformBuffer = this.#device.createBuffer({
+			size: uniformBufferSize,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		this.#device.queue.writeBuffer(
+			uniformBuffer,
+			0,
+			this.#uniformArray.buffer,
+			0,
+			this.#uniformArray.byteLength
+		);
+
 		const uniformBindGroup = this.#device.createBindGroup({
 			layout: this.#pipeline.getBindGroupLayout(0),
 			entries: [
+				{ binding: 0, resource: { buffer: uniformBuffer } },
 				{ binding: 1, resource: this.#sampler },
 				{ binding: 2, resource: this.#device.importExternalTexture({ source: frame }) }
 			]
