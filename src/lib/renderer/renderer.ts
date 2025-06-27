@@ -10,6 +10,9 @@ export class WebGPURenderer {
 	#pipeline: GPURenderPipeline | null = null;
 	#shapePipeline: GPURenderPipeline | null = null;
 	#sampler: GPUSampler | null = null;
+	#commandEncoder: GPUCommandEncoder | null = null;
+
+	#pendingFrames: VideoFrame[] = [];
 
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
@@ -80,13 +83,33 @@ export class WebGPURenderer {
 		// Default sampler configuration is nearset + clamp.
 		this.#sampler = this.#device.createSampler({});
 
-		this.blankFrame();
+		this.startPaint();
+		this.blankFramePass();
+		this.endPaint();
 	}
 
-	blankFrame() {
-		if (!this.#device || !this.#pipeline || !this.#sampler || !this.#ctx || !this.#format) return;
-		const encoder = this.#device.createCommandEncoder();
-		const pass = encoder.beginRenderPass({
+	startPaint() {
+		if (!this.#device) return;
+		this.#commandEncoder = this.#device.createCommandEncoder();
+		this.blankFramePass();
+	}
+
+	endPaint() {
+		if (!this.#device || !this.#commandEncoder) return;
+		this.#device.queue.submit([this.#commandEncoder.finish()]);
+
+		for (let i = 1; i < this.#pendingFrames.length; i++) {
+			const frame = this.#pendingFrames.shift();
+			frame?.close();
+		}
+
+		return this.#device.queue.onSubmittedWorkDone();
+	}
+
+	blankFramePass() {
+		if (!this.#commandEncoder || !this.#ctx) return;
+
+		const pass = this.#commandEncoder.beginRenderPass({
 			colorAttachments: [
 				{
 					view: this.#ctx.getCurrentTexture().createView(),
@@ -96,18 +119,22 @@ export class WebGPURenderer {
 			]
 		});
 		pass.end();
-		this.#device.queue.submit([encoder.finish()]);
-		return this.#device.queue.onSubmittedWorkDone();
 	}
 
-	drawShape(
+	shapePass(
 		redValue: number,
 		scaleX: number,
 		scaleY: number,
 		positionX: number,
 		positionY: number
 	) {
-		if (!this.#device || !this.#shapePipeline || !this.#sampler || !this.#ctx || !this.#format)
+		if (
+			!this.#device ||
+			!this.#shapePipeline ||
+			!this.#sampler ||
+			!this.#ctx ||
+			!this.#commandEncoder
+		)
 			return;
 
 		this.#uniformArray.set([redValue, 0, scaleX, scaleY, positionX, positionY], 0);
@@ -125,39 +152,39 @@ export class WebGPURenderer {
 			0,
 			this.#uniformArray.byteLength
 		);
-		//console.log(uniformBuffer);
+
 		const uniformBindGroup = this.#device.createBindGroup({
 			layout: this.#shapePipeline.getBindGroupLayout(0),
 			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
 		});
 
-		const commandEncoder = this.#device.createCommandEncoder();
 		const textureView = this.#ctx.getCurrentTexture().createView();
 		const renderPassDescriptor = {
 			colorAttachments: [
 				{
 					view: textureView,
-					clearValue: [0.0, 0.0, 0.0, 1.0],
-					loadOp: 'clear' as GPULoadOp,
+					loadOp: 'load' as GPULoadOp,
 					storeOp: 'store' as GPUStoreOp
 				}
 			]
 		};
 
-		const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
 		passEncoder.setPipeline(this.#shapePipeline);
 		passEncoder.setBindGroup(0, uniformBindGroup);
 		passEncoder.draw(6, 1, 0, 0);
 		passEncoder.end();
-		this.#device.queue.submit([commandEncoder.finish()]);
-		return this.#device.queue.onSubmittedWorkDone();
 	}
 
-	draw(frame: VideoFrame, scaleX: number, scaleY: number, positionX: number, positionY: number) {
-		// Don't try to draw any frames until the context is configured.
-		//await this.#started;
-
-		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler) return;
+	videoPass(
+		frame: VideoFrame,
+		scaleX: number,
+		scaleY: number,
+		positionX: number,
+		positionY: number
+	) {
+		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler || !this.#commandEncoder)
+			return;
 
 		this.#uniformArray.set([0, 0, scaleX, scaleY, positionX, positionY], 0);
 
@@ -184,26 +211,23 @@ export class WebGPURenderer {
 			]
 		});
 
-		const commandEncoder = this.#device.createCommandEncoder();
 		const textureView = this.#ctx.getCurrentTexture().createView();
 		const renderPassDescriptor = {
 			colorAttachments: [
 				{
 					view: textureView,
-					clearValue: [0.0, 0.0, 0.0, 1.0],
-					loadOp: 'clear' as GPULoadOp,
+					loadOp: 'load' as GPULoadOp,
 					storeOp: 'store' as GPUStoreOp
 				}
 			]
 		};
 
-		const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
 		passEncoder.setPipeline(this.#pipeline);
 		passEncoder.setBindGroup(0, uniformBindGroup);
 		passEncoder.draw(6, 1, 0, 0);
 		passEncoder.end();
-		this.#device.queue.submit([commandEncoder.finish()]);
-		frame.close();
-		return this.#device.queue.onSubmittedWorkDone();
+
+		this.#pendingFrames.push(frame);
 	}
 }

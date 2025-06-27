@@ -53,7 +53,7 @@ self.addEventListener('message', async function (e) {
 					const frame = decoder.run(elapsedTimeMs);
 
 					if (frame) {
-						renderer?.draw(frame);
+						//renderer?.draw(frame);
 					}
 
 					self.requestAnimationFrame(loop);
@@ -100,40 +100,56 @@ self.addEventListener('message', async function (e) {
 const buildAndDrawFrame = async (frame: number) => {
 	if (!renderer) return;
 
-	let foundClip = null;
+	const shapeClips = [];
+	const videoClips = [];
 	for (const clip of clips) {
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
-			foundClip = clip;
-			continue;
+			if (clip.type === 'text') {
+				shapeClips.push(clip);
+			} else {
+				videoClips.push(clip);
+			}
 		}
 	}
 
-	if (!foundClip) {
-		await renderer.blankFrame();
+	if (shapeClips.length < 1 && videoClips.length < 1) {
+		renderer.startPaint();
+		await renderer.endPaint();
 		return;
 	}
 
-	const clipFrame = frame - foundClip.start + foundClip.sourceOffset;
-
-	if (foundClip.type === 'video') {
+	const videoFrames = [];
+	for (const videoClip of videoClips) {
+		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
 		const f = await decoder.decodeFrame(clipFrame);
-		if (f)
-			await renderer.draw(
-				f,
-				foundClip.scaleX,
-				foundClip.scaleY,
-				foundClip.positionX,
-				foundClip.positionY
-			);
-	} else {
-		await renderer.drawShape(
-			1,
-			foundClip.scaleX,
-			foundClip.scaleY,
-			foundClip.positionX,
-			foundClip.positionY
+		videoFrames.push(f);
+	}
+
+	renderer.startPaint();
+
+	for (let i = 0; i < videoClips.length; i++) {
+		const frame = videoFrames[i];
+		if (!frame) continue;
+		renderer.videoPass(
+			frame,
+			videoClips[i].scaleX,
+			videoClips[i].scaleY,
+			videoClips[i].positionX,
+			videoClips[i].positionY
 		);
 	}
+
+	for (let i = 0; i < shapeClips.length; i++) {
+		renderer.shapePass(
+			1,
+			shapeClips[i].scaleX,
+			shapeClips[i].scaleY,
+			shapeClips[i].positionX,
+			shapeClips[i].positionY
+		);
+	}
+
+	await renderer.endPaint();
 };
 
 const encodeAndCreateFile = () => {

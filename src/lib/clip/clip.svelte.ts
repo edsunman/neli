@@ -30,7 +30,7 @@ export class Clip {
 		sourceOffset = 0
 	) {
 		this.id = Math.random().toString(16).slice(2);
-		this.track = track ? track : Math.floor(Math.random() * 3 + 1);
+		this.track = source.type === 'text' ? 1 : 2;
 
 		this.source = source;
 		this.start = start;
