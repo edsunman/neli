@@ -58,10 +58,23 @@ export const updateWorkerClip = (clip: Clip | null) => {
 	});
 };
 
-export const seek = (frame: number) => {
+export const seekWorker = (frame: number) => {
 	appState.mediaWorker?.postMessage({
 		command: 'seek',
 		frame
+	});
+};
+
+export const playWorker = (frame: number) => {
+	appState.mediaWorker?.postMessage({
+		command: 'play',
+		frame
+	});
+};
+
+export const pauseWorker = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'pause'
 	});
 };
 

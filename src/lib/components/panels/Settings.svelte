@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { updateWorkerClip } from '$lib/renderer/actions';
+	import { updateWorkerClip } from '$lib/worker/actions';
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';

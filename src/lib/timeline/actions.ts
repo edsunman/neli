@@ -1,9 +1,9 @@
-import { seek } from '$lib/renderer/actions';
+import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
 import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 
 export const setCurrentFrame = (frame: number) => {
-	seek(frame);
+	seekWorker(frame);
 	timelineState.currentFrame = frame;
 };
 
@@ -17,6 +17,8 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 
 export const play = () => {
 	timelineState.playing = true;
+
+	playWorker(timelineState.currentFrame);
 
 	let firstTimestamp = -1;
 	let previousFrame = -1;
@@ -34,7 +36,7 @@ export const play = () => {
 			return;
 		}
 
-		//console.log(targetFrame);
+		//console.log(`frame on main: ${targetFrame}`);
 		timelineState.currentFrame = targetFrame;
 
 		previousFrame = targetFrame;
@@ -45,6 +47,7 @@ export const play = () => {
 
 export const pause = () => {
 	timelineState.playing = false;
+	pauseWorker();
 };
 
 export const centerViewOnPlayhead = () => {

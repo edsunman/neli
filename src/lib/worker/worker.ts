@@ -38,10 +38,10 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				playing = true;
-				//decoder.play(e.data.frame);
 
 				let firstRAFTimestamp: number | null = null;
 				let previousFrame = -1;
+
 				const loop = async (rafTimestamp: number) => {
 					if (!playing) return;
 
@@ -50,13 +50,15 @@ self.addEventListener('message', async function (e) {
 					}
 
 					const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
-					const targetFrame = Math.round((elapsedTimeMs / 1000) * 30);
+					const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + e.data.frame;
 
 					if (targetFrame === previousFrame) {
 						self.requestAnimationFrame(loop);
 						return;
 					}
-					//console.log(targetFrame);
+
+					//console.log(`frame on worker: ${targetFrame}`);
+
 					await buildAndDrawFrame(targetFrame);
 
 					//if (frame) {
@@ -70,11 +72,12 @@ self.addEventListener('message', async function (e) {
 			}
 			break;
 		case 'pause':
-			decoder.pause();
+			//decoder.pause();
 			playing = false;
 
 			break;
 		case 'seek': {
+			playing = false;
 			if (seeking) {
 				//console.log('stuck');
 				return;
@@ -158,7 +161,6 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	}
 
 	await renderer.endPaint();
-	//console.log('done frame', frame);
 };
 
 const encodeAndCreateFile = () => {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { timelineState } from '$lib/state.svelte';
-	import { setupWorker } from '$lib/renderer/actions';
+	import { setupWorker } from '$lib/worker/actions';
 
 	let element = $state<HTMLCanvasElement>();
 	let width = $state(0);

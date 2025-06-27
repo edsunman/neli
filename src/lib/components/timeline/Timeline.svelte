@@ -25,7 +25,7 @@
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
-	import { updateWorkerClip } from '$lib/renderer/actions';
+	import { updateWorkerClip } from '$lib/worker/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let height = $state(0);
@@ -96,6 +96,7 @@
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
+			pause();
 			if (e.shiftKey) {
 				splitClip(timelineState.hoverClipId, canvasPixelToFrame(e.offsetX));
 				timelineState.invalidate = true;

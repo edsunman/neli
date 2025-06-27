@@ -1,7 +1,7 @@
 import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryCommands } from './history/history';
-import type { WebGPURenderer } from './renderer/renderer';
+import type { WebGPURenderer } from './worker/renderer';
 
 class AppState {
 	renderer: WebGPURenderer | null = null;
