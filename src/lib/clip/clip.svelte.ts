@@ -12,8 +12,8 @@ export class Clip {
 	duration = 0;
 	savedDuration = 0;
 
-	scaleX = $state(0.5);
-	scaleY = $state(0.5);
+	scaleX = $state(1);
+	scaleY = $state(1);
 	positionX = $state(0);
 	positionY = $state(0);
 

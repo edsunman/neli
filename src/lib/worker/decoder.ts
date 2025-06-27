@@ -127,6 +127,7 @@ export class Decoder {
 	}
 
 	play(frameNumber: number) {
+		//if (this.#running) return;
 		this.#running = true;
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -144,8 +145,7 @@ export class Decoder {
 
 	/** Called every quickly during playback and encoding to keep frame queue full */
 	run(elapsedTimeMs: number) {
-		const frameTime = Math.floor(elapsedTimeMs * 1000) + this.#startingFrameTimeStamp;
-
+		const frameTime = Math.floor(elapsedTimeMs * 1000); /*  + this.#startingFrameTimeStamp */
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
 		for (let i = 0; i < this.#frameQueue.length; i++) {

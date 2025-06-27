@@ -2,6 +2,7 @@ import { WebGPURenderer } from './renderer';
 import { Decoder } from './decoder';
 import { Encoder } from './encoder';
 import type { WorkerClip } from '$lib/types';
+import type { Clip } from '$lib/clip/clip.svelte';
 
 let renderer: WebGPURenderer;
 let decoder: Decoder;
@@ -57,22 +58,18 @@ self.addEventListener('message', async function (e) {
 						return;
 					}
 
-					//console.log(`frame on worker: ${targetFrame}`);
-
-					await buildAndDrawFrame(targetFrame);
-
-					//if (frame) {
-					//renderer?.draw(frame);
-					//}
+					await buildAndDrawFrame(targetFrame, true);
 
 					previousFrame = targetFrame;
 					self.requestAnimationFrame(loop);
 				};
+				setupFrame(e.data.frame);
 				self.requestAnimationFrame(loop);
 			}
 			break;
 		case 'pause':
 			//decoder.pause();
+			decoder.pause();
 			playing = false;
 
 			break;
@@ -108,6 +105,17 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
+const setupFrame = (frame: number) => {
+	for (const clip of clips) {
+		if (clip.type !== 'video') continue;
+		if (clip.start <= frame && clip.start + clip.duration > frame) {
+			const clipFrame = frame - clip.start + clip.sourceOffset;
+			decoder.play(clipFrame);
+			console.log('play in setup', clipFrame);
+		}
+	}
+};
+
 const buildAndDrawFrame = async (frame: number, run = false) => {
 	if (!renderer) return;
 
@@ -123,16 +131,17 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		}
 	}
 
-	if (shapeClips.length < 1 && videoClips.length < 1) {
-		renderer.startPaint();
-		await renderer.endPaint();
-		return;
-	}
-
+	// get frame for each video clip
 	const videoFrames = [];
 	for (const videoClip of videoClips) {
 		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
-		const f = await decoder.decodeFrame(clipFrame);
+		let f;
+		if (run) {
+			f = decoder.run(clipFrame * 33.33333333);
+			//console.log(clipFrame * 33.33333333, f?.timestamp);
+		} else {
+			f = await decoder.decodeFrame(clipFrame);
+		}
 		videoFrames.push(f);
 	}
 
@@ -161,6 +170,21 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	}
 
 	await renderer.endPaint();
+
+	if (run) {
+		// look ahead
+		for (const clip of clips) {
+			if (clip.type !== 'video') continue;
+			if (clip.start <= frame + 1) {
+				if (!videoClips.find((f) => f.id === clip.id) && run) {
+					// we didnt render the video clip this frame, so start it running
+					const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
+					decoder.play(clipFrame);
+					console.log('play', clipFrame);
+				}
+			}
+		}
+	}
 };
 
 const encodeAndCreateFile = () => {
