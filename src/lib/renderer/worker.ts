@@ -38,11 +38,11 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				playing = true;
-				decoder.play(e.data.frame);
+				//decoder.play(e.data.frame);
 
 				let firstRAFTimestamp: number | null = null;
-
-				const loop = (rafTimestamp: number) => {
+				let previousFrame = -1;
+				const loop = async (rafTimestamp: number) => {
 					if (!playing) return;
 
 					if (firstRAFTimestamp === null) {
@@ -50,12 +50,20 @@ self.addEventListener('message', async function (e) {
 					}
 
 					const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
-					const frame = decoder.run(elapsedTimeMs);
+					const targetFrame = Math.round((elapsedTimeMs / 1000) * 30);
 
-					if (frame) {
-						//renderer?.draw(frame);
+					if (targetFrame === previousFrame) {
+						self.requestAnimationFrame(loop);
+						return;
 					}
+					//console.log(targetFrame);
+					await buildAndDrawFrame(targetFrame);
 
+					//if (frame) {
+					//renderer?.draw(frame);
+					//}
+
+					previousFrame = targetFrame;
 					self.requestAnimationFrame(loop);
 				};
 				self.requestAnimationFrame(loop);
@@ -97,7 +105,7 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
-const buildAndDrawFrame = async (frame: number) => {
+const buildAndDrawFrame = async (frame: number, run = false) => {
 	if (!renderer) return;
 
 	const shapeClips = [];
@@ -150,6 +158,7 @@ const buildAndDrawFrame = async (frame: number) => {
 	}
 
 	await renderer.endPaint();
+	//console.log('done frame', frame);
 };
 
 const encodeAndCreateFile = () => {

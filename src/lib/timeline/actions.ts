@@ -7,12 +7,44 @@ export const setCurrentFrame = (frame: number) => {
 	timelineState.currentFrame = frame;
 };
 
-export const setFrameFromOffset = (canvasOffset: number) => {
+export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
 	let frame = canvasPixelToFrame(canvasOffset);
 	if (frame < 0) frame = 0;
 	if (frame > 8999) frame = 8999;
 	setCurrentFrame(frame);
+};
+
+export const play = () => {
+	timelineState.playing = true;
+
+	let firstTimestamp = -1;
+	let previousFrame = -1;
+	const startingFrame = timelineState.currentFrame;
+	const loop = (timestamp: number) => {
+		if (!timelineState.playing) return;
+		if (firstTimestamp < 0) {
+			firstTimestamp = timestamp;
+		}
+		const elapsedTimeMs = timestamp - firstTimestamp;
+		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		if (targetFrame === previousFrame) {
+			self.requestAnimationFrame(loop);
+			return;
+		}
+
+		//console.log(targetFrame);
+		timelineState.currentFrame = targetFrame;
+
+		previousFrame = targetFrame;
+		if (timelineState.playing) requestAnimationFrame(loop);
+	};
+	requestAnimationFrame(loop);
+};
+
+export const pause = () => {
+	timelineState.playing = false;
 };
 
 export const centerViewOnPlayhead = () => {

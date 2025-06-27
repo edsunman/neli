@@ -25,6 +25,17 @@ export const createClip = async (
 	appHistory.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 };
 
+export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
+	for (const clip of timelineState.clips) {
+		if (clip.id === id) {
+			clip.deleted = unDelete ? false : true;
+			//clip.videoClip.disabled = unDelete ? false : true;
+			timelineState.selectedClip = null;
+			if (!noHistory) appHistory.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
+		}
+	}
+};
+
 export const moveSelectedClip = () => {
 	const frame = canvasPixelToFrame(timelineState.dragOffset, false);
 	const clip = timelineState.selectedClip;
@@ -164,8 +175,8 @@ export const resizeSelctedClip = () => {
 		if (clip.duration > maxLength) {
 			clip.duration = maxLength;
 			clip.invalid = true;
-		} else if (clip.duration < 200) {
-			clip.duration = 200;
+		} else if (clip.duration < 1) {
+			clip.duration = 1;
 		}
 	}
 };
@@ -223,17 +234,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 
 	// create new clip
 	createClip(clip.source.id, clip.track, frame + gapSize, newClipDuration, newClipOffset);
-};
-
-export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
-	for (const clip of timelineState.clips) {
-		if (clip.id === id) {
-			clip.deleted = unDelete ? false : true;
-			//clip.videoClip.disabled = unDelete ? false : true;
-			timelineState.selectedClip = null;
-			if (!noHistory) appHistory.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
-		}
-	}
 };
 
 export const removeHoverAllClips = () => {

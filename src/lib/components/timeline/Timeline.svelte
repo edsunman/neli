@@ -2,11 +2,13 @@
 	import { appState, timelineState } from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
-		setFrameFromOffset,
+		setCurrentFrameFromOffset,
 		zoomOut,
 		zoomIn,
 		updateScrollPosition,
-		setZoom
+		setZoom,
+		pause,
+		play
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -46,7 +48,7 @@
 		timelineState.invalidate = true;
 		canvas.style.cursor = 'default';
 		if (scrubbing) {
-			setFrameFromOffset(e.offsetX);
+			setCurrentFrameFromOffset(e.offsetX);
 			return;
 		}
 		if (dragging || resizing || scrolling) {
@@ -125,7 +127,7 @@
 	const mouseUp = (e: MouseEvent) => {
 		if (scrubbing) {
 			scrubbing = false;
-			setFrameFromOffset(e.offsetX);
+			setCurrentFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
 			dragging = false;
@@ -211,6 +213,13 @@
 					setZoom(230.4);
 				} else {
 					setZoom(0.9);
+				}
+				break;
+			case 'Space':
+				if (timelineState.playing) {
+					pause();
+				} else {
+					play();
 				}
 				break;
 			case 'Backspace':

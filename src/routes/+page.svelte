@@ -38,10 +38,6 @@
 <svelte:window
 	onkeydown={(event) => {
 		switch (event.code) {
-			case 'Space':
-				timelineState.playing = !timelineState.playing;
-				break;
-
 			case 'Escape':
 				if (appState.showPalette) appState.showPalette = false;
 				break;
