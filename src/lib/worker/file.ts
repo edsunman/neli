@@ -8,7 +8,7 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 
-// load file, demux, and return chunks + config
+/** Load file and demux */
 export const loadFile = async (
 	file: File
 ): Promise<{ chunks: EncodedAudioChunk[]; config: VideoEncoderConfig }> => {

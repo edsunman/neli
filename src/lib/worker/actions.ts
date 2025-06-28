@@ -10,7 +10,7 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 
 	appState.mediaWorker.postMessage(
 		{
-			command: 'initialize',
+			command: 'init',
 			canvas: offscreenCanvas
 		},
 		{ transfer: [offscreenCanvas] }

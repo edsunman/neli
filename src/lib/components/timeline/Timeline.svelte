@@ -217,6 +217,7 @@
 				}
 				break;
 			case 'Space':
+				event.preventDefault();
 				if (timelineState.playing) {
 					pause();
 				} else {

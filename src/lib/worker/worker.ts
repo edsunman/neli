@@ -1,12 +1,10 @@
 import { WebGPURenderer } from './renderer';
-import { Decoder } from './decoder';
 import { Encoder } from './encoder';
-import type { WorkerClip, WorkerSource } from '$lib/types';
 import { loadFile } from './file';
 import { DecoderPool } from './pool';
+import type { WorkerClip, WorkerSource } from '$lib/types';
 
 let renderer: WebGPURenderer;
-//let decoder: Decoder;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
 let decoderPool: DecoderPool;
@@ -19,12 +17,10 @@ const sources: WorkerSource[] = [];
 
 self.addEventListener('message', async function (e) {
 	//console.info(`Worker message: ${JSON.stringify(e.data)}`);
-
 	switch (e.data.command) {
-		case 'initialize':
+		case 'init':
 			{
 				decoderPool = new DecoderPool();
-				//decoder = new Decoder();
 				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
@@ -34,7 +30,6 @@ self.addEventListener('message', async function (e) {
 			{
 				const { chunks, config } = await loadFile(e.data.file);
 				sources.push({ id: e.data.id, chunks, config });
-				console.log(sources);
 			}
 			break;
 		case 'encode':
@@ -45,47 +40,20 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				playing = true;
-
-				let firstRAFTimestamp: number | null = null;
-				let previousFrame = -1;
-
-				const loop = async (rafTimestamp: number) => {
-					if (!playing) return;
-
-					if (firstRAFTimestamp === null) {
-						firstRAFTimestamp = rafTimestamp;
-					}
-
-					const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
-					const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + e.data.frame;
-
-					if (targetFrame === previousFrame) {
-						self.requestAnimationFrame(loop);
-						return;
-					}
-
-					await buildAndDrawFrame(targetFrame, true);
-
-					previousFrame = targetFrame;
-					self.requestAnimationFrame(loop);
-				};
-				setupFrame(e.data.frame);
-				self.requestAnimationFrame(loop);
+				startPlayLoop(e.data.frame);
 			}
 			break;
 		case 'pause':
-			//decoder.pause();
-			decoderPool.pauseAll();
-			playing = false;
-
+			{
+				playing = false;
+				decoderPool.pauseAll();
+			}
 			break;
 		case 'seek': {
 			playing = false;
-			if (seeking) {
-				//console.log('stuck');
-				return;
-			}
+			if (seeking) return;
 			seeking = true;
+
 			decoderPool.pauseAll();
 			await buildAndDrawFrame(e.data.frame);
 
@@ -112,17 +80,51 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
+const startPlayLoop = (frame: number) => {
+	const startingFrame = frame > 0 ? frame - 1 : 0;
+
+	setupFrame(startingFrame);
+
+	let firstRAFTimestamp: number | null = null;
+	let previousFrame = -1;
+	let i = 0;
+	const loop = async (rafTimestamp: number) => {
+		if (!playing) return;
+
+		if (firstRAFTimestamp === null) {
+			firstRAFTimestamp = rafTimestamp;
+		}
+
+		const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
+		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		if (targetFrame === previousFrame) {
+			self.requestAnimationFrame(loop);
+			return;
+		}
+
+		// dont render first two frames, they may be blank
+		if (i > 1) await buildAndDrawFrame(targetFrame, true);
+
+		previousFrame = targetFrame;
+		i++;
+
+		self.requestAnimationFrame(loop);
+	};
+
+	self.requestAnimationFrame(loop);
+};
+
 const setupFrame = (frame: number) => {
 	for (const clip of clips) {
 		if (clip.type !== 'video') continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			const clipFrame = frame - clip.start + clip.sourceOffset;
 			if (!clip.decoder) {
-				console.log('No decoder assigned to clip');
 				return;
 			}
 			clip.decoder.play(clipFrame);
-			console.log('play in setup', clipFrame);
+			console.log('starting play', clipFrame);
 		}
 	}
 };
@@ -150,16 +152,36 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		if (run) {
 			if (!videoClip.decoder) return;
 			f = videoClip.decoder.run(clipFrame * 33.33333333);
-			//console.log(clipFrame * 33.33333333, f?.timestamp);
 		} else {
 			if (!videoClip.decoder) {
-				console.log('no decoder so assign');
 				await setupNewDecoder(videoClip);
 			}
-			console.log(videoClip.decoder);
 			if (videoClip.decoder) f = await videoClip.decoder.decodeFrame(clipFrame);
 		}
 		videoFrames.push(f);
+		if (videoClip.decoder) videoClip.decoder.lastUsedTime = performance.now();
+	}
+
+	if (run) {
+		// look ahead
+		for (const clip of clips) {
+			if (clip.type !== 'video') continue;
+			console.log(frame);
+			if (frame === clip.start + 1 /* || frame === clip.start + 2 */) {
+				console.log('clip going to start');
+				// does clip start in next two frames?
+				/* if (!videoClips.find((f) => f.id === clip.id)) { */
+				// we didnt render the video clip this frame, so start it running
+				const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
+				if (!clip.decoder) {
+					await setupNewDecoder(clip);
+				}
+				if (!clip.decoder) return;
+				clip.decoder.play(clipFrame);
+				console.log('play', clipFrame);
+				/* } */
+			}
+		}
 	}
 
 	renderer.startPaint();
@@ -187,30 +209,6 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	}
 
 	await renderer.endPaint();
-
-	if (run) {
-		// look ahead
-		for (const clip of clips) {
-			if (clip.type !== 'video') continue;
-			// does clip start in next two frames?
-			if (clip.start > frame && clip.start < frame + 2) {
-				if (!videoClips.find((f) => f.id === clip.id) && run) {
-					// we didnt render the video clip this frame, so start it running
-					const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
-					if (!clip.decoder) {
-						console.log('no decoder so assign');
-						await setupNewDecoder(clip);
-					}
-					if (!clip.decoder) return;
-					console.log(
-						`clip id ${clip.id} about to start. It has a decoder: ${clip.decoder.clipId}`
-					);
-					clip.decoder.play(clipFrame);
-					console.log('play', clipFrame);
-				}
-			}
-		}
-	}
 };
 
 // Gets decoder from pool and assignes to clip
@@ -227,28 +225,28 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	clip.decoder = decoder;
 	decoder.clipId = clip.id;
 	decoder.setupDecoder(source.config, source.chunks);
-	console.log(`clip id ${clip.id}. Decoder: ${decoder.clipId}`);
 };
 
 const encodeAndCreateFile = () => {
 	encoder.setup();
-	//	decoder.play(0);
+
+	setupFrame(0);
 
 	let i = 0;
 	const decodeLoop = async () => {
-		//	const frame = decoder.run(i * 33.33333333);
+		await buildAndDrawFrame(i, true);
+		if (!renderer.bitmap) return;
 
-		if (frame) {
-			//renderer.draw(frame);
-			const newFrame = new VideoFrame(canvas, {
-				timestamp: (i * 1e6) / 30,
-				alpha: 'discard'
-			});
+		const newFrame = new VideoFrame(renderer.bitmap, {
+			timestamp: (i * 1e6) / 30,
+			alpha: 'discard'
+		});
+		renderer.bitmap.close();
 
-			encoder.encode(newFrame);
-			newFrame.close();
-			i++;
-		}
+		encoder.encode(newFrame);
+		newFrame.close();
+		i++;
+
 		if (i < 900) {
 			setTimeout(decodeLoop, 0);
 		} else {

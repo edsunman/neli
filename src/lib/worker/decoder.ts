@@ -10,23 +10,24 @@ export class Decoder {
 	#ready = false;
 	#running = false;
 
-	/* all chunks */
+	/** all chunks */
 	#chunks: EncodedVideoChunk[] = [];
-	/* chunks waiting to be decoded */
+	/** chunks waiting to be decoded */
 	#chunkBuffer: EncodedVideoChunk[] = [];
 	#frameQueue: VideoFrame[] = [];
 
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
-	/* used when seeking */
+	/** used when seeking */
 	#targetFrameTimestamp = 0;
-	/* used when playing */
+	/** used when playing */
 	#startingFrameTimeStamp = 0;
 	#lastChunkIndex = 0;
 	#feedingPaused = false;
 	#startToQueueFrames = false;
 
 	clipId: string | null = null;
+	lastUsedTime = 0;
 
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
@@ -72,7 +73,7 @@ export class Decoder {
 	}
 
 	play(frameNumber: number) {
-		//if (this.#running) return;
+		if (this.#running) return;
 		this.#running = true;
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -88,9 +89,9 @@ export class Decoder {
 		this.#feedDecoder();
 	}
 
-	/** Called every quickly during playback and encoding to keep frame queue full */
+	/** Called quickly during playback and encoding to keep frame queue full */
 	run(elapsedTimeMs: number) {
-		const frameTime = Math.floor(elapsedTimeMs * 1000); /*  + this.#startingFrameTimeStamp */
+		const frameTime = Math.floor(elapsedTimeMs * 1000);
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
 		for (let i = 0; i < this.#frameQueue.length; i++) {
@@ -144,6 +145,7 @@ export class Decoder {
 		this.#chunkBuffer = [];
 		this.#startToQueueFrames = false;
 	}
+
 	get running() {
 		return this.#running;
 	}
@@ -165,7 +167,7 @@ export class Decoder {
 		if (this.#chunkBuffer.length > 0) {
 			const chunk = this.#chunkBuffer.shift();
 			if (!chunk) {
-				// undefined chunks in buffer mean we are at the end of the video file,
+				// undefined chunks in the buffer mean we are at the end of the video file,
 				// so flush the encoder to make sure last few chunks make it through
 				this.#decoder.flush();
 				return;
@@ -183,7 +185,6 @@ export class Decoder {
 	}
 
 	#onFrame = (frame: VideoFrame) => {
-		//console.log(frame);
 		if (this.#running) {
 			if (this.#startToQueueFrames) {
 				this.#frameQueue.push(frame);
@@ -198,16 +199,16 @@ export class Decoder {
 		} else {
 			frame.close();
 		}
-		if (/* this.#allowFeeding && */ this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
+		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;
 			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
 			this.#feedDecoder();
 		}
-		//if (DEBUG) console.log('frame queue', this.#frameQueue);
 	};
 
 	#onError = (e: DOMException) => {
 		// TODO: encoder may be reclaimed and we should check for that
+		// or at least hide error in console
 		console.log(e);
 	};
 

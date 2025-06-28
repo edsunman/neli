@@ -14,6 +14,8 @@ export class WebGPURenderer {
 
 	#pendingFrames: VideoFrame[] = [];
 
+	bitmap: ImageBitmap | undefined;
+
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
 	constructor(canvas: OffscreenCanvas) {
@@ -94,9 +96,11 @@ export class WebGPURenderer {
 		this.blankFramePass();
 	}
 
-	endPaint() {
-		if (!this.#device || !this.#commandEncoder) return;
+	async endPaint() {
+		if (!this.#device || !this.#commandEncoder || !this.#canvas) return;
 		this.#device.queue.submit([this.#commandEncoder.finish()]);
+
+		this.bitmap = await createImageBitmap(this.#canvas);
 
 		for (let i = 1; i < this.#pendingFrames.length; i++) {
 			const frame = this.#pendingFrames.shift();
