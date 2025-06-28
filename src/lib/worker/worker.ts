@@ -1,18 +1,21 @@
 import { WebGPURenderer } from './renderer';
 import { Decoder } from './decoder';
 import { Encoder } from './encoder';
-import type { WorkerClip } from '$lib/types';
-import type { Clip } from '$lib/clip/clip.svelte';
+import type { WorkerClip, WorkerSource } from '$lib/types';
+import { loadFile } from './file';
+import { DecoderPool } from './pool';
 
 let renderer: WebGPURenderer;
 let decoder: Decoder;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
+let decoderPool: DecoderPool;
 
 let playing = false;
 let seeking = false;
 
 const clips: WorkerClip[] = [];
+const sources: WorkerSource[] = [];
 
 self.addEventListener('message', async function (e) {
 	//console.info(`Worker message: ${JSON.stringify(e.data)}`);
@@ -20,6 +23,7 @@ self.addEventListener('message', async function (e) {
 	switch (e.data.command) {
 		case 'initialize':
 			{
+				decoderPool = new DecoderPool();
 				decoder = new Decoder();
 				encoder = new Encoder();
 				canvas = e.data.canvas;
@@ -28,7 +32,8 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
-				await decoder.loadFile(e.data.file).then((e) => console.log(e));
+				const { chunks, config } = await loadFile(e.data.file);
+				sources.push({ id: e.data.id, chunks, config });
 			}
 			break;
 		case 'encode':
@@ -69,7 +74,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'pause':
 			//decoder.pause();
-			decoder.pause();
+			decoderPool.pauseAll();
 			playing = false;
 
 			break;
@@ -80,7 +85,7 @@ self.addEventListener('message', async function (e) {
 				return;
 			}
 			seeking = true;
-
+			decoderPool.pauseAll();
 			await buildAndDrawFrame(e.data.frame);
 
 			seeking = false;
@@ -93,6 +98,7 @@ self.addEventListener('message', async function (e) {
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
+				e.data.clip.decoder = clips[foundClipIndex].decoder;
 				clips[foundClipIndex] = e.data.clip;
 			} else {
 				clips.push(e.data.clip);
@@ -110,7 +116,11 @@ const setupFrame = (frame: number) => {
 		if (clip.type !== 'video') continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			const clipFrame = frame - clip.start + clip.sourceOffset;
-			decoder.play(clipFrame);
+			if (!clip.decoder) {
+				console.log('No decoder assigned to clip');
+				return;
+			}
+			clip.decoder.play(clipFrame);
 			console.log('play in setup', clipFrame);
 		}
 	}
@@ -137,10 +147,19 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
-			f = decoder.run(clipFrame * 33.33333333);
+			if (!videoClip.decoder) return;
+			f = videoClip.decoder.run(clipFrame * 33.33333333);
 			//console.log(clipFrame * 33.33333333, f?.timestamp);
 		} else {
-			f = await decoder.decodeFrame(clipFrame);
+			if (!videoClip.decoder) {
+				console.log('no decoder so assign');
+				const newDecoder = await decoderPool.getDecoder(sources[0].config);
+				if (!newDecoder) return;
+				videoClip.decoder = newDecoder;
+				newDecoder.setupDecoder(sources[0].config, sources[0].chunks);
+			}
+
+			f = await videoClip.decoder.decodeFrame(clipFrame);
 		}
 		videoFrames.push(f);
 	}
@@ -175,11 +194,19 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		// look ahead
 		for (const clip of clips) {
 			if (clip.type !== 'video') continue;
-			if (clip.start <= frame + 1) {
+			// does clip start in next two frames?
+			if (clip.start > frame && clip.start < frame + 2) {
 				if (!videoClips.find((f) => f.id === clip.id) && run) {
 					// we didnt render the video clip this frame, so start it running
 					const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
-					decoder.play(clipFrame);
+					if (!clip.decoder) {
+						console.log('no decoder so assign');
+						const newDecoder = await decoderPool.getDecoder(sources[0].config);
+						if (!newDecoder) return;
+						clip.decoder = newDecoder;
+						newDecoder.setupDecoder(sources[0].config, sources[0].chunks);
+					}
+					clip.decoder.play(clipFrame);
 					console.log('play', clipFrame);
 				}
 			}

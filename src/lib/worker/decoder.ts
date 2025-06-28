@@ -1,13 +1,3 @@
-import {
-	createFile,
-	MP4BoxBuffer,
-	DataStream,
-	ISOFile,
-	Endianness,
-	VisualSampleEntry,
-	MultiBufferStream
-} from 'mp4box';
-
 const DEBUG = false;
 
 /**
@@ -19,7 +9,6 @@ export class Decoder {
 	#decoderConfig: VideoDecoderConfig | null = null;
 	#ready = false;
 	#running = false;
-	#mp4File: ISOFile | null = null;
 
 	/* all chunks */
 	#chunks: EncodedVideoChunk[] = [];
@@ -41,57 +30,11 @@ export class Decoder {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}
 
-	async loadFile(file: File) {
-		let fileLoaded: (value: unknown) => void;
-		const promise = new Promise((resolve) => {
-			fileLoaded = resolve;
-		});
-
-		this.#mp4File = createFile();
-		this.#mp4File.onReady = (info) => {
-			console.log(info);
-
-			this.#decoderConfig = {
-				codec: info.videoTracks[0].codec.startsWith('vp08') ? 'vp8' : info.videoTracks[0].codec,
-				codedHeight: info.videoTracks[0].track_height,
-				codedWidth: info.videoTracks[0].track_width,
-				description: this.#getDescription(this.#mp4File),
-				optimizeForLatency: true
-			};
-
-			this.#decoder.configure(this.#decoderConfig);
-		};
-		this.#mp4File.onSamples = (id, user, samples) => {
-			for (const sample of samples) {
-				const chunk = new EncodedVideoChunk({
-					type: sample.is_sync ? 'key' : 'delta',
-					timestamp: (1e6 * sample.cts) / sample.timescale,
-					duration: (1e6 * sample.duration) / sample.timescale,
-					data: sample.data!
-				});
-				this.#chunks.push(chunk);
-			}
-
-			if (samples.length < 1000) {
-				this.#mp4File = null;
-				this.#ready = true;
-				fileLoaded('done');
-			}
-		};
-
-		const reader = new FileReader();
-		reader.onload = (e) => {
-			const arrayBuffer = e.target?.result as MP4BoxBuffer;
-			if (!this.#mp4File || !arrayBuffer) return;
-			arrayBuffer.fileStart = 0;
-			this.#mp4File.appendBuffer(arrayBuffer);
-			this.#mp4File.flush();
-			this.#mp4File.setExtractionOptions(1);
-			this.#mp4File.start();
-		};
-		reader.readAsArrayBuffer(file);
-
-		return promise;
+	setupDecoder(config: VideoDecoderConfig, chunks: EncodedVideoChunk[]) {
+		this.#decoderConfig = config;
+		this.#decoder.configure(this.#decoderConfig);
+		this.#chunks = chunks;
+		this.#ready = true;
 	}
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
@@ -199,6 +142,9 @@ export class Decoder {
 		this.#chunkBuffer = [];
 		this.#startToQueueFrames = false;
 	}
+	get running() {
+		return this.#running;
+	}
 
 	// runs in a loop until chunk buffer is empty
 	#feedDecoder() {
@@ -294,22 +240,5 @@ export class Decoder {
 			keyFrameIndex,
 			maxTimestamp
 		};
-	}
-
-	#getDescription(file: ISOFile | null) {
-		if (!file) return;
-		// TODO: don't hardcode this track number
-		const trak = file.getTrackById(1);
-		for (const entry of trak.mdia.minf.stbl.stsd.entries) {
-			const e = entry as VisualSampleEntry;
-			// @ts-expect-error avc1C or vpcC may exist
-			const box = e.avcC || e.hvcC || entry.av1C || entry.vpcC;
-			if (box) {
-				const stream = new DataStream(undefined, 0, Endianness.BIG_ENDIAN);
-				box.write(stream as MultiBufferStream);
-				return new Uint8Array(stream.buffer, 8); // Remove the box header.
-			}
-		}
-		throw new Error('avcC, hvcC, vpcC, or av1C box not found');
 	}
 }

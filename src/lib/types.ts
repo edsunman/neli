@@ -1,3 +1,5 @@
+import type { Decoder } from './worker/decoder';
+
 export type SourceType = 'text' | 'video' | 'audio';
 
 export type WorkerClip = {
@@ -11,4 +13,7 @@ export type WorkerClip = {
 	positionX: number;
 	positionY: number;
 	type: SourceType;
+	decoder?: Decoder;
 };
+
+export type WorkerSource = { id: number; chunks: EncodedAudioChunk[]; config: VideoEncoderConfig };
