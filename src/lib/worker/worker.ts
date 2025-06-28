@@ -6,7 +6,7 @@ import { loadFile } from './file';
 import { DecoderPool } from './pool';
 
 let renderer: WebGPURenderer;
-let decoder: Decoder;
+//let decoder: Decoder;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
 let decoderPool: DecoderPool;
@@ -24,7 +24,7 @@ self.addEventListener('message', async function (e) {
 		case 'initialize':
 			{
 				decoderPool = new DecoderPool();
-				decoder = new Decoder();
+				//decoder = new Decoder();
 				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
@@ -34,6 +34,7 @@ self.addEventListener('message', async function (e) {
 			{
 				const { chunks, config } = await loadFile(e.data.file);
 				sources.push({ id: e.data.id, chunks, config });
+				console.log(sources);
 			}
 			break;
 		case 'encode':
@@ -153,13 +154,10 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		} else {
 			if (!videoClip.decoder) {
 				console.log('no decoder so assign');
-				const newDecoder = await decoderPool.getDecoder(sources[0].config);
-				if (!newDecoder) return;
-				videoClip.decoder = newDecoder;
-				newDecoder.setupDecoder(sources[0].config, sources[0].chunks);
+				await setupNewDecoder(videoClip);
 			}
-
-			f = await videoClip.decoder.decodeFrame(clipFrame);
+			console.log(videoClip.decoder);
+			if (videoClip.decoder) f = await videoClip.decoder.decodeFrame(clipFrame);
 		}
 		videoFrames.push(f);
 	}
@@ -201,11 +199,12 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 					const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
 					if (!clip.decoder) {
 						console.log('no decoder so assign');
-						const newDecoder = await decoderPool.getDecoder(sources[0].config);
-						if (!newDecoder) return;
-						clip.decoder = newDecoder;
-						newDecoder.setupDecoder(sources[0].config, sources[0].chunks);
+						await setupNewDecoder(clip);
 					}
+					if (!clip.decoder) return;
+					console.log(
+						`clip id ${clip.id} about to start. It has a decoder: ${clip.decoder.clipId}`
+					);
 					clip.decoder.play(clipFrame);
 					console.log('play', clipFrame);
 				}
@@ -214,13 +213,30 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	}
 };
 
+// Gets decoder from pool and assignes to clip
+const setupNewDecoder = async (clip: WorkerClip) => {
+	const source = sources.find((s) => s.id === clip.sourceId);
+	if (!source) return;
+	const decoder = await decoderPool.getDecoder(source.config);
+	if (!decoder) return;
+	for (const c of clips) {
+		if (c.id === decoder.clipId) {
+			c.decoder = null;
+		}
+	}
+	clip.decoder = decoder;
+	decoder.clipId = clip.id;
+	decoder.setupDecoder(source.config, source.chunks);
+	console.log(`clip id ${clip.id}. Decoder: ${decoder.clipId}`);
+};
+
 const encodeAndCreateFile = () => {
 	encoder.setup();
-	decoder.play(0);
+	//	decoder.play(0);
 
 	let i = 0;
 	const decodeLoop = async () => {
-		const frame = decoder.run(i * 33.33333333);
+		//	const frame = decoder.run(i * 33.33333333);
 
 		if (frame) {
 			//renderer.draw(frame);
@@ -236,7 +252,7 @@ const encodeAndCreateFile = () => {
 		if (i < 900) {
 			setTimeout(decodeLoop, 0);
 		} else {
-			decoder.pause();
+			//	decoder.pause();
 			const url = await encoder.finalize();
 			self.postMessage({ name: 'download-link', link: url });
 		}

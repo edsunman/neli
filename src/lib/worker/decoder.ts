@@ -26,6 +26,8 @@ export class Decoder {
 	#feedingPaused = false;
 	#startToQueueFrames = false;
 
+	clipId: string | null = null;
+
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}

@@ -12,8 +12,7 @@ export class DecoderPool {
 	maxDecoders;
 
 	constructor(maxDecoders = 3) {
-		// Pool stores objects like: { decoder: VideoDecoder, lastConfig: VideoDecoderConfig, codecString: string, lastUsedTime: number }
-		// This will now be a single array of idle decoderInfo objects, not mapped by codec.
+		// Pool stores DecoderInfo objects
 		this.pool = [];
 
 		// Tracks currently active decoderInfo objects.
@@ -67,10 +66,32 @@ export class DecoderPool {
 				console.log(`[DecoderPool] Created new decoder for ${config.codec}.`);
 			}
 		} else {
-			console.warn(
-				`[DecoderPool] Decoder pool full (${this.activeDecoders.size}/${this.maxDecoders}). Cannot acquire a new decoder. Consider increasing maxDecoders or optimizing usage.`
-			);
-			return null; // Signal that no decoder could be acquired
+			// use the oldest active decoder
+
+			let smallest = Infinity;
+			let oldestDecoderInfo;
+			for (const info of this.activeDecoders) {
+				console.log('lut:', info.lastUsedTime);
+				if (info.lastUsedTime < smallest) {
+					smallest = info.lastUsedTime;
+					oldestDecoderInfo = info;
+				}
+			}
+
+			console.log('oldest: ', oldestDecoderInfo?.lastUsedTime);
+
+			decoderInfo = oldestDecoderInfo;
+			/* 	for (let i = 1; i < this.activeDecoders.size; i++) {
+				if (this.activeDecoders < smallest) {
+					smallest = arr[i];
+				}
+			} */
+
+			/* console.warn(
+				`[DecoderPool] Decoder pool full (${this.activeDecoders.size}/${this.maxDecoders}). Cannot acquire a new decoder.`
+			); */
+
+			//return null; // Signal that no decoder could be acquired
 		}
 
 		if (!decoderInfo) return;
@@ -116,31 +137,8 @@ export class DecoderPool {
 				`[DecoderPool] Released decoder. Active decoders: ${this.activeDecoders.size}/${this.maxDecoders}`
 			);
 		} else {
-			console.warn(
-				'[DecoderPool] Attempted to release a decoder not found in the active set. It might have already been closed or released.'
-			);
+			console.warn('[DecoderPool] Attempted to release a decoder not found in the active set.');
 		}
-	}
-
-	/**
-	 * This helper function is no longer directly used in getDecoder with the simplified logic,
-	 * as all retrieved decoders are now always reconfigured.
-	 * It remains as a utility if needed elsewhere or for future expansions.
-	 * @param {VideoDecoderConfig} config1
-	 * @param {VideoDecoderConfig} config2
-	 * @returns {boolean} True if the configurations are considered equal for reuse purposes.
-	 * @private
-	 */
-	_areConfigsEqual(config1, config2) {
-		// If either config is null/undefined, they are not equal
-		if (!config1 || !config2) return false;
-
-		// Codec string MUST be identical for reconfiguration, otherwise a new decoder is needed.
-		if (config1.codec !== config2.codec) return false;
-
-		// Compare other essential parameters. Add more if your application relies on them for unique configs.
-		// For example, colorSpace, hardwareAcceleration, optimizeForLatency etc.
-		return config1.codedWidth === config2.codedWidth && config1.codedHeight === config2.codedHeight;
 	}
 
 	/**

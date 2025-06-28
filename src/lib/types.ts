@@ -13,7 +13,7 @@ export type WorkerClip = {
 	positionX: number;
 	positionY: number;
 	type: SourceType;
-	decoder?: Decoder;
+	decoder?: Decoder | null;
 };
 
-export type WorkerSource = { id: number; chunks: EncodedAudioChunk[]; config: VideoEncoderConfig };
+export type WorkerSource = { id: string; chunks: EncodedAudioChunk[]; config: VideoEncoderConfig };
