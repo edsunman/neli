@@ -42,6 +42,7 @@ export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
 	const workerClip: WorkerClip = {
 		id: clip.id,
+		sourceId: clip.source.id,
 		start: clip.start,
 		duration: clip.duration,
 		sourceOffset: clip.sourceOffset,
