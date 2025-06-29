@@ -1,12 +1,14 @@
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+
 /**
  * Responsible for encoding VideoFrames and creating Mp4 file
  */
 export class Encoder {
 	#muxer: Muxer<ArrayBufferTarget> | null = null;
-	#encoder;
+	#encoder: VideoEncoder | null = null;
+	#frameCounter = 0;
 
-	constructor() {
+	setup() {
 		this.#encoder = new VideoEncoder({
 			output: (chunk, meta) => this.#muxer?.addVideoChunk(chunk, meta),
 			error: (e) => console.error(e)
@@ -19,9 +21,6 @@ export class Encoder {
 			bitrate: 10_000_000,
 			bitrateMode: 'constant'
 		});
-	}
-
-	setup() {
 		this.#muxer = new Muxer({
 			target: new ArrayBufferTarget(),
 			video: {
@@ -34,13 +33,22 @@ export class Encoder {
 	}
 
 	encode(frame: VideoFrame) {
-		this.#encoder.encode(frame);
+		if (!this.#encoder) return;
+		let keyFrame = false;
+		if (this.#frameCounter % 30 === 0) {
+			keyFrame = true;
+		}
+		this.#encoder.encode(frame, { keyFrame });
+		this.#frameCounter++;
 	}
 
 	async finalize() {
-		if (!this.#muxer) return;
+		if (!this.#muxer || !this.#encoder) return;
 
 		await this.#encoder.flush();
+		this.#encoder.close();
+		this.#encoder = null;
+
 		this.#muxer.finalize();
 
 		const buffer = this.#muxer.target.buffer;

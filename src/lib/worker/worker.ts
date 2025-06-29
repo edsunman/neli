@@ -80,8 +80,8 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
-const startPlayLoop = (frame: number) => {
-	const startingFrame = frame > 0 ? frame - 1 : 0;
+const startPlayLoop = async (frame: number) => {
+	const startingFrame = frame;
 
 	setupFrame(startingFrame);
 
@@ -90,6 +90,13 @@ const startPlayLoop = (frame: number) => {
 	let i = 0;
 	const loop = async (rafTimestamp: number) => {
 		if (!playing) return;
+
+		// pause for two loops to wait for VideoDecoders to warm up
+		if (i < 2) {
+			i++;
+			self.requestAnimationFrame(loop);
+			return;
+		}
 
 		if (firstRAFTimestamp === null) {
 			firstRAFTimestamp = rafTimestamp;
@@ -103,12 +110,9 @@ const startPlayLoop = (frame: number) => {
 			return;
 		}
 
-		// dont render first two frames, they may be blank
-		if (i > 1) await buildAndDrawFrame(targetFrame, true);
+		await buildAndDrawFrame(targetFrame, true);
 
 		previousFrame = targetFrame;
-		i++;
-
 		self.requestAnimationFrame(loop);
 	};
 
@@ -166,20 +170,16 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		// look ahead
 		for (const clip of clips) {
 			if (clip.type !== 'video') continue;
-			console.log(frame);
-			if (frame === clip.start + 1 /* || frame === clip.start + 2 */) {
-				console.log('clip going to start');
-				// does clip start in next two frames?
-				/* if (!videoClips.find((f) => f.id === clip.id)) { */
-				// we didnt render the video clip this frame, so start it running
-				const clipFrame = frame + 1 - clip.start + clip.sourceOffset;
+			if (frame < clip.start && frame > clip.start - 4) {
+				const frameDistance = clip.start - frame;
+				//console.log(`clip starts in ${frameDistance} frames`);
+
+				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
 				if (!clip.decoder) {
 					await setupNewDecoder(clip);
 				}
 				if (!clip.decoder) return;
-				clip.decoder.play(clipFrame);
-				console.log('play', clipFrame);
-				/* } */
+				clip.decoder.play(clipStartFrame);
 			}
 		}
 	}
@@ -230,6 +230,8 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 const encodeAndCreateFile = () => {
 	encoder.setup();
 
+	playing = true;
+
 	setupFrame(0);
 
 	let i = 0;
@@ -247,10 +249,11 @@ const encodeAndCreateFile = () => {
 		newFrame.close();
 		i++;
 
-		if (i < 900) {
+		if (i < 300) {
 			setTimeout(decodeLoop, 0);
 		} else {
 			//	decoder.pause();
+			playing = false;
 			const url = await encoder.finalize();
 			self.postMessage({ name: 'download-link', link: url });
 		}

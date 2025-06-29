@@ -47,7 +47,7 @@ export const loadFile = async (
 
 		if (samples.length < 1000) {
 			mp4File = null;
-			//@ts-expect-error no idea
+			//@ts-expect-error no idea ??
 			resolver({ chunks, config });
 		}
 	};
