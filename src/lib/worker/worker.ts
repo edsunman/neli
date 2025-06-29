@@ -11,6 +11,7 @@ let decoderPool: DecoderPool;
 
 let playing = false;
 let seeking = false;
+let encoding = false;
 
 const clips: WorkerClip[] = [];
 const sources: WorkerSource[] = [];
@@ -162,6 +163,11 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			}
 			if (videoClip.decoder) f = await videoClip.decoder.decodeFrame(clipFrame);
 		}
+		if (encoding && !f) {
+			// a blank frame from decoder while encoding
+			// is unacceptable, so abort
+			return;
+		}
 		videoFrames.push(f);
 		if (videoClip.decoder) videoClip.decoder.lastUsedTime = performance.now();
 	}
@@ -172,8 +178,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			if (clip.type !== 'video') continue;
 			if (frame < clip.start && frame > clip.start - 4) {
 				const frameDistance = clip.start - frame;
-				//console.log(`clip starts in ${frameDistance} frames`);
-
+				//console.log(`clip starts in ${frameDistance} frames`)
 				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
 				if (!clip.decoder) {
 					await setupNewDecoder(clip);
@@ -209,6 +214,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	}
 
 	await renderer.endPaint();
+	return true;
 };
 
 // Gets decoder from pool and assignes to clip
@@ -227,22 +233,28 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	decoder.setupDecoder(source.config, source.chunks);
 };
 
-const encodeAndCreateFile = () => {
+const encodeAndCreateFile = async () => {
+	encoding = true;
+
 	encoder.setup();
-
-	playing = true;
-
 	setupFrame(0);
+
+	//await new Promise((resolve) => setTimeout(resolve, 500));
 
 	let i = 0;
 	const decodeLoop = async () => {
-		await buildAndDrawFrame(i, true);
+		const success = await buildAndDrawFrame(i, true);
+		if (!success) {
+			setTimeout(decodeLoop, 0);
+			return;
+		}
 		if (!renderer.bitmap) return;
 
 		const newFrame = new VideoFrame(renderer.bitmap, {
 			timestamp: (i * 1e6) / 30,
 			alpha: 'discard'
 		});
+
 		renderer.bitmap.close();
 
 		encoder.encode(newFrame);
@@ -253,7 +265,7 @@ const encodeAndCreateFile = () => {
 			setTimeout(decodeLoop, 0);
 		} else {
 			//	decoder.pause();
-			playing = false;
+			encoding = false;
 			const url = await encoder.finalize();
 			self.postMessage({ name: 'download-link', link: url });
 		}
