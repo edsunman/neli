@@ -72,7 +72,12 @@ self.addEventListener('message', async function (e) {
 			}
 			// we may get multiple worker messages so don't
 			// draw just yet
-			this.setTimeout(() => buildAndDrawFrame(e.data.frame), 0);
+			//this.setTimeout(() => buildAndDrawFrame(e.data.frame), 0);
+			if (seeking) return;
+			seeking = true;
+			await buildAndDrawFrame(e.data.frame);
+			seeking = false;
+			break;
 		}
 	}
 });

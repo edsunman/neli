@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { timelineState } from '$lib/state.svelte';
+	import { appHistory, appState, timelineState } from '$lib/state.svelte';
 	import { setupWorker } from '$lib/worker/actions';
+
+	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
 	let element = $state<HTMLCanvasElement>();
 	let width = $state(0);
@@ -11,6 +13,19 @@
 	let draggedOffset = { x: 0, y: 0 };
 	let mouseDownPosition = { x: 0, y: 0 };
 	let savedClipPosition = { x: 0, y: 0 };
+
+	mouseMove = (e: MouseEvent) => {
+		if (appState.mouseMoveOwner !== 'program') return;
+		if (e.buttons < 1 || !timelineState.selectedClip) return;
+		e.preventDefault();
+		draggedOffset.x = e.clientX - mouseDownPosition.x;
+		draggedOffset.y = e.clientY - mouseDownPosition.y;
+
+		timelineState.selectedClip.positionX =
+			savedClipPosition.x + (draggedOffset.x / (scale / 100) / 1920) * 2;
+		timelineState.selectedClip.positionY =
+			savedClipPosition.y - (draggedOffset.y / (scale / 100) / 1080) * 2;
+	};
 
 	onMount(async () => {
 		if (!element) return;
@@ -45,17 +60,9 @@
 				savedClipPosition = { x: clip.positionX, y: clip.positionY };
 				//	console.log(clip.positionX);
 				mouseDownPosition = { x: e.clientX, y: e.clientY };
+				appState.mouseMoveOwner = 'program';
 			}}
-			onmousemove={(e) => {
-				if (e.buttons < 1) return;
-				draggedOffset.x = e.clientX - mouseDownPosition.x;
-				draggedOffset.y = e.clientY - mouseDownPosition.y;
-				//console.log(draggedOffset.x);
-				clip.positionX = savedClipPosition.x + (draggedOffset.x / (scale / 100) / 1920) * 2;
-				clip.positionY = savedClipPosition.y - (draggedOffset.y / (scale / 100) / 1080) * 2;
-				//(savedClipPosition.x + draggedOffset.x) / (clip.source.width * (scale / 50));
-				//console.log(((savedClipPosition.x + draggedOffset.x) / (scale / 100) / 1920) * 2);
-			}}
+			onmousemove={mouseMove}
 		></div>
 	{/if}
 </div>

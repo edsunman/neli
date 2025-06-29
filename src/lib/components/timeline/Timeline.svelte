@@ -27,7 +27,11 @@
 	import Controls from './Controls.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions';
 
+	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+
 	let canvas = $state<HTMLCanvasElement>();
+	let context: CanvasRenderingContext2D | null;
+	let canvasContainer = $state<HTMLDivElement>();
 	let height = $state(0);
 	let scrubbing = false;
 	let dragging = false;
@@ -35,24 +39,29 @@
 	let scrolling = false;
 	let fontsLoaded = false;
 
-	let context: CanvasRenderingContext2D | null;
-
 	$effect(() => {
-		// redraw when currentFrame changes
+		// redraw timeline when currentFrame changes
 		timelineState.currentFrame;
 		timelineState.invalidate = true;
 	});
 
-	const mouseMove = (e: MouseEvent) => {
-		if (!canvas) return;
+	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
+		if (appState.mouseMoveOwner !== 'timeline') return;
+		if (!canvas || !canvasContainer) return;
+		//console.log(canvasContainer?.offsetTop);
+		const offsetY = parentY - canvasContainer.offsetTop;
+
+		//console.log(offsetY, e.offsetY);
+		//console.log(e.offsetY);
+
 		timelineState.invalidate = true;
 		canvas.style.cursor = 'default';
 		if (scrubbing) {
-			setCurrentFrameFromOffset(e.offsetX);
+			setCurrentFrameFromOffset(parentX);
 			return;
 		}
 		if (dragging || resizing || scrolling) {
-			timelineState.dragOffset = e.offsetX - timelineState.dragStart;
+			timelineState.dragOffset = parentX - timelineState.dragStart;
 		}
 		if (scrolling) {
 			updateScrollPosition();
@@ -68,7 +77,7 @@
 		}
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
-		const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
+		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
 		if (!clip) return;
 
 		clip.resizeHover = 'none';
@@ -84,8 +93,10 @@
 	};
 
 	const mouseDown = (e: MouseEvent) => {
+		appState.mouseMoveOwner = 'timeline';
 		if (e.offsetY < 40) {
 			scrubbing = true;
+			setCurrentFrameFromOffset(e.offsetX);
 		}
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
@@ -125,10 +136,10 @@
 		timelineState.invalidate = true;
 	};
 
-	const mouseUp = (e: MouseEvent) => {
+	mouseUp = (e: MouseEvent) => {
 		if (scrubbing) {
 			scrubbing = false;
-			setCurrentFrameFromOffset(e.offsetX);
+			//setCurrentFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
 			dragging = false;
@@ -147,7 +158,7 @@
 	};
 
 	const mouseLeave = (e: MouseEvent) => {
-		mouseUp(e);
+		//mouseUp(e);
 	};
 
 	const step = () => {
@@ -183,12 +194,12 @@
 	<div
 		class="flex-1"
 		role="navigation"
-		onmousemove={mouseMove}
 		onmousedown={mouseDown}
 		onmouseup={mouseUp}
 		onmouseleave={mouseLeave}
 		bind:clientHeight={height}
 		bind:clientWidth={timelineState.width}
+		bind:this={canvasContainer}
 	>
 		<canvas {height} width={timelineState.width} bind:this={canvas}></canvas>
 	</div>

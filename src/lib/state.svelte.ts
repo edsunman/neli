@@ -9,6 +9,7 @@ class AppState {
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 	disableKeyboardShortcuts = false;
+	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 
 export const appState = new AppState();

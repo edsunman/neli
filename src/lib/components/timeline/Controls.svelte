@@ -20,7 +20,9 @@
 </script>
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl">
-	<div class="text-white">{showFrames ? timelineState.currentFrame : formattedTime}</div>
+	<div class="text-white select-none">
+		{showFrames ? timelineState.currentFrame : formattedTime}
+	</div>
 	<!-- 	<button
 		onclick={() => {
 			timelineState.playing = true;
