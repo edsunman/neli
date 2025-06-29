@@ -51,7 +51,8 @@ export const updateWorkerClip = (clip: Clip | null) => {
 		scaleY: clip.scaleY,
 		positionX: clip.positionX,
 		positionY: clip.positionY,
-		type: clip.source.type
+		type: clip.source.type,
+		deleted: clip.deleted
 	};
 	appState.mediaWorker?.postMessage({
 		command: 'clip',

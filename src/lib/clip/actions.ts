@@ -14,8 +14,11 @@ export const createClip = async (
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	if (duration < 500) duration = 500;
-	if (source.duration) duration = source.duration;
+	if (duration === 0) {
+		// no duration set so use defaults
+		duration = 500;
+		if (source.duration) duration = source.duration;
+	}
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 	timelineState.clips.push(clip);
@@ -32,6 +35,7 @@ export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
 			//clip.videoClip.disabled = unDelete ? false : true;
 			timelineState.selectedClip = null;
 			if (!noHistory) appHistory.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
+			updateWorkerClip(clip);
 		}
 	}
 };
@@ -207,6 +211,7 @@ export const trimSiblingClips = () => {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
 			siblingClip.duration = siblingClip.duration - trimAmount;
+			updateWorkerClip(siblingClip);
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
 			// need to trim start
@@ -214,6 +219,7 @@ export const trimSiblingClips = () => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
+			updateWorkerClip(siblingClip);
 		}
 	}
 	for (const clipId of clipsToRemove) {
@@ -231,6 +237,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 
 	// trim clip
 	clip.duration = ogClipDuration;
+	updateWorkerClip(clip);
 
 	// create new clip
 	createClip(clip.source.id, clip.track, frame + gapSize, newClipDuration, newClipOffset);

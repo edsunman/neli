@@ -92,7 +92,7 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 		(timelineState.offset + 1 / timelineState.zoom) * timelineState.duration
 	);
 
-	context.fillStyle = '#52525c';
+	context.fillStyle = '#71717b';
 	context.font = '12px sen';
 
 	if (minuteInPixels <= 1000) {

@@ -96,7 +96,7 @@
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
-			pause();
+			if (timelineState.playing) pause();
 			if (e.shiftKey) {
 				splitClip(timelineState.hoverClipId, canvasPixelToFrame(e.offsetX));
 				timelineState.invalidate = true;

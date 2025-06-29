@@ -62,9 +62,6 @@ self.addEventListener('message', async function (e) {
 			break;
 		}
 		case 'clip': {
-			if (seeking) return;
-			seeking = true;
-
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
@@ -73,10 +70,9 @@ self.addEventListener('message', async function (e) {
 			} else {
 				clips.push(e.data.clip);
 			}
-
-			await buildAndDrawFrame(e.data.frame);
-
-			seeking = false;
+			// we may get multiple worker messages so don't
+			// draw just yet
+			this.setTimeout(() => buildAndDrawFrame(e.data.frame), 0);
 		}
 	}
 });
@@ -122,7 +118,7 @@ const startPlayLoop = async (frame: number) => {
 
 const setupFrame = (frame: number) => {
 	for (const clip of clips) {
-		if (clip.type !== 'video') continue;
+		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			const clipFrame = frame - clip.start + clip.sourceOffset;
 			if (!clip.decoder) {
@@ -140,6 +136,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	const shapeClips = [];
 	const videoClips = [];
 	for (const clip of clips) {
+		if (clip.deleted) continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			if (clip.type === 'text') {
 				shapeClips.push(clip);
@@ -164,7 +161,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			if (videoClip.decoder) f = await videoClip.decoder.decodeFrame(clipFrame);
 		}
 		if (encoding && !f) {
-			// a blank frame from decoder while encoding
+			// a blank frame from a decoder while encoding
 			// is unacceptable, so abort
 			return;
 		}
@@ -175,7 +172,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	if (run) {
 		// look ahead
 		for (const clip of clips) {
-			if (clip.type !== 'video') continue;
+			if (clip.type !== 'video' || clip.deleted) continue;
 			if (frame < clip.start && frame > clip.start - 4) {
 				const frameDistance = clip.start - frame;
 				//console.log(`clip starts in ${frameDistance} frames`)
@@ -238,8 +235,6 @@ const encodeAndCreateFile = async () => {
 
 	encoder.setup();
 	setupFrame(0);
-
-	//await new Promise((resolve) => setTimeout(resolve, 500));
 
 	let i = 0;
 	const decodeLoop = async () => {

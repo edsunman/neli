@@ -12,6 +12,7 @@ export type WorkerClip = {
 	scaleY: number;
 	positionX: number;
 	positionY: number;
+	deleted: boolean;
 	type: SourceType;
 	decoder?: Decoder | null;
 };
