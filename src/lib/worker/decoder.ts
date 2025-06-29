@@ -26,6 +26,7 @@ export class Decoder {
 	#feedingPaused = false;
 	#startToQueueFrames = false;
 
+	id = 0;
 	clipId: string | null = null;
 	lastUsedTime = 0;
 
@@ -33,7 +34,7 @@ export class Decoder {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
 	}
 
-	setupDecoder(config: VideoDecoderConfig, chunks: EncodedVideoChunk[]) {
+	setup(config: VideoDecoderConfig, chunks: EncodedVideoChunk[]) {
 		this.#decoderConfig = config;
 		this.#decoder.configure(this.#decoderConfig);
 		this.#chunks = chunks;

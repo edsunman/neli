@@ -6,6 +6,7 @@ export class DecoderPool {
 	#pool: Decoder[] = [];
 	#activeDecoders = new Set<Decoder>();
 	#maxDecoders = 3;
+	#decoderCount = 0;
 
 	constructor() {
 		this.#pool = [];
@@ -31,6 +32,8 @@ export class DecoderPool {
 				}
 
 				decoder = new Decoder();
+				this.#decoderCount++;
+				decoder.id = this.#decoderCount;
 
 				if (DEBUG) console.log(`[DecoderPool] Created new decoder for ${config.codec}.`);
 			}
@@ -49,7 +52,6 @@ export class DecoderPool {
 		}
 
 		if (!decoder) return;
-
 		decoder.lastUsedTime = performance.now();
 		this.#activeDecoders.add(decoder);
 		if (DEBUG)

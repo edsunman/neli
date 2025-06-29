@@ -152,7 +152,10 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
-			if (!videoClip.decoder) return;
+			if (!videoClip.decoder) {
+				return;
+			}
+			console.log(videoClip.decoder.clipId, videoClip.decoder.id);
 			f = videoClip.decoder.run(clipFrame * 33.33333333);
 		} else {
 			if (!videoClip.decoder) {
@@ -227,7 +230,7 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	}
 	clip.decoder = decoder;
 	decoder.clipId = clip.id;
-	decoder.setupDecoder(source.config, source.chunks);
+	decoder.setup(source.config, source.chunks);
 };
 
 const encodeAndCreateFile = async () => {
@@ -237,10 +240,18 @@ const encodeAndCreateFile = async () => {
 	setupFrame(0);
 
 	let i = 0;
+	let retries = 0;
+	const maxRetries = 300;
 	const decodeLoop = async () => {
 		const success = await buildAndDrawFrame(i, true);
 		if (!success) {
-			setTimeout(decodeLoop, 0);
+			retries++;
+			if (retries < maxRetries) {
+				setTimeout(decodeLoop, 0);
+			} else {
+				encoding = false;
+				console.warn('encode failed');
+			}
 			return;
 		}
 		if (!renderer.bitmap) return;
