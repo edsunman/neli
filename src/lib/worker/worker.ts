@@ -29,8 +29,9 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
-				const { chunks, config } = await loadFile(e.data.file);
-				sources.push({ id: e.data.id, chunks, config });
+				const newSource = await loadFile(e.data.file);
+				newSource.id = e.data.id;
+				sources.push(newSource);
 			}
 			break;
 		case 'encode':
@@ -160,7 +161,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			if (!videoClip.decoder) {
 				return;
 			}
-			console.log(videoClip.decoder.clipId, videoClip.decoder.id);
+			//console.log(videoClip.decoder.clipId, videoClip.decoder.id);
 			f = videoClip.decoder.run(clipFrame * 33.33333333);
 		} else {
 			if (!videoClip.decoder) {
@@ -226,7 +227,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 const setupNewDecoder = async (clip: WorkerClip) => {
 	const source = sources.find((s) => s.id === clip.sourceId);
 	if (!source) return;
-	const decoder = await decoderPool.getDecoder(source.config);
+	const decoder = await decoderPool.getDecoder(source.videoConfig);
 	if (!decoder) return;
 	for (const c of clips) {
 		if (c.id === decoder.clipId) {
@@ -235,7 +236,8 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	}
 	clip.decoder = decoder;
 	decoder.clipId = clip.id;
-	decoder.setup(source.config, source.chunks);
+	console.log(source.videoConfig);
+	decoder.setup(source.videoConfig, source.videoChunks);
 };
 
 const encodeAndCreateFile = async () => {

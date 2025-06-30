@@ -1,3 +1,4 @@
+import type { WorkerSource } from '$lib/types';
 import {
 	createFile,
 	MP4BoxBuffer,
@@ -9,46 +10,67 @@ import {
 } from 'mp4box';
 
 /** Load file and demux */
-export const loadFile = async (
-	file: File
-): Promise<{ chunks: EncodedAudioChunk[]; config: VideoEncoderConfig }> => {
-	let resolver: (value: { chunks: EncodedAudioChunk[]; config: VideoEncoderConfig }) => void;
-	const promise = new Promise<{ chunks: EncodedAudioChunk[]; config: VideoEncoderConfig }>(
-		(resolve) => {
-			resolver = resolve;
-		}
-	);
+export const loadFile = async (file: File): Promise<WorkerSource> => {
+	let resolver: (value: WorkerSource) => void;
+	let decoding: 'audio' | 'video' = 'audio';
+	const promise = new Promise<WorkerSource>((resolve) => {
+		resolver = resolve;
+	});
 
-	const chunks: EncodedVideoChunk[] = [];
+	const videoChunks: EncodedVideoChunk[] = [];
+	const audioChunks: EncodedAudioChunk[] = [];
 	let mp4File: ISOFile | null = createFile();
-	let config: VideoDecoderConfig;
+	let videoConfig: VideoDecoderConfig;
+	let audioConfig: AudioDecoderConfig;
 
 	mp4File.onReady = (info) => {
 		//console.log(info);
-
-		config = {
+		getAudioDesciption(mp4File);
+		videoConfig = {
 			codec: info.videoTracks[0].codec.startsWith('vp08') ? 'vp8' : info.videoTracks[0].codec,
 			codedHeight: info.videoTracks[0].track_height,
 			codedWidth: info.videoTracks[0].track_width,
-			description: getDescription(mp4File),
+			description: getVideoDescription(mp4File),
 			optimizeForLatency: true
+		};
+		audioConfig = {
+			codec: info.audioTracks[0].codec,
+			sampleRate: info.audioTracks[0].audio?.sample_rate ?? 0,
+			numberOfChannels: info.audioTracks[0].audio?.channel_count ?? 2,
+			description: getAudioDesciption(mp4File)
 		};
 	};
 	mp4File.onSamples = (id, user, samples) => {
 		for (const sample of samples) {
-			const chunk = new EncodedVideoChunk({
-				type: sample.is_sync ? 'key' : 'delta',
-				timestamp: (1e6 * sample.cts) / sample.timescale,
-				duration: (1e6 * sample.duration) / sample.timescale,
-				data: sample.data!
-			});
-			chunks.push(chunk);
+			if (decoding === 'audio') {
+				const chunk = new EncodedAudioChunk({
+					type: sample.is_sync ? 'key' : 'delta',
+					timestamp: (1e6 * sample.cts) / sample.timescale,
+					duration: (1e6 * sample.duration) / sample.timescale,
+					data: sample.data!
+				});
+				audioChunks.push(chunk);
+			} else {
+				const chunk = new EncodedVideoChunk({
+					type: sample.is_sync ? 'key' : 'delta',
+					timestamp: (1e6 * sample.cts) / sample.timescale,
+					duration: (1e6 * sample.duration) / sample.timescale,
+					data: sample.data!
+				});
+				videoChunks.push(chunk);
+			}
 		}
 
 		if (samples.length < 1000) {
-			mp4File = null;
-			//@ts-expect-error no idea ??
-			resolver({ chunks, config });
+			if (decoding === 'audio') {
+				decoding = 'video';
+				mp4File!.setExtractionOptions(1);
+				mp4File!.start();
+			} else {
+				mp4File = null;
+				//@ts-expect-error videoConfig not happy
+				resolver({ audioChunks, videoChunks, audioConfig, videoConfig });
+			}
 		}
 	};
 
@@ -59,7 +81,7 @@ export const loadFile = async (
 		arrayBuffer.fileStart = 0;
 		mp4File.appendBuffer(arrayBuffer);
 		mp4File.flush();
-		mp4File.setExtractionOptions(1);
+		mp4File.setExtractionOptions(2);
 		mp4File.start();
 	};
 	reader.readAsArrayBuffer(file);
@@ -67,7 +89,7 @@ export const loadFile = async (
 	return promise;
 };
 
-const getDescription = (file: ISOFile | null) => {
+const getVideoDescription = (file: ISOFile | null) => {
 	if (!file) return;
 	// TODO: don't hardcode this track number
 	const trak = file.getTrackById(1);
@@ -82,4 +104,12 @@ const getDescription = (file: ISOFile | null) => {
 		}
 	}
 	throw new Error('avcC, hvcC, vpcC, or av1C box not found');
+};
+
+const getAudioDesciption = (file: ISOFile | null) => {
+	if (!file) return;
+	const trak = file.getTrackById(2);
+	const entry = trak.mdia.minf.stbl.stsd.entries[0];
+	//@ts-expect-error esds does exist
+	return entry.esds.esd.descs[0].descs[0].data;
 };

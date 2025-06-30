@@ -17,4 +17,10 @@ export type WorkerClip = {
 	decoder?: Decoder | null;
 };
 
-export type WorkerSource = { id: string; chunks: EncodedAudioChunk[]; config: VideoEncoderConfig };
+export type WorkerSource = {
+	id: string;
+	videoChunks: EncodedVideoChunk[];
+	audioChunks: EncodedAudioChunk[];
+	audioConfig: AudioEncoderConfig;
+	videoConfig: VideoEncoderConfig;
+};
