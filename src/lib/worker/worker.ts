@@ -3,11 +3,13 @@ import { Encoder } from './encoder';
 import { loadFile } from './file';
 import { DecoderPool } from './pool';
 import type { WorkerClip, WorkerSource } from '$lib/types';
+import { Audio } from './audio';
 
 let renderer: WebGPURenderer;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
 let decoderPool: DecoderPool;
+let audioDecoder: Audio;
 
 let playing = false;
 let seeking = false;
@@ -25,6 +27,7 @@ self.addEventListener('message', async function (e) {
 				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
+				audioDecoder = new Audio();
 			}
 			break;
 		case 'load-file':
@@ -32,6 +35,7 @@ self.addEventListener('message', async function (e) {
 				const newSource = await loadFile(e.data.file);
 				newSource.id = e.data.id;
 				sources.push(newSource);
+				audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
 			}
 			break;
 		case 'encode':
@@ -84,6 +88,8 @@ self.addEventListener('message', async function (e) {
 });
 
 const startPlayLoop = async (frame: number) => {
+	audioDecoder.play();
+
 	const startingFrame = frame;
 
 	setupFrame(startingFrame);
@@ -114,6 +120,8 @@ const startPlayLoop = async (frame: number) => {
 		}
 
 		await buildAndDrawFrame(targetFrame, true);
+
+		audioDecoder.run(elapsedTimeMs);
 
 		previousFrame = targetFrame;
 		self.requestAnimationFrame(loop);
