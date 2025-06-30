@@ -155,21 +155,9 @@ const drawClip = (
 	const durationPercent = clip.duration / timelineState.duration;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
-	// base shape
-	context.save();
-
-	context.beginPath();
-
-	context.roundRect(
-		Math.round(startPercent * width * timelineState.zoom + 1),
-		50 + 50 * clip.track,
-		Math.round(durationPercent * width * timelineState.zoom - 2),
-		35,
-		8
-	);
-
-	// define this Path as clipping mask
-	context.clip();
+	const clipWidth = Math.round(durationPercent * width * timelineState.zoom);
+	const clipStart = Math.round(startPercent * width * timelineState.zoom);
+	const clipEnd = Math.round(endPercent * width * timelineState.zoom);
 
 	if (clip.source.type === 'text') {
 		context.fillStyle = '#57babb';
@@ -177,51 +165,35 @@ const drawClip = (
 		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
 	}
 
-	if (clip.invalid) {
-		//context.fillStyle = 'red';
+	if (clipWidth < 6) {
+		context.fillRect(clipStart + 1, 50 + 50 * clip.track, 3, 35);
+		return;
 	}
 
-	context.fillRect(
-		startPercent * width * timelineState.zoom,
-		50 + 50 * clip.track,
-		durationPercent * width * timelineState.zoom,
-		35
-	);
-
+	// base shape
+	context.save();
+	context.beginPath();
+	context.roundRect(clipStart + 1, 50 + 50 * clip.track, clipWidth - 2, 35, 8);
+	context.clip();
+	context.fillRect(clipStart, 50 + 50 * clip.track, clipWidth + 2, 35);
 	context.restore();
 
 	if (selected || clip.hovered) {
 		// handles
-
 		context.save();
-
 		context.beginPath();
-
 		context.roundRect(
-			Math.round(startPercent * width * timelineState.zoom + 4),
+			clipStart + 4,
 			50 + 50 * clip.track + 3,
 			durationPercent * width * timelineState.zoom - 8,
 			29,
 			5
 		);
 
-		// define this Path as clipping mask
 		context.clip();
-
 		context.fillStyle = '#131315';
-		context.fillRect(
-			Math.round(startPercent * width * timelineState.zoom),
-			50 + 50 * clip.track,
-			15,
-			35
-		);
-		context.fillRect(
-			Math.round(endPercent * width * timelineState.zoom) - 15,
-			50 + 50 * clip.track,
-			15,
-			35
-		);
-
+		context.fillRect(clipStart, 50 + 50 * clip.track, 15, 35);
+		context.fillRect(clipEnd - 15, 50 + 50 * clip.track, 15, 35);
 		context.restore();
 
 		if (clip.source.type === 'text') {
@@ -230,19 +202,8 @@ const drawClip = (
 			context.fillStyle = 'oklch(64.5% 0.246 16.439)';
 		}
 
-		context.fillRect(
-			Math.round(startPercent * width * timelineState.zoom + 8),
-			50 + 50 * clip.track + 10,
-			3,
-			15
-		);
-
-		context.fillRect(
-			Math.round(endPercent * width * timelineState.zoom) - 11,
-			50 + 50 * clip.track + 10,
-			3,
-			15
-		);
+		context.fillRect(clipStart + 8, 50 + 50 * clip.track + 10, 3, 15);
+		context.fillRect(clipEnd - 11, 50 + 50 * clip.track + 10, 3, 15);
 
 		context.fillStyle = '#131315';
 

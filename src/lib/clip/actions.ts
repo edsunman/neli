@@ -89,6 +89,9 @@ export const resizeSelctedClip = () => {
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
+	const snapRange = canvasPixelToFrame(10, false);
+	let minimumSize = canvasPixelToFrame(35, false);
+	minimumSize = minimumSize < 1 ? 1 : minimumSize;
 	clip.invalid = false;
 	const frameOffset = canvasPixelToFrame(timelineState.dragOffset, false);
 
@@ -97,8 +100,7 @@ export const resizeSelctedClip = () => {
 		clip.duration = clip.savedDuration - frameOffset;
 		clip.sourceOffset = clip.savedSourceOffset + frameOffset;
 
-		// timeline snap
-		const snapRange = canvasPixelToFrame(10, false);
+		// playhead snap
 		if (isFrameInSnapRange(clip.start, timelineState.currentFrame, snapRange)) {
 			clip.start = timelineState.currentFrame;
 			const delta = clip.savedStart - clip.start;
@@ -106,15 +108,14 @@ export const resizeSelctedClip = () => {
 			clip.sourceOffset = clip.savedSourceOffset - delta;
 		}
 
-		//  sibling clips snap
+		// find nearest neighbour
 		let neighbour;
 		let prevDistance = 10000;
 		for (const siblingClip of timelineState.clips) {
 			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
 				continue;
 			const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
-			if (distance < 0 || distance > clip.sourceOffset + clip.duration) continue;
-			if (distance < prevDistance) {
+			if (distance > 0 && distance < prevDistance) {
 				neighbour = siblingClip;
 				prevDistance = distance;
 			}
@@ -128,8 +129,16 @@ export const resizeSelctedClip = () => {
 			const delta = clip.savedStart - clip.start;
 			clip.duration = clip.savedDuration + delta;
 			clip.sourceOffset = clip.savedSourceOffset - delta;
-			return;
 		}
+
+		// min size check
+		if (clip.duration < minimumSize) {
+			clip.start = clip.savedStart + clip.savedDuration - minimumSize;
+			clip.duration = minimumSize;
+			clip.sourceOffset = clip.savedSourceOffset + clip.savedDuration - minimumSize;
+		}
+
+		if (!clip.source.duration) return;
 
 		// source length checks
 		if (clip.sourceOffset < 0) {
@@ -137,31 +146,26 @@ export const resizeSelctedClip = () => {
 			clip.duration = clip.savedDuration + clip.savedSourceOffset;
 			clip.sourceOffset = 0;
 			clip.invalid = true;
-		} else if (clip.duration < 200) {
-			clip.start = clip.savedStart + clip.savedDuration - 200;
-			clip.duration = 200;
-			clip.sourceOffset = clip.savedSourceOffset + clip.savedDuration - 200;
 		}
 	} else if (clip.resizeHover === 'end') {
 		clip.duration = clip.savedDuration + frameOffset;
 
-		// timeline snap
-		const snapRange = canvasPixelToFrame(10, false);
+		// playhead snap
 		if (isFrameInSnapRange(clip.start + clip.duration, timelineState.currentFrame, snapRange)) {
 			clip.duration = timelineState.currentFrame - clip.start;
 		}
 
 		const maxLength = clip.source.duration ? clip.source.duration - clip.sourceOffset : 1000;
 
-		//  sibling clips snap
+		//  find nearest neighbour
 		let neighbour;
-		let prevDistance = 10000;
+		let prevDistance = Infinity;
 		for (const siblingClip of timelineState.clips) {
 			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
 				continue;
 			const distance = siblingClip.start - clip.start;
-			if (distance < 0 || distance > maxLength) continue;
-			if (distance < prevDistance) {
+			//if (distance < 0) continue;
+			if (distance > 0 && distance < prevDistance) {
 				neighbour = siblingClip;
 				prevDistance = distance;
 			}
@@ -172,15 +176,19 @@ export const resizeSelctedClip = () => {
 		// boundry check
 		if (clip.start + clip.duration > hardStop) {
 			clip.duration = hardStop - clip.start;
-			return;
 		}
+
+		// min size check
+		if (clip.duration < minimumSize) {
+			clip.duration = minimumSize;
+		}
+
+		if (!clip.source.duration) return;
 
 		// source length checks
 		if (clip.duration > maxLength) {
 			clip.duration = maxLength;
 			clip.invalid = true;
-		} else if (clip.duration < 1) {
-			clip.duration = 1;
 		}
 	}
 };
@@ -257,8 +265,9 @@ export const removeInvalidAllClips = () => {
 
 export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => {
 	let foundClip;
+	const minimumSize = canvasPixelToFrame(35, false);
 	for (const clip of timelineState.clips) {
-		if (clip.deleted) continue;
+		if (clip.deleted || clip.duration < minimumSize) continue;
 		clip.hovered = false;
 		if (
 			(offsetY > 100 && offsetY < 135 && clip.track === 1) ||
@@ -273,6 +282,12 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		}
 	}
 	return foundClip;
+};
+
+export const deselectClipIfTooSmall = () => {
+	if (!timelineState.selectedClip) return;
+	const minimumSize = canvasPixelToFrame(35, false);
+	if (timelineState.selectedClip.duration < minimumSize) timelineState.selectedClip = null;
 };
 
 export const getClip = (id: string) => {

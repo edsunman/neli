@@ -1,10 +1,12 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
 import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
+import { deselectClipIfTooSmall } from '$lib/clip/actions';
 
 export const setCurrentFrame = (frame: number) => {
 	seekWorker(frame);
 	timelineState.currentFrame = frame;
+	timelineState.invalidate = true;
 };
 
 export const setCurrentFrameFromOffset = (canvasOffset: number) => {
@@ -38,6 +40,7 @@ export const play = () => {
 
 		//console.log(`frame on main: ${targetFrame}`);
 		timelineState.currentFrame = targetFrame;
+		timelineState.invalidate = true;
 
 		previousFrame = targetFrame;
 		if (timelineState.playing) requestAnimationFrame(loop);
@@ -81,6 +84,7 @@ export const zoomOut = () => {
 		timelineState.offset = center - 0.5 / timelineState.zoom;
 	}
 	checkViewBounds();
+	deselectClipIfTooSmall();
 	timelineState.invalidate = true;
 };
 

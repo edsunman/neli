@@ -39,23 +39,15 @@
 	let scrolling = false;
 	let fontsLoaded = false;
 
-	$effect(() => {
-		// redraw timeline when currentFrame changes
-		timelineState.currentFrame;
-		timelineState.invalidate = true;
-	});
-
 	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
-		//console.log(canvasContainer?.offsetTop);
-		const offsetY = parentY - canvasContainer.offsetTop;
-
-		//console.log(offsetY, e.offsetY);
-		//console.log(e.offsetY);
 
 		timelineState.invalidate = true;
 		canvas.style.cursor = 'default';
+
+		const offsetY = parentY - canvasContainer.offsetTop;
+
 		if (scrubbing) {
 			setCurrentFrameFromOffset(parentX);
 			return;
@@ -75,6 +67,9 @@
 			canvas.style.cursor = 'col-resize';
 			return;
 		}
+
+		if (offsetY < 0) return;
+
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
@@ -157,10 +152,6 @@
 		removeInvalidAllClips();
 	};
 
-	const mouseLeave = (e: MouseEvent) => {
-		//mouseUp(e);
-	};
-
 	const step = () => {
 		if (timelineState.invalidate && fontsLoaded) {
 			if (context) drawCanvas(context, timelineState.width, height);
@@ -196,7 +187,6 @@
 		role="navigation"
 		onmousedown={mouseDown}
 		onmouseup={mouseUp}
-		onmouseleave={mouseLeave}
 		bind:clientHeight={height}
 		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}
