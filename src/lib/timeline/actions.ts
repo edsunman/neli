@@ -21,34 +21,36 @@ const audioContext = new AudioContext();
 const gainNode = audioContext.createGain();
 gainNode.gain.value = 0.7; // Master volume
 gainNode.connect(audioContext.destination);
-const f32array = new Float32Array(1024);
+const f32array = new Float32Array(1024 * 2);
+let currentOffset = 0;
 
-export const play = () => {
-	timelineState.playing = true;
+const pullAndPlayAudio = () => {
+	console.log('available read ', appState.audioRingBuffer?.availableRead());
 
-	playWorker(timelineState.currentFrame);
+	const samplesRead = appState.audioRingBuffer?.pop(f32array);
 
-	let firstTimestamp = -1;
-	let previousFrame = -1;
-	let currentOffset = 0;
-	const startingFrame = timelineState.currentFrame;
-	const loop = (timestamp: number) => {
-		console.log(timestamp);
-		if (!timelineState.playing) return;
-		if (firstTimestamp < 0) {
-			firstTimestamp = timestamp;
-		}
-		const elapsedTimeMs = timestamp - firstTimestamp;
-		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
-
-		const framesRead = appState.audioRingBuffer?.pop(f32array);
-		console.log('-> ', appState.audioRingBuffer?.availableRead());
-
+	if (samplesRead && samplesRead > 0) {
+		const framesRead = samplesRead / 2;
+		console.log('framesRead', framesRead);
 		const audioBuffer = audioContext.createBuffer(
 			2, // Use the global CHANNELS variable (e.g., 2 for stereo)
-			framesRead ?? 0,
+			framesRead,
 			audioContext.sampleRate
 		);
+
+		//console.log(audioBuffer.length, audioBuffer.duration);
+
+		const leftChannelData = audioBuffer.getChannelData(0);
+		for (let i = 0; i < framesRead; i++) {
+			leftChannelData[i] = f32array[i * 2];
+		}
+
+		const rightChannelData = audioBuffer.getChannelData(1);
+		for (let i = 0; i < framesRead; i++) {
+			rightChannelData[i] = f32array[i * 2 + 1];
+		}
+
+		//audioBuffer.getChannelData(0).set(f32array.subarray(0, framesRead));
 
 		const source = audioContext.createBufferSource();
 		source.buffer = audioBuffer;
@@ -57,6 +59,28 @@ export const play = () => {
 		const scheduledTime = Math.max(audioContext.currentTime, currentOffset);
 		source.start(scheduledTime);
 		currentOffset = scheduledTime + audioBuffer.duration;
+	}
+};
+
+export const play = () => {
+	timelineState.playing = true;
+
+	playWorker(timelineState.currentFrame);
+	const intervalMs = (1024 / 48000) * 1000 * 0.8;
+	console.log('interval ', intervalMs);
+	setInterval(pullAndPlayAudio, intervalMs);
+
+	let firstTimestamp = -1;
+	let previousFrame = -1;
+
+	const startingFrame = timelineState.currentFrame;
+	const loop = (timestamp: number) => {
+		if (!timelineState.playing) return;
+		if (firstTimestamp < 0) {
+			firstTimestamp = timestamp;
+		}
+		const elapsedTimeMs = timestamp - firstTimestamp;
+		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
 
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);

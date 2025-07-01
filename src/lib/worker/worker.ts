@@ -121,14 +121,14 @@ const startPlayLoop = async (frame: number) => {
 		const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
 		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
 
+		audioDecoder.run(elapsedTimeMs);
+
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);
 			return;
 		}
 
 		await buildAndDrawFrame(targetFrame, true);
-
-		audioDecoder.run(elapsedTimeMs);
 
 		previousFrame = targetFrame;
 		self.requestAnimationFrame(loop);
