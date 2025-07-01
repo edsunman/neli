@@ -35,7 +35,14 @@ self.addEventListener('message', async function (e) {
 				const newSource = await loadFile(e.data.file);
 				newSource.id = e.data.id;
 				sources.push(newSource);
-				audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
+				const sab = audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
+				if (!audioDecoder.ringBuffer) return;
+				self.postMessage({
+					command: 'load-done',
+					sampleRate: newSource.audioConfig.sampleRate,
+					channelCount: newSource.audioConfig.numberOfChannels,
+					sharedArrayBuffer: sab
+				});
 			}
 			break;
 		case 'encode':
@@ -288,7 +295,7 @@ const encodeAndCreateFile = async () => {
 			//	decoder.pause();
 			encoding = false;
 			const url = await encoder.finalize();
-			self.postMessage({ name: 'download-link', link: url });
+			self.postMessage({ command: 'download-link', link: url });
 		}
 	};
 

@@ -1,5 +1,5 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
-import { timelineState } from '$lib/state.svelte';
+import { appState, timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
 
@@ -17,6 +17,12 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 	setCurrentFrame(frame);
 };
 
+const audioContext = new AudioContext();
+const gainNode = audioContext.createGain();
+gainNode.gain.value = 0.7; // Master volume
+gainNode.connect(audioContext.destination);
+const f32array = new Float32Array(1024);
+
 export const play = () => {
 	timelineState.playing = true;
 
@@ -24,14 +30,33 @@ export const play = () => {
 
 	let firstTimestamp = -1;
 	let previousFrame = -1;
+	let currentOffset = 0;
 	const startingFrame = timelineState.currentFrame;
 	const loop = (timestamp: number) => {
+		console.log(timestamp);
 		if (!timelineState.playing) return;
 		if (firstTimestamp < 0) {
 			firstTimestamp = timestamp;
 		}
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		const framesRead = appState.audioRingBuffer?.pop(f32array);
+		console.log('-> ', appState.audioRingBuffer?.availableRead());
+
+		const audioBuffer = audioContext.createBuffer(
+			2, // Use the global CHANNELS variable (e.g., 2 for stereo)
+			framesRead ?? 0,
+			audioContext.sampleRate
+		);
+
+		const source = audioContext.createBufferSource();
+		source.buffer = audioBuffer;
+		source.connect(gainNode);
+
+		const scheduledTime = Math.max(audioContext.currentTime, currentOffset);
+		source.start(scheduledTime);
+		currentOffset = scheduledTime + audioBuffer.duration;
 
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);

@@ -2,6 +2,7 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source';
 import { appState, timelineState } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
+import { RingBuffer } from 'ringbuf.js';
 import MediaWorker from './worker?worker';
 
 export const setupWorker = (canvas: HTMLCanvasElement) => {
@@ -16,17 +17,27 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 		{ transfer: [offscreenCanvas] }
 	);
 	appState.mediaWorker.addEventListener('message', (event) => {
-		console.log(event.data);
-		const a = document.createElement('a');
-		a.href = event.data.link;
-		a.download = 'download.mp4';
-		a.style.display = 'none'; // Keep it hidden
+		switch (event.data.command) {
+			case 'download-link': {
+				console.log(event.data);
+				const a = document.createElement('a');
+				a.href = event.data.link;
+				a.download = 'download.mp4';
+				a.style.display = 'none'; // Keep it hidden
 
-		document.body.appendChild(a);
-		a.click();
+				document.body.appendChild(a);
+				a.click();
 
-		document.body.removeChild(a);
-		URL.revokeObjectURL(event.data.link); // Clean up the URL
+				document.body.removeChild(a);
+				URL.revokeObjectURL(event.data.link); // Clean up the URL
+				break;
+			}
+			case 'load-done': {
+				console.log(event.data);
+				appState.audioRingBuffer = new RingBuffer(event.data.sharedArrayBuffer, Float32Array);
+				break;
+			}
+		}
 	});
 };
 

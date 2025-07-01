@@ -1,4 +1,7 @@
+import { RingBuffer } from 'ringbuf.js';
+
 const DEBUG = false;
+const DATA_BUFFER_DURATION = 0.6;
 
 /**
  * Responsible for demuxing and storing video chunks, then
@@ -10,6 +13,8 @@ export class Audio {
 	#ready = false;
 	#running = false;
 
+	ringBuffer: RingBuffer | undefined;
+
 	/** all chunks */
 	#chunks: EncodedAudioChunk[] = [];
 	/** chunks waiting to be decoded */
@@ -20,6 +25,8 @@ export class Audio {
 	#lastAudioDataTimestamp = 0;
 	#feedingPaused = false;
 
+	#decoderOutputArray = new Float32Array(1024);
+
 	constructor() {
 		this.#decoder = new AudioDecoder({ output: this.#onOutput, error: this.#onError });
 	}
@@ -29,6 +36,16 @@ export class Audio {
 		this.#decoder.configure(this.#decoderConfig);
 		this.#chunks = chunks;
 		this.#ready = true;
+
+		// Initialize the ring buffer between the decoder and the real-time audio
+		// rendering thread. The AudioRenderer has buffer space for approximately
+		// 500ms of decoded audio ahead.
+		const sampleCountIn500ms =
+			DATA_BUFFER_DURATION * this.#decoderConfig.sampleRate * this.#decoderConfig.numberOfChannels;
+		const sab = RingBuffer.getStorageForCapacity(sampleCountIn500ms, Float32Array);
+		this.ringBuffer = new RingBuffer(sab, Float32Array);
+
+		return sab;
 	}
 
 	play(/* frameNumber: number */) {
@@ -87,8 +104,20 @@ export class Audio {
 
 	#onOutput = (audioData: AudioData) => {
 		if (this.#running) {
+			const numberOfFrames = audioData.numberOfFrames;
 			this.#audioDataQueue.push(audioData);
 			this.#lastAudioDataTimestamp = audioData.timestamp;
+			audioData.copyTo(this.#decoderOutputArray, {
+				planeIndex: 0
+			});
+			let enqueued = 0;
+			if (this.ringBuffer)
+				enqueued = this.ringBuffer.push(this.#decoderOutputArray.subarray(0, numberOfFrames));
+			if (enqueued < numberOfFrames) {
+				//console.warn(`Ring buffer overflow! Dropped ${numberOfFrames - enqueued} frames.`);
+			}
+			//console.log(enqueued);
+			audioData.close();
 		}
 		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;
