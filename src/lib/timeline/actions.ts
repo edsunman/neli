@@ -23,34 +23,47 @@ gainNode.gain.value = 0.7; // Master volume
 gainNode.connect(audioContext.destination);
 const f32array = new Float32Array(1024 * 2);
 let currentOffset = 0;
+const audioQueue: Float32Array[] = [];
+
+export const audioMessageReceived = (data) => {
+	//console.log(data);
+	const f32array = new Float32Array(data.audioData);
+
+	audioQueue.push(f32array);
+};
 
 const pullAndPlayAudio = () => {
-	console.log('available read ', appState.audioRingBuffer?.availableRead());
+	//console.log('available read ', appState.audioRingBuffer?.availableRead());
 
-	const samplesRead = appState.audioRingBuffer?.pop(f32array);
+	//const samplesRead = appState.audioRingBuffer?.pop(f32array);
 
-	if (samplesRead && samplesRead > 0) {
-		const framesRead = samplesRead / 2;
+	if (audioQueue.length > 0) {
+		const receivedFloat32Data = audioQueue.shift();
+		//console.log(receivedFloat32Data);
+		if (!receivedFloat32Data) return;
+
+		const framesRead = receivedFloat32Data.length / 2;
 		console.log('framesRead', framesRead);
 		const audioBuffer = audioContext.createBuffer(
 			2, // Use the global CHANNELS variable (e.g., 2 for stereo)
 			framesRead,
 			audioContext.sampleRate
 		);
+		console.log(audioBuffer);
 
 		//console.log(audioBuffer.length, audioBuffer.duration);
 
 		const leftChannelData = audioBuffer.getChannelData(0);
 		for (let i = 0; i < framesRead; i++) {
-			leftChannelData[i] = f32array[i * 2];
+			leftChannelData[i] = receivedFloat32Data[i * 2];
 		}
 
 		const rightChannelData = audioBuffer.getChannelData(1);
 		for (let i = 0; i < framesRead; i++) {
-			rightChannelData[i] = f32array[i * 2 + 1];
+			rightChannelData[i] = receivedFloat32Data[i * 2 + 1];
 		}
 
-		//audioBuffer.getChannelData(0).set(f32array.subarray(0, framesRead));
+		//audioBuffer.getChannelData(0).set(receivedFloat32Data.subarray(0, framesRead));
 
 		const source = audioContext.createBufferSource();
 		source.buffer = audioBuffer;
@@ -59,6 +72,10 @@ const pullAndPlayAudio = () => {
 		const scheduledTime = Math.max(audioContext.currentTime, currentOffset);
 		source.start(scheduledTime);
 		currentOffset = scheduledTime + audioBuffer.duration;
+		console.log(`current time: ${audioContext.currentTime} scheduled time : ${currentOffset}`);
+		console.log(
+			`Main: Scheduled chunk. Remaining in queue: ${audioQueue.length} Current offset: ${currentOffset}`
+		);
 	}
 };
 
@@ -69,6 +86,7 @@ export const play = () => {
 	const intervalMs = (1024 / 48000) * 1000 * 0.8;
 	console.log('interval ', intervalMs);
 	setInterval(pullAndPlayAudio, intervalMs);
+	currentOffset = audioContext.currentTime;
 
 	let firstTimestamp = -1;
 	let previousFrame = -1;

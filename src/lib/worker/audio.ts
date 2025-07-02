@@ -2,6 +2,9 @@ import { RingBuffer } from 'ringbuf.js';
 
 const DEBUG = false;
 const DATA_BUFFER_DURATION = 0.6;
+const AUDIO_CHUNK_FRAMES = 1024;
+const BATCH_FRAMES = AUDIO_CHUNK_FRAMES * 16; // Send 4 'internal' chunks at once
+const BATCH_SAMPLES = BATCH_FRAMES * 2; // Total samples in a batch
 
 /**
  * Responsible for demuxing and storing video chunks, then
@@ -25,7 +28,9 @@ export class Audio {
 	#lastAudioDataTimestamp = 0;
 	#feedingPaused = false;
 
+	#currentBatchFrames = 0;
 	#currentSampleIndex = 0;
+	batchAccumulator: Float32Array[] = [];
 
 	//#decoderOutputArray = new Float32Array(1024);
 
@@ -92,18 +97,54 @@ export class Audio {
 		//const chosenAudioData = this.#audioDataQueue[audioDataIndex];
 		//if (chosenAudioData) console.log('got -> ', this.#audioDataQueue[audioDataIndex].timestamp);
 		//for (let i = 0; i < 2; i++) {
-		const chunkBuffer = new Float32Array(1024 * 2);
+		const chunk = new Float32Array(1024 * 2);
 
 		for (let i = 0; i < 1024; i++) {
 			const globalSampleTime = (this.#currentSampleIndex + i) / 48000;
 			const sampleValue = 0.5 * Math.sin(2 * Math.PI * 440 * globalSampleTime);
 
 			// Populate stereo channels with the same sine wave
-			chunkBuffer[i * 2] = sampleValue; // Left channel
-			chunkBuffer[i * 2 + 1] = sampleValue; // Right channel
+			chunk[i * 2] = sampleValue; // Left channel
+			chunk[i * 2 + 1] = sampleValue; // Right channel
 		}
+		this.batchAccumulator.push(chunk);
+		this.#currentBatchFrames += AUDIO_CHUNK_FRAMES;
+		this.#currentSampleIndex += AUDIO_CHUNK_FRAMES; // Advance global sample index
 
-		if (!this.ringBuffer) return;
+		// 3. Check if the batch is full and send it
+		if (this.#currentBatchFrames >= BATCH_FRAMES) {
+			const combinedBatchBuffer = new Float32Array(this.#currentBatchFrames * 2);
+
+			let offset = 0;
+			for (const chunk of this.batchAccumulator) {
+				combinedBatchBuffer.set(chunk, offset); // Copy chunk into the combined buffer
+				offset += chunk.length; // Advance offset by number of samples in the chunk
+			}
+
+			// Send the combined ArrayBuffer to the main thread as a transferable
+			self.postMessage(
+				{
+					command: 'audio-chunk', // New message type for batches
+					audioData: combinedBatchBuffer.buffer
+				},
+				{ transfer: [combinedBatchBuffer.buffer] }
+				// Transfer the ArrayBuffer
+			);
+
+			// Clear the accumulator for the next batch
+			this.batchAccumulator.length = 0; // Clear the array
+			this.#currentBatchFrames = 0;
+		}
+		/* 	self.postMessage(
+			{
+				command: 'audio-chunk',
+				audioData: chunkBuffer.buffer
+			},
+			{ transfer: [chunkBuffer.buffer] }
+			// Make sure to list it as transferable!
+		); */
+
+		/* if (!this.ringBuffer) return;
 
 		const enqueued = this.ringBuffer.push(chunkBuffer);
 
@@ -116,7 +157,7 @@ export class Audio {
 			);
 		}
 
-		this.#currentSampleIndex += 1024;
+		this.#currentSampleIndex += 1024; */
 		//	}
 
 		if (this.#chunkBuffer.length < 5) {

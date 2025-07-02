@@ -4,6 +4,7 @@ import { appState, timelineState } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
 import { RingBuffer } from 'ringbuf.js';
 import MediaWorker from './worker?worker';
+import { audioMessageReceived } from '$lib/timeline/actions';
 
 export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker = new MediaWorker();
@@ -36,6 +37,9 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				console.log(event.data);
 				appState.audioRingBuffer = new RingBuffer(event.data.sharedArrayBuffer, Float32Array);
 				break;
+			}
+			case 'audio-chunk': {
+				audioMessageReceived(event.data);
 			}
 		}
 	});
