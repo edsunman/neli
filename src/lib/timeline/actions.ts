@@ -26,6 +26,7 @@ let currentOffset = 0;
 const audioQueue: Float32Array[] = [];
 
 export const audioMessageReceived = (data) => {
+	console.log(data.audioData);
 	const f32array = new Float32Array(data.audioData);
 	audioQueue.push(f32array);
 };
