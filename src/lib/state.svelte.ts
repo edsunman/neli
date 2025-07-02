@@ -2,7 +2,6 @@ import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryCommands } from './history/history';
 import type { WebGPURenderer } from './worker/renderer';
-import type { RingBuffer } from 'ringbuf.js';
 
 class AppState {
 	renderer: WebGPURenderer | null = null;
@@ -11,7 +10,6 @@ class AppState {
 	showPalette = $state(false);
 	disableKeyboardShortcuts = false;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
-	audioRingBuffer: RingBuffer | undefined;
 }
 
 export const appState = new AppState();

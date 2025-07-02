@@ -1,5 +1,5 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
-import { appState, timelineState } from '$lib/state.svelte';
+import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
 
@@ -21,14 +21,12 @@ const audioContext = new AudioContext();
 const gainNode = audioContext.createGain();
 gainNode.gain.value = 0.7; // Master volume
 gainNode.connect(audioContext.destination);
-const f32array = new Float32Array(1024 * 2);
+
 let currentOffset = 0;
 const audioQueue: Float32Array[] = [];
 
 export const audioMessageReceived = (data) => {
-	//console.log(data);
 	const f32array = new Float32Array(data.audioData);
-
 	audioQueue.push(f32array);
 };
 
@@ -43,13 +41,13 @@ const pullAndPlayAudio = () => {
 		if (!receivedFloat32Data) return;
 
 		const framesRead = receivedFloat32Data.length / 2;
-		console.log('framesRead', framesRead);
+		//console.log('framesRead', framesRead);
 		const audioBuffer = audioContext.createBuffer(
 			2, // Use the global CHANNELS variable (e.g., 2 for stereo)
 			framesRead,
 			audioContext.sampleRate
 		);
-		console.log(audioBuffer);
+		//console.log(audioBuffer);
 
 		//console.log(audioBuffer.length, audioBuffer.duration);
 
@@ -72,10 +70,10 @@ const pullAndPlayAudio = () => {
 		const scheduledTime = Math.max(audioContext.currentTime, currentOffset);
 		source.start(scheduledTime);
 		currentOffset = scheduledTime + audioBuffer.duration;
-		console.log(`current time: ${audioContext.currentTime} scheduled time : ${currentOffset}`);
-		console.log(
-			`Main: Scheduled chunk. Remaining in queue: ${audioQueue.length} Current offset: ${currentOffset}`
-		);
+		//console.log(`current time: ${audioContext.currentTime} scheduled time : ${currentOffset}`);
+		//console.log(
+		//	`Main: Scheduled chunk. Remaining in queue: ${audioQueue.length} Current offset: ${currentOffset}`
+		//);
 	}
 };
 

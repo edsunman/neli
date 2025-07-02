@@ -1,10 +1,6 @@
-import { RingBuffer } from 'ringbuf.js';
-
 const DEBUG = false;
-const DATA_BUFFER_DURATION = 0.6;
 const AUDIO_CHUNK_FRAMES = 1024;
 const BATCH_FRAMES = AUDIO_CHUNK_FRAMES * 16; // Send 4 'internal' chunks at once
-const BATCH_SAMPLES = BATCH_FRAMES * 2; // Total samples in a batch
 
 /**
  * Responsible for demuxing and storing video chunks, then
@@ -15,8 +11,6 @@ export class Audio {
 	#decoderConfig: AudioDecoderConfig | null = null;
 	//#ready = false;
 	#running = false;
-
-	ringBuffer: RingBuffer | undefined;
 
 	/** all chunks */
 	#chunks: EncodedAudioChunk[] = [];
@@ -42,17 +36,6 @@ export class Audio {
 		this.#decoderConfig = config;
 		this.#decoder.configure(this.#decoderConfig);
 		this.#chunks = chunks;
-		//this.#ready = true;
-
-		// Initialize the ring buffer between the decoder and the real-time audio
-		// rendering thread. The AudioRenderer has buffer space for approximately
-		// 500ms of decoded audio ahead.
-		const sampleCountIn500ms =
-			DATA_BUFFER_DURATION * this.#decoderConfig.sampleRate * this.#decoderConfig.numberOfChannels;
-		const sab = RingBuffer.getStorageForCapacity(sampleCountIn500ms, Float32Array);
-		this.ringBuffer = new RingBuffer(sab, Float32Array);
-
-		return sab;
 	}
 
 	play(/* frameNumber: number */) {
@@ -84,7 +67,7 @@ export class Audio {
 		}
 
 		let minTimeDelta = Infinity;
-		//let audioDataIndex = -1;
+
 		for (let i = 0; i < this.#audioDataQueue.length; i++) {
 			const time_delta = Math.abs(elapsedMicroSeconds - this.#audioDataQueue[i].timestamp);
 			if (time_delta < minTimeDelta) {
@@ -94,9 +77,7 @@ export class Audio {
 				break;
 			}
 		}
-		//const chosenAudioData = this.#audioDataQueue[audioDataIndex];
-		//if (chosenAudioData) console.log('got -> ', this.#audioDataQueue[audioDataIndex].timestamp);
-		//for (let i = 0; i < 2; i++) {
+
 		const chunk = new Float32Array(1024 * 2);
 
 		for (let i = 0; i < 1024; i++) {
@@ -135,30 +116,6 @@ export class Audio {
 			this.batchAccumulator.length = 0; // Clear the array
 			this.#currentBatchFrames = 0;
 		}
-		/* 	self.postMessage(
-			{
-				command: 'audio-chunk',
-				audioData: chunkBuffer.buffer
-			},
-			{ transfer: [chunkBuffer.buffer] }
-			// Make sure to list it as transferable!
-		); */
-
-		/* if (!this.ringBuffer) return;
-
-		const enqueued = this.ringBuffer.push(chunkBuffer);
-
-		console.log('queue -> ', enqueued);
-
-		if (enqueued < chunkBuffer.length) {
-			// This indicates the main thread isn't consuming fast enough, or buffer is too small
-			console.warn(
-				`Worker: Ring buffer overflow! Only pushed ${enqueued} of ${chunkBuffer.length} samples. Buffer full: ${((this.ringBuffer.availableWrite() / this.ringBuffer.capacity()) * 100).toFixed(2)}%`
-			);
-		}
-
-		this.#currentSampleIndex += 1024; */
-		//	}
 
 		if (this.#chunkBuffer.length < 5) {
 			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
@@ -177,17 +134,6 @@ export class Audio {
 			//const numberOfFrames = audioData.numberOfFrames;
 			this.#audioDataQueue.push(audioData);
 			this.#lastAudioDataTimestamp = audioData.timestamp;
-			/* audioData.copyTo(this.#decoderOutputArray, {
-				planeIndex: 0
-			});
-			let enqueued = 0;
-			if (this.ringBuffer)
-				enqueued = this.ringBuffer.push(this.#decoderOutputArray.subarray(0, numberOfFrames));
-			if (enqueued < numberOfFrames) {
-				console.warn(`Ring buffer overflow! Dropped ${numberOfFrames - enqueued} frames.`);
-			}
-			//console.log(enqueued);
-			audioData.close(); */
 		}
 		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;

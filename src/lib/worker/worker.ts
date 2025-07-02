@@ -35,14 +35,7 @@ self.addEventListener('message', async function (e) {
 				const newSource = await loadFile(e.data.file);
 				newSource.id = e.data.id;
 				sources.push(newSource);
-				const sab = audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
-				if (!audioDecoder.ringBuffer) return;
-				self.postMessage({
-					command: 'load-done',
-					sampleRate: newSource.audioConfig.sampleRate,
-					channelCount: newSource.audioConfig.numberOfChannels,
-					sharedArrayBuffer: sab
-				});
+				audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
 			}
 			break;
 		case 'encode':
