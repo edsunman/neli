@@ -18,15 +18,12 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 };
 
 const audioContext = new AudioContext();
-const gainNode = audioContext.createGain();
-gainNode.gain.value = 0.7; // Master volume
-gainNode.connect(audioContext.destination);
+let gainNode: GainNode;
 
 let currentOffset = 0;
 const audioQueue: Float32Array[] = [];
 
-export const audioMessageReceived = (data) => {
-	console.log(data.audioData);
+export const audioMessageReceived = (data: { audioData: ArrayBuffer }) => {
 	const f32array = new Float32Array(data.audioData);
 	audioQueue.push(f32array);
 };
@@ -84,11 +81,14 @@ export const play = () => {
 	playWorker(timelineState.currentFrame);
 	const intervalMs = (1024 / 48000) * 1000 * 0.8;
 	console.log('interval ', intervalMs);
-	setInterval(pullAndPlayAudio, intervalMs);
 	currentOffset = audioContext.currentTime;
 
 	let firstTimestamp = -1;
 	let previousFrame = -1;
+
+	gainNode = audioContext.createGain();
+	gainNode.gain.value = 0.7; // Master volume
+	gainNode.connect(audioContext.destination);
 
 	const startingFrame = timelineState.currentFrame;
 	const loop = (timestamp: number) => {
@@ -98,6 +98,8 @@ export const play = () => {
 		}
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		pullAndPlayAudio();
 
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);
@@ -117,6 +119,7 @@ export const play = () => {
 export const pause = () => {
 	timelineState.playing = false;
 	pauseWorker();
+	gainNode.disconnect();
 };
 
 export const centerViewOnPlayhead = () => {

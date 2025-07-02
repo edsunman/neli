@@ -3,7 +3,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 //import mkcert from 'vite-plugin-mkcert';
 import { defineConfig, type ViteDevServer } from 'vite';
 
-const myPlugin = () => ({
+/* const myPlugin = () => ({
 	name: 'allow-worker-file',
 	configureServer(server: ViteDevServer) {
 		server.middlewares.use((req, res, next) => {
@@ -13,8 +13,8 @@ const myPlugin = () => ({
 			next();
 		});
 	}
-});
+}); */
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), myPlugin() /* , mkcert() */]
+	plugins: [tailwindcss(), sveltekit() /*  myPlugin() , mkcert() */]
 });

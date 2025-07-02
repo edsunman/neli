@@ -53,6 +53,7 @@ self.addEventListener('message', async function (e) {
 			{
 				playing = false;
 				decoderPool.pauseAll();
+				audioDecoder.pause();
 			}
 			break;
 		case 'seek': {
@@ -88,7 +89,7 @@ self.addEventListener('message', async function (e) {
 });
 
 const startPlayLoop = async (frame: number) => {
-	audioDecoder.play();
+	audioDecoder.play(frame);
 
 	const startingFrame = frame;
 

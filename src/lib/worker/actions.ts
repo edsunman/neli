@@ -2,7 +2,6 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source';
 import { appState, timelineState } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
-import { RingBuffer } from 'ringbuf.js';
 import MediaWorker from './worker?worker';
 import { audioMessageReceived } from '$lib/timeline/actions';
 
@@ -31,11 +30,6 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 
 				document.body.removeChild(a);
 				URL.revokeObjectURL(event.data.link); // Clean up the URL
-				break;
-			}
-			case 'load-done': {
-				console.log(event.data);
-				appState.audioRingBuffer = new RingBuffer(event.data.sharedArrayBuffer, Float32Array);
 				break;
 			}
 			case 'audio-chunk': {
