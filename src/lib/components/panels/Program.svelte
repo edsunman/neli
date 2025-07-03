@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appHistory, appState, timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import { setupWorker } from '$lib/worker/actions';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();

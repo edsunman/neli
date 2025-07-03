@@ -1,6 +1,7 @@
 import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
-import { HistoryCommands } from './history/history';
+import { HistoryManager } from './history/history';
+import { AudioMananger } from './audio/audio';
 import type { WebGPURenderer } from './worker/renderer';
 
 class AppState {
@@ -35,4 +36,5 @@ class TimelineState {
 
 export const timelineState = new TimelineState();
 
-export const appHistory = new HistoryCommands();
+export const audioManager = new AudioMananger();
+export const historyManager = new HistoryManager();

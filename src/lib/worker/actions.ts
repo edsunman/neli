@@ -1,9 +1,8 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source';
-import { appState, timelineState } from '$lib/state.svelte';
+import { appState, timelineState, audioManager } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
-import { audioMessageReceived } from '$lib/timeline/actions';
 
 export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker = new MediaWorker();
@@ -33,7 +32,7 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				break;
 			}
 			case 'audio-chunk': {
-				audioMessageReceived(event.data);
+				audioManager.push(new Float32Array(event.data.audioData));
 			}
 		}
 	});
@@ -85,21 +84,6 @@ export const playWorker = (frame: number) => {
 };
 
 export const pauseWorker = () => {
-	appState.mediaWorker?.postMessage({
-		command: 'pause'
-	});
-};
-
-// @ts-expect-error fds
-window.play = (/* frame: number */) => {
-	appState.mediaWorker?.postMessage({
-		command: 'play',
-		frame: timelineState.currentFrame
-	});
-};
-
-// @ts-expect-error fds
-window.pause = () => {
 	appState.mediaWorker?.postMessage({
 		command: 'pause'
 	});

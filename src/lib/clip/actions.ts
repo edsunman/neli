@@ -1,4 +1,4 @@
-import { appHistory, timelineState } from '$lib/state.svelte';
+import { historyManager, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
@@ -25,7 +25,7 @@ export const createClip = async (
 	timelineState.invalidate = true;
 
 	updateWorkerClip(clip);
-	appHistory.newCommand({ action: 'addClip', data: { clipId: clip.id } });
+	historyManager.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 };
 
 export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
@@ -34,7 +34,8 @@ export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
 			clip.deleted = unDelete ? false : true;
 			//clip.videoClip.disabled = unDelete ? false : true;
 			timelineState.selectedClip = null;
-			if (!noHistory) appHistory.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
+			if (!noHistory)
+				historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
 			updateWorkerClip(clip);
 		}
 	}

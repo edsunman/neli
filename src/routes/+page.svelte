@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, timelineState, appHistory } from '$lib/state.svelte';
+	import { appState, historyManager } from '$lib/state.svelte';
 	import { createTextSource } from '$lib/source/actions';
 
 	import Project from '$lib/components/panels/Project.svelte';
@@ -57,9 +57,9 @@
 			case 'KeyZ':
 				if (!event.ctrlKey) break;
 				if (event.shiftKey) {
-					appHistory.redo();
+					historyManager.redo();
 				} else {
-					appHistory.undo();
+					historyManager.undo();
 				}
 
 				break;

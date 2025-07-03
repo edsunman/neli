@@ -1,5 +1,5 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
-import { timelineState } from '$lib/state.svelte';
+import { audioManager, timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
 
@@ -17,80 +17,20 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 	setCurrentFrame(frame);
 };
 
-const audioContext = new AudioContext();
-let gainNode: GainNode;
-
-let currentOffset = 0;
-const audioQueue: Float32Array[] = [];
-
-export const audioMessageReceived = (data: { audioData: ArrayBuffer }) => {
-	const f32array = new Float32Array(data.audioData);
-	audioQueue.push(f32array);
-};
-
-const pullAndPlayAudio = () => {
-	//console.log('available read ', appState.audioRingBuffer?.availableRead());
-
-	//const samplesRead = appState.audioRingBuffer?.pop(f32array);
-
-	if (audioQueue.length > 0) {
-		const receivedFloat32Data = audioQueue.shift();
-		//console.log(receivedFloat32Data);
-		if (!receivedFloat32Data) return;
-
-		const framesRead = receivedFloat32Data.length / 2;
-		//console.log('framesRead', framesRead);
-		const audioBuffer = audioContext.createBuffer(
-			2, // Use the global CHANNELS variable (e.g., 2 for stereo)
-			framesRead,
-			audioContext.sampleRate
-		);
-		//console.log(audioBuffer);
-
-		//console.log(audioBuffer.length, audioBuffer.duration);
-
-		const leftChannelData = audioBuffer.getChannelData(0);
-		for (let i = 0; i < framesRead; i++) {
-			leftChannelData[i] = receivedFloat32Data[i * 2];
-		}
-
-		const rightChannelData = audioBuffer.getChannelData(1);
-		for (let i = 0; i < framesRead; i++) {
-			rightChannelData[i] = receivedFloat32Data[i * 2 + 1];
-		}
-
-		//audioBuffer.getChannelData(0).set(receivedFloat32Data.subarray(0, framesRead));
-
-		const source = audioContext.createBufferSource();
-		source.buffer = audioBuffer;
-		source.connect(gainNode);
-
-		const scheduledTime = Math.max(audioContext.currentTime, currentOffset);
-		source.start(scheduledTime);
-		currentOffset = scheduledTime + audioBuffer.duration;
-		//console.log(`current time: ${audioContext.currentTime} scheduled time : ${currentOffset}`);
-		//console.log(
-		//	`Main: Scheduled chunk. Remaining in queue: ${audioQueue.length} Current offset: ${currentOffset}`
-		//);
-	}
-};
-
 export const play = () => {
 	timelineState.playing = true;
 
 	playWorker(timelineState.currentFrame);
-	const intervalMs = (1024 / 48000) * 1000 * 0.8;
-	console.log('interval ', intervalMs);
-	currentOffset = audioContext.currentTime;
+	/* const intervalMs = (1024 / 48000) * 1000 * 0.8;
+	console.log('interval ', intervalMs); */
+
+	audioManager.play();
 
 	let firstTimestamp = -1;
 	let previousFrame = -1;
 
-	gainNode = audioContext.createGain();
-	gainNode.gain.value = 0.7; // Master volume
-	gainNode.connect(audioContext.destination);
-
 	const startingFrame = timelineState.currentFrame;
+
 	const loop = (timestamp: number) => {
 		if (!timelineState.playing) return;
 		if (firstTimestamp < 0) {
@@ -99,14 +39,13 @@ export const play = () => {
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
 
-		pullAndPlayAudio();
+		audioManager.run();
 
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);
 			return;
 		}
 
-		//console.log(`frame on main: ${targetFrame}`);
 		timelineState.currentFrame = targetFrame;
 		timelineState.invalidate = true;
 
@@ -119,7 +58,7 @@ export const play = () => {
 export const pause = () => {
 	timelineState.playing = false;
 	pauseWorker();
-	gainNode.disconnect();
+	audioManager.pause();
 };
 
 export const centerViewOnPlayhead = () => {

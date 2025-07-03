@@ -5,7 +5,7 @@ type Command =
 	| { action: 'addClip'; data: { clipId: string } }
 	| { action: 'deleteClip'; data: { clipId: string } };
 
-export class HistoryCommands {
+export class HistoryManager {
 	#log = false;
 	#undoStack: Command[] = [];
 	#redoStack: Command[] = [];
