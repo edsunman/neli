@@ -1,7 +1,7 @@
 import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
-import { AudioMananger } from './audio/audio';
+import { AudioMananger } from './audio/audio.svelte';
 import type { WebGPURenderer } from './worker/renderer';
 
 class AppState {
@@ -22,7 +22,6 @@ class TimelineState {
 	playing = $state(false);
 	width = $state(0); // pixels
 	selectedClip = $state<Clip | null>(null);
-	//selectedClip: Clip | null = null;
 
 	zoom = 0.9;
 	offset = -0.055; // percentage, 0...1

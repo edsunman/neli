@@ -249,6 +249,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	updateWorkerClip(clip);
 
 	// create new clip
+	// TODO: need to copy settings to new clip!
 	createClip(clip.source.id, clip.track, frame + gapSize, newClipDuration, newClipOffset);
 };
 
