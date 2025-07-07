@@ -2,21 +2,32 @@
  *   Controls audio playback on main thread
  */
 export class AudioMananger {
-	audioLevel = $state(0);
+	audioLevel = $state([0, 0]);
 
 	#audioContext;
+
 	#gainNode: GainNode | null = null;
-	#analyserNode: AnalyserNode;
+	#analyserNodeLeft: AnalyserNode;
+	#analyserNodeRight: AnalyserNode;
+	#splitterNode: ChannelSplitterNode;
+
 	#currentOffset = 0;
 	#audioQueue: Float32Array[] = [];
-	#dataArray = new Float32Array(1024);
+	#dataArrayLeft = new Float32Array(1024);
+	#dataArrayRight = new Float32Array(1024);
 
 	constructor() {
 		this.#audioContext = new AudioContext();
-		this.#analyserNode = this.#audioContext.createAnalyser();
-		this.#analyserNode.connect(this.#audioContext.destination);
-		this.#analyserNode.fftSize = 1024;
-		this.#analyserNode.smoothingTimeConstant = 1;
+
+		this.#analyserNodeLeft = this.#audioContext.createAnalyser();
+		this.#analyserNodeLeft.fftSize = 1024;
+		this.#analyserNodeRight = this.#audioContext.createAnalyser();
+		this.#analyserNodeRight.fftSize = 1024;
+		//this.#analyserNode.smoothingTimeConstant = 1;
+
+		this.#splitterNode = this.#audioContext.createChannelSplitter();
+		this.#splitterNode.connect(this.#analyserNodeLeft, 0);
+		this.#splitterNode.connect(this.#analyserNodeRight, 1);
 	}
 
 	push(f32Array: Float32Array) {
@@ -27,7 +38,8 @@ export class AudioMananger {
 		this.#currentOffset = this.#audioContext.currentTime;
 		this.#gainNode = this.#audioContext.createGain();
 		this.#gainNode.gain.value = 1; // Master volume
-		this.#gainNode.connect(this.#analyserNode);
+		this.#gainNode.connect(this.#splitterNode);
+		this.#gainNode.connect(this.#audioContext.destination);
 	}
 
 	run() {
@@ -67,39 +79,57 @@ export class AudioMananger {
 	pause() {
 		if (this.#gainNode) this.#gainNode.disconnect();
 		this.#gainNode = null;
-		this.audioLevel = 0;
+		this.audioLevel = [0, 0];
 	}
 
 	#updateMeter() {
-		this.#analyserNode.getFloatTimeDomainData(this.#dataArray); // Get data as floats (-1.0 to 1.0)
+		const MIN_METER_DB = -100; // Bar will be 0% at this dB level
 
+		this.#analyserNodeLeft.getFloatTimeDomainData(this.#dataArrayLeft);
+		this.#analyserNodeRight.getFloatTimeDomainData(this.#dataArrayRight);
+
+		// left channel
 		let peakAmplitude = 0;
-
-		for (let i = 0; i < this.#dataArray.length; i++) {
-			const sample = this.#dataArray[i];
-			const absSample = Math.abs(sample); // Get the absolute value
+		for (let i = 0; i < this.#dataArrayLeft.length; i++) {
+			const sample = this.#dataArrayLeft[i];
+			const absSample = Math.abs(sample);
 			if (absSample > peakAmplitude) {
-				peakAmplitude = absSample; // Update if a new peak is found
+				peakAmplitude = absSample;
+			}
+		}
+		// Convert peak amplitude to dB (eg -6 dbPeak === -6 dB)
+		let dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
+		// Normalise between 0 and 1
+		let normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (0 - MIN_METER_DB);
+		normalisedDbForVisual = Math.max(0, Math.min(1, normalisedDbForVisual));
+		// Apply non linear curve so -6 is about 0.8
+		const peakValueL = Math.pow(normalisedDbForVisual, 3);
+
+		if (peakValueL > this.audioLevel[0]) {
+			this.audioLevel[0] = peakValueL;
+		} else {
+			this.audioLevel[0] = this.audioLevel[0] - 0.02;
+		}
+
+		// right channel
+		peakAmplitude = 0;
+		for (let i = 0; i < this.#dataArrayRight.length; i++) {
+			const sample = this.#dataArrayRight[i];
+			const absSample = Math.abs(sample);
+			if (absSample > peakAmplitude) {
+				peakAmplitude = absSample;
 			}
 		}
 
-		const MIN_METER_DB = -100; // Bar will be 0% at this dB level
-		const MAX_METER_DB = 0; // Bar will be 100% at this dB level
-
-		// Convert peak amplitude to dB (eg -6 dbPeak === -6 dB)
-		const dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
-
-		// Normalise between 0 and 1
-		let normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (MAX_METER_DB - MIN_METER_DB);
+		dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
+		normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (0 - MIN_METER_DB);
 		normalisedDbForVisual = Math.max(0, Math.min(1, normalisedDbForVisual));
+		const peakValueR = Math.pow(normalisedDbForVisual, 3);
 
-		// Apply non linear curve so -6 is about 0.8
-		const peakValue = Math.pow(normalisedDbForVisual, 3);
-
-		if (peakValue > this.audioLevel) {
-			this.audioLevel = peakValue;
+		if (peakValueR > this.audioLevel[1]) {
+			this.audioLevel[1] = peakValueR;
 		} else {
-			this.audioLevel = this.audioLevel - 0.01;
+			this.audioLevel[1] = this.audioLevel[1] - 0.02;
 		}
 	}
 }

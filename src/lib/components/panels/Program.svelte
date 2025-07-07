@@ -5,8 +5,6 @@
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
-	$inspect(audioManager.audioLevel);
-
 	let element = $state<HTMLCanvasElement>();
 	let width = $state(0);
 	let height = $state(0);
@@ -43,24 +41,6 @@
 		style:transform={`scale(${scale}%)`}
 	>
 		<canvas bind:this={element} width={1920} height={1080}></canvas>
-	</div>
-	<div
-		style:height={`${1080 * (scale / 100)}px`}
-		style:top={`${height / 2 - 540 * (scale / 100)}px`}
-		style:left={`${width / 2 + 960 * (scale / 92)}px`}
-		class="w-3.5 absolute flex justify-between bg-zinc-950"
-		style="background:linear-gradient(90deg,#131315 43%, #18181b 43%, #18181b 57%,#131315 57%);"
-	>
-		<div
-			class="w-1.5 h-full"
-			style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
-			style:clip-path={`rect(${(1 - audioManager.audioLevel) * 100}% 100% 100% 0%)`}
-		></div>
-		<div
-			class="w-1.5 h-full"
-			style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
-			style:clip-path={`rect(${(1 - audioManager.audioLevel) * 100}% 100% 100% 0%)`}
-		></div>
 	</div>
 	{#if timelineState.selectedClip && timelineState.currentFrame > timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 		{@const clip = timelineState.selectedClip}

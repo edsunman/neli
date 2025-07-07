@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { updateWorkerClip } from '$lib/worker/actions';
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, audioManager, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';
 
@@ -15,8 +15,8 @@
 	});
 </script>
 
-<div class="flex flex-col mt-12 mr-[calc(100svw/20)] rounded text-zinc-500 text-right pr-2">
-	<div class="absolute right-[calc(100svw/20-50px)] flex flex-col bg-[#131315] rounded">
+<div class="flex mt-12 mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative">
+	<div class="absolute -right-13 flex flex-col bg-[#131315] rounded">
 		{#each { length: 3 } as _}
 			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<button class="p-2 text-zinc-600 hover:text-zinc-400">
@@ -42,11 +42,11 @@
 			</button>
 		{/each}
 	</div>
-	<div class="flex flex-col gap-3 mt-2">
+
+	<div class="flex-1 flex flex-col gap-3 mt-2 mr-3">
 		{#if !timelineState.selectedClip}
 			<div class="text-sm font-medium">
-				<span>Aspect ratio</span>
-
+				<!-- <span>Aspect ratio</span>
 				<ToggleGroup.Root type="multiple" class="flex justify-end gap-x-2 mt-2">
 					{#each { length: 3 } as _}
 						<ToggleGroup.Item
@@ -70,7 +70,7 @@
 							>
 						</ToggleGroup.Item>
 					{/each}
-				</ToggleGroup.Root>
+				</ToggleGroup.Root> -->
 			</div>
 		{/if}
 
@@ -158,4 +158,21 @@
 			</div> -->
 		{/if}
 	</div>
+	{#if !timelineState.selectedClip}
+		<div
+			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
+			style="background:linear-gradient(90deg,#131315 43%, #18181b 43%, #18181b 57%,#131315 57%);"
+		>
+			<div
+				class="w-1.5 h-full"
+				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
+				style:clip-path={`rect(${(1 - audioManager.audioLevel[0]) * 100}% 100% 100% 0%)`}
+			></div>
+			<div
+				class="w-1.5 h-full"
+				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
+				style:clip-path={`rect(${(1 - audioManager.audioLevel[1]) * 100}% 100% 100% 0%)`}
+			></div>
+		</div>
+	{/if}
 </div>
