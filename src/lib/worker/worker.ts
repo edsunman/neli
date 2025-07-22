@@ -101,7 +101,7 @@ const startPlayLoop = async (frame: number) => {
 	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
 	let accumulator = 0;
 	let lastTime = 0;
-	let targetFrame = 0;
+	let targetFrame = startingFrame;
 
 	let i = 0;
 	const loop = async (timestamp: number) => {
@@ -123,16 +123,11 @@ const startPlayLoop = async (frame: number) => {
 		}
 
 		const elapsedTimeMs = timestamp - firstTimestamp;
-		//const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
-
 		const deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
-
 		accumulator += deltaTime;
 
-		//const oldFrame = timelineState.currentFrame;
-
-		// the - 1 here is to make playback smoother
+		// the - 1 here is an 'epsilon' to make playback smoother
 		while (accumulator >= MS_PER_FRAME - 1) {
 			targetFrame = previousFrame + 1;
 			accumulator -= MS_PER_FRAME;
