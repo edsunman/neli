@@ -2,10 +2,23 @@
 	import { createTextSource } from '$lib/source/actions';
 	import { appState } from '$lib/state.svelte';
 	import { untrack } from 'svelte';
+	import { setCurrentFrame } from '$lib/timeline/actions';
+
+	import TextIcon from '../icons/TextIcon.svelte';
+	import TestIcon from '../icons/TestIcon.svelte';
+	import ZoomInIcon from '../icons/ZoomInIcon.svelte';
+	import ZoomOutIcon from '../icons/ZoomOutIcon.svelte';
+	import ImportIcon from '../icons/ImportIcon.svelte';
+	import ExportIcon from '../icons/ExportIcon.svelte';
+	import SettingsIcon from '../icons/SettingsIcon.svelte';
+	import SeekIcon from '../icons/SeekIcon.svelte';
 
 	let { page = $bindable() } = $props();
 	let inputValue = $state<string>();
 	let selectedIndex = -1;
+	let showSeekOptions = $state(false);
+	let targetFrame = $state(0);
+	let targetFrameFormatted = $state('');
 
 	const categories = $state.raw([
 		{
@@ -16,24 +29,28 @@
 					id: 1,
 					text: 'Import',
 					selected: false,
+					icon: ImportIcon,
 					action: () => console.log(1)
 				},
 				{
 					id: 2,
 					text: 'Export',
 					selected: false,
+					icon: ExportIcon,
 					action: () => (page = 'export')
 				},
 				{
 					id: 3,
 					text: 'Settings',
 					selected: false,
+					icon: SettingsIcon,
 					action: () => console.log(2)
 				},
 				{
 					id: 4,
 					text: 'Welcome',
 					selected: false,
+					icon: TestIcon,
 					action: () => console.log(3)
 				}
 			]
@@ -46,12 +63,14 @@
 					id: 5,
 					text: 'Zoom in',
 					selected: false,
+					icon: ZoomInIcon,
 					action: () => console.log(1)
 				},
 				{
 					id: 6,
 					text: 'Zoom out',
 					selected: false,
+					icon: ZoomOutIcon,
 					action: () => (page = 'export')
 				}
 			]
@@ -64,6 +83,7 @@
 					id: 7,
 					text: 'Add text',
 					selected: false,
+					icon: TextIcon,
 					action: () => {
 						createTextSource();
 						appState.showPalette = false;
@@ -73,6 +93,7 @@
 					id: 8,
 					text: 'Add test card',
 					selected: false,
+					icon: TestIcon,
 					action: () => (page = 'export')
 				}
 			]
@@ -89,10 +110,33 @@
 		});
 	});
 
+	// take string like 1s, 3m or 40f and return a frame number
+	const parseInputNumbers = (inputNumbers: string) => {
+		const lastChar = inputNumbers.slice(inputNumbers.length - 1);
+		const onlyNumbers = Number(inputNumbers.replace(/[^0-9]/g, ''));
+		if (lastChar === 'f') {
+			targetFrame = onlyNumbers;
+			targetFrameFormatted = `frame ${onlyNumbers}`;
+		} else if (lastChar === 'm') {
+			targetFrame = onlyNumbers * 30 * 60;
+			targetFrameFormatted = `${onlyNumbers} minutes`;
+		} else {
+			targetFrame = onlyNumbers * 30;
+			targetFrameFormatted = `${onlyNumbers} seconds`;
+		}
+		return;
+	};
+
 	$effect(() => {
 		inputValue;
 		untrack(() => {
 			if (typeof inputValue === 'undefined') return;
+			if (/^\d/.test(inputValue)) {
+				showSeekOptions = true;
+				parseInputNumbers(inputValue);
+			} else {
+				showSeekOptions = false;
+			}
 			let filteredCount = 0;
 			filtered.forEach((category) => {
 				filteredCount += category.commands.length;
@@ -149,6 +193,10 @@
 <!-- svelte-ignore a11y_autofocus -->
 <form
 	onsubmit={() => {
+		if (showSeekOptions) {
+			setCurrentFrame(targetFrame);
+			appState.showPalette = false;
+		}
 		for (const category of filtered) {
 			for (const command of category.commands) {
 				if (command.selected && command.action) {
@@ -167,13 +215,13 @@
 		autofocus
 	/>
 </form>
-{#each filtered as category}
-	{#if category.commands.length > 0}
-		<div class="pb-4">
-			<div class="text-zinc-200 select-none text-sm">{category.name}</div>
+<div>
+	{#each filtered as category}
+		{#if category.commands.length > 0}
+			<div class="mb-4">
+				<div class="text-zinc-200 select-none text-sm mb-2">{category.name}</div>
 
-			{#each category.commands as command}
-				<div class="my-2">
+				{#each category.commands as command}
 					<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 					<button
 						onmousemove={() => {
@@ -181,31 +229,30 @@
 						}}
 						onclick={command.action}
 						class={[
-							'cursor-pointer w-full px-4 py-2 rounded-lg text-left',
+							'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
 							command.selected ? 'text-zinc-800 bg-zinc-300' : ' text-zinc-200'
 						]}
-						><svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-							class="size-5 inline mr-1"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM10.5 7.5v6m3-3h-6"
-							/>
-						</svg>
-
-						{@html formatString(command.text)}
+					>
+						<command.icon class="size-5 inline mr-2" />
+						<p>{@html formatString(command.text)}</p>
 					</button>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
+		{/if}
+	{/each}
+	{#if showSeekOptions}
+		<button
+			class={[
+				'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
+				'text-zinc-800 bg-zinc-300'
+			]}
+		>
+			<SeekIcon class="size-5 inline mr-2" />
+			<!-- {@html formatString(command.text)} -->
+			<p>Seek to {targetFrameFormatted}</p>
+		</button>
 	{/if}
-{/each}
+</div>
 <svelte:window
 	onkeydown={(event) => {
 		switch (event.code) {

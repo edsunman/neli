@@ -3,6 +3,19 @@
 	import { appState, audioManager, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';
+	import SpeakerIcon from '../icons/SpeakerIcon.svelte';
+	import SettingsIcon from '../icons/SettingsIcon.svelte';
+	import AudioIcon from '../icons/AudioIcon.svelte';
+
+	let selected = $state<'audio' | 'project' | 'clip'>('audio');
+
+	$effect(() => {
+		if (timelineState.selectedClip) {
+			selected = 'clip';
+		} else {
+			selected = 'audio';
+		}
+	});
 
 	$effect(() => {
 		timelineState.selectedClip?.scaleX;
@@ -17,36 +30,36 @@
 
 <div class="flex mt-12 mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative">
 	<div class="absolute -right-13 flex flex-col bg-[#131315] rounded">
-		{#each { length: 3 } as _}
-			<!-- svelte-ignore a11y_consider_explicit_label -->
-			<button class="p-2 text-zinc-600 hover:text-zinc-400">
-				<svg
-					role="img"
-					xmlns="http://www.w3.org/2000/svg"
-					width="25px"
-					height="25px"
-					viewBox="0 0 24 24"
-					aria-labelledby="folderIconTitle"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					fill="none"
-				>
-					<path d="M13 5v14l-5-4H3V9h5z" />
-					<path stroke-linecap="round" d="M13 14c1.5-1 1.5-3 0-4" />
-					<path
-						d="M16 16C18.0858253 13.9141747 18.0858253 10.0858253 16 8M18 19C21.98552 15.01448 22.0076803 9.00768033 18 5"
-					/>
-				</svg>
+		<!-- svelte-ignore a11y_consider_explicit_label -->
+		<button
+			onclick={() => (selected = 'audio')}
+			class={[selected === 'audio' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
+		>
+			<SpeakerIcon class="w-6 h-6" />
+		</button>
+		<button
+			onclick={() => (selected = 'project')}
+			class={[
+				selected === 'project' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400',
+				'p-2'
+			]}
+		>
+			<SettingsIcon class="w-6 h-6" />
+		</button>
+		{#if timelineState.selectedClip}
+			<button
+				onclick={() => (selected = 'clip')}
+				class={[selected === 'clip' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
+			>
+				<AudioIcon class="w-6 h-6" />
 			</button>
-		{/each}
+		{/if}
 	</div>
 
 	<div class="flex-1 flex flex-col gap-3 mt-2 mr-3">
-		{#if !timelineState.selectedClip}
+		{#if selected === 'project'}
 			<div class="text-sm font-medium">
-				<!-- <span>Aspect ratio</span>
+				<span>Aspect ratio</span>
 				<ToggleGroup.Root type="multiple" class="flex justify-end gap-x-2 mt-2">
 					{#each { length: 3 } as _}
 						<ToggleGroup.Item
@@ -70,11 +83,11 @@
 							>
 						</ToggleGroup.Item>
 					{/each}
-				</ToggleGroup.Root> -->
+				</ToggleGroup.Root>
 			</div>
 		{/if}
 
-		{#if timelineState.selectedClip}
+		{#if selected === 'clip' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 
 			<div class="text-sm font-medium">
@@ -158,7 +171,7 @@
 			</div> -->
 		{/if}
 	</div>
-	{#if !timelineState.selectedClip}
+	{#if selected === 'audio'}
 		<div
 			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
 			style="background:linear-gradient(90deg,#131315 43%, #18181b 43%, #18181b 57%,#131315 57%);"

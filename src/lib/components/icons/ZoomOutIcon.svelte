@@ -1,0 +1,19 @@
+<script>
+	let { ...rest } = $props();
+</script>
+
+<svg
+	{...rest}
+	role="img"
+	xmlns="http://www.w3.org/2000/svg"
+	viewBox="0 0 24 24"
+	stroke="currentColor"
+	stroke-width="2"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	fill="none"
+>
+	<path
+		d="M14,16 C10.6862915,16 8,13.3137085 8,10 C8,6.6862915 10.6862915,4 14,4 C17.3137085,4 20,6.6862915 20,10 C20,13.3137085 17.3137085,16 14,16 Z"
+	/> <path d="M16.6666667 10L11.3333333 10M4 20L9.58788778 14.4121122" />
+</svg>

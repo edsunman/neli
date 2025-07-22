@@ -197,6 +197,7 @@
 <svelte:window
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
+		if (appState.showPalette) return;
 		switch (event.code) {
 			case 'ArrowLeft':
 				setCurrentFrame(timelineState.currentFrame - 1);

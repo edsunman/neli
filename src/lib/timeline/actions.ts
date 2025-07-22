@@ -4,6 +4,8 @@ import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
 
 export const setCurrentFrame = (frame: number) => {
+	if (frame < 0) frame = 0;
+	if (frame > 8999) frame = 8999;
 	seekWorker(frame);
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
@@ -11,9 +13,7 @@ export const setCurrentFrame = (frame: number) => {
 
 export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 	timelineState.playing = false;
-	let frame = canvasPixelToFrame(canvasOffset);
-	if (frame < 0) frame = 0;
-	if (frame > 8999) frame = 8999;
+	const frame = canvasPixelToFrame(canvasOffset);
 	setCurrentFrame(frame);
 };
 
