@@ -199,6 +199,9 @@
 		if (appState.disableKeyboardShortcuts) return;
 		if (appState.showPalette) return;
 		switch (event.code) {
+			case 'Home':
+				setCurrentFrame(0);
+				break;
 			case 'ArrowLeft':
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;

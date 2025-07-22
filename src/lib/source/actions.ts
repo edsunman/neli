@@ -15,6 +15,10 @@ export const createVideoSource = async (file: File) => {
 	const mp4file = createFile();
 	mp4file.onReady = (info) => {
 		console.log(info);
+		if (info.videoTracks.length < 1) {
+			console.warn('no video track');
+			return;
+		}
 		foundInfo = true;
 		mp4info = info;
 		const newSource = new Source('video', mp4info, file);
