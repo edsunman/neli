@@ -95,10 +95,16 @@ const startPlayLoop = async (frame: number) => {
 
 	setupFrame(startingFrame);
 
-	let firstRAFTimestamp: number | null = null;
+	let firstTimestamp: number | null = null;
 	let previousFrame = -1;
+
+	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
+	let accumulator = 0;
+	let lastTime = 0;
+	let targetFrame = 0;
+
 	let i = 0;
-	const loop = async (rafTimestamp: number) => {
+	const loop = async (timestamp: number) => {
 		if (!playing) return;
 
 		// pause for two loops to wait for VideoDecoders to warm up
@@ -108,12 +114,29 @@ const startPlayLoop = async (frame: number) => {
 			return;
 		}
 
-		if (firstRAFTimestamp === null) {
-			firstRAFTimestamp = rafTimestamp;
+		if (lastTime === 0) {
+			lastTime = timestamp;
 		}
 
-		const elapsedTimeMs = rafTimestamp - firstRAFTimestamp;
-		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+		if (firstTimestamp === null) {
+			firstTimestamp = timestamp;
+		}
+
+		const elapsedTimeMs = timestamp - firstTimestamp;
+		//const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		const deltaTime = timestamp - lastTime;
+		lastTime = timestamp;
+
+		accumulator += deltaTime;
+
+		//const oldFrame = timelineState.currentFrame;
+
+		// the - 1 here is to make playback smoother
+		while (accumulator >= MS_PER_FRAME - 1) {
+			targetFrame = previousFrame + 1;
+			accumulator -= MS_PER_FRAME;
+		}
 
 		audioDecoder.run(elapsedTimeMs);
 
@@ -122,7 +145,7 @@ const startPlayLoop = async (frame: number) => {
 			return;
 		}
 
-		await buildAndDrawFrame(targetFrame, true);
+		buildAndDrawFrame(targetFrame, true);
 
 		previousFrame = targetFrame;
 		self.requestAnimationFrame(loop);
@@ -140,7 +163,6 @@ const setupFrame = (frame: number) => {
 				return;
 			}
 			clip.decoder.play(clipFrame);
-			console.log('starting play', clipFrame);
 		}
 	}
 };

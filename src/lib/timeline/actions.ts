@@ -21,35 +21,39 @@ export const play = () => {
 	timelineState.playing = true;
 
 	playWorker(timelineState.currentFrame);
-	/* const intervalMs = (1024 / 48000) * 1000 * 0.8;
-	console.log('interval ', intervalMs); */
 
 	audioManager.play();
 
-	let firstTimestamp = -1;
-	let previousFrame = -1;
-
-	const startingFrame = timelineState.currentFrame;
+	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
+	let accumulator = 0;
+	let lastTime = 0;
 
 	const loop = (timestamp: number) => {
 		if (!timelineState.playing) return;
-		if (firstTimestamp < 0) {
-			firstTimestamp = timestamp;
+
+		if (lastTime === 0) {
+			lastTime = timestamp;
 		}
-		const elapsedTimeMs = timestamp - firstTimestamp;
-		const targetFrame = Math.round((elapsedTimeMs / 1000) * 30) + startingFrame;
+
+		const deltaTime = timestamp - lastTime;
+		lastTime = timestamp;
+
+		accumulator += deltaTime;
+
+		const oldFrame = timelineState.currentFrame;
+
+		// the - 1 here is an 'epsilon' to make playback smoother
+		while (accumulator >= MS_PER_FRAME - 1) {
+			timelineState.currentFrame++;
+			accumulator -= MS_PER_FRAME;
+		}
 
 		audioManager.run();
 
-		if (targetFrame === previousFrame) {
-			self.requestAnimationFrame(loop);
-			return;
+		if (timelineState.currentFrame !== oldFrame) {
+			timelineState.invalidate = true;
 		}
 
-		timelineState.currentFrame = targetFrame;
-		timelineState.invalidate = true;
-
-		previousFrame = targetFrame;
 		if (timelineState.playing) requestAnimationFrame(loop);
 	};
 	requestAnimationFrame(loop);
