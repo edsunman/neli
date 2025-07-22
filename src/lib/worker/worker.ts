@@ -178,6 +178,8 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		}
 	}
 
+	decoderPool.markAllAsUnused();
+
 	// get frame for each video clip
 	const videoFrames = [];
 	for (const videoClip of videoClips) {
@@ -187,7 +189,6 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			if (!videoClip.decoder) {
 				return;
 			}
-			//console.log(videoClip.decoder.clipId, videoClip.decoder.id);
 			f = videoClip.decoder.run(clipFrame * 33.33333333);
 		} else {
 			if (!videoClip.decoder) {
@@ -201,7 +202,10 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			return;
 		}
 		videoFrames.push(f);
-		if (videoClip.decoder) videoClip.decoder.lastUsedTime = performance.now();
+		if (videoClip.decoder) {
+			videoClip.decoder.lastUsedTime = performance.now();
+			videoClip.decoder.usedThisFrame = true;
+		}
 	}
 
 	if (run) {
@@ -210,15 +214,18 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			if (clip.type !== 'video' || clip.deleted) continue;
 			if (frame < clip.start && frame > clip.start - 4) {
 				const frameDistance = clip.start - frame;
-				//console.log(`clip starts in ${frameDistance} frames`)
+				//console.log(`clip starts in ${frameDistance} frames`);
 				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
 				if (!clip.decoder) {
 					await setupNewDecoder(clip);
 				}
 				if (!clip.decoder) return;
+				clip.decoder.usedThisFrame = true;
 				clip.decoder.play(clipStartFrame);
 			}
 		}
+
+		decoderPool.pauseAllUnused();
 	}
 
 	renderer.startPaint();
@@ -253,7 +260,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 const setupNewDecoder = async (clip: WorkerClip) => {
 	const source = sources.find((s) => s.id === clip.sourceId);
 	if (!source) return;
-	const decoder = await decoderPool.getDecoder(source.videoConfig);
+	const decoder = await decoderPool.getDecoder();
 	if (!decoder) return;
 	for (const c of clips) {
 		if (c.id === decoder.clipId) {
@@ -262,7 +269,6 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	}
 	clip.decoder = decoder;
 	decoder.clipId = clip.id;
-	console.log(source.videoConfig);
 	decoder.setup(source.videoConfig, source.videoChunks);
 };
 

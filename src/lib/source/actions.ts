@@ -19,6 +19,7 @@ export const createVideoSource = async (file: File) => {
 			console.warn('no video track');
 			return;
 		}
+		// TODO: check codec is suported by VideoDecoder
 		foundInfo = true;
 		mp4info = info;
 		const newSource = new Source('video', mp4info, file);

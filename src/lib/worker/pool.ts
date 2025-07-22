@@ -3,42 +3,24 @@ import { Decoder } from './decoder';
 const DEBUG = false;
 
 export class DecoderPool {
-	#pool: Decoder[] = [];
 	#activeDecoders = new Set<Decoder>();
 	#maxDecoders = 3;
 	#decoderCount = 0;
 
 	constructor() {
-		this.#pool = [];
 		this.#activeDecoders = new Set();
 	}
 
-	async getDecoder(config: VideoDecoderConfig) {
+	async getDecoder() {
 		let decoder;
-
 		if (this.#activeDecoders.size < this.#maxDecoders) {
-			if (this.#pool.length > 0) {
-				decoder = this.#pool.shift();
-
-				if (!decoder) return;
-				if (DEBUG) console.log(`[DecoderPool] Reconfiguring any existing decoder from pool.`);
-			} else {
-				// No idle decoder, create a new one
-
-				// TODO: too late to check this, should check on import
-				const support = await VideoDecoder.isConfigSupported(config);
-				if (!support.supported) {
-					throw new Error(`[DecoderPool] Codec not supported by this browser.`);
-				}
-
-				decoder = new Decoder();
-				this.#decoderCount++;
-				decoder.id = this.#decoderCount;
-
-				if (DEBUG) console.log(`[DecoderPool] Created new decoder for ${config.codec}.`);
-			}
+			// No idle decoder, create a new one
+			decoder = new Decoder();
+			this.#decoderCount++;
+			decoder.id = this.#decoderCount;
+			if (DEBUG) console.log(`[Pool] Created new decoder`);
 		} else {
-			// use the oldest active decoder
+			// Use the oldest active decoder
 			let smallest = Infinity;
 			let oldestDecoder;
 			for (const d of this.#activeDecoders) {
@@ -47,17 +29,18 @@ export class DecoderPool {
 					oldestDecoder = d;
 				}
 			}
-
 			decoder = oldestDecoder;
+			if (DEBUG) console.log(`[Pool] Using decoder ${decoder!.id}`);
 		}
 
 		if (!decoder) return;
+
 		decoder.lastUsedTime = performance.now();
+		decoder.pause();
 		this.#activeDecoders.add(decoder);
+
 		if (DEBUG)
-			console.log(
-				`[DecoderPool] Active decoders count: ${this.#activeDecoders.size}/${this.#maxDecoders}`
-			);
+			console.log(`[Pool] Active decoders: ${this.#activeDecoders.size}/${this.#maxDecoders}`);
 		return decoder;
 	}
 
@@ -69,6 +52,15 @@ export class DecoderPool {
 		}
 	}
 
-	// TODO:
-	//releaseIdleDecoders() {}
+	markAllAsUnused() {
+		for (const decoder of this.#activeDecoders) {
+			decoder.usedThisFrame = false;
+		}
+	}
+
+	pauseAllUnused() {
+		for (const decoder of this.#activeDecoders) {
+			if (!decoder.usedThisFrame) decoder.pause();
+		}
+	}
 }

@@ -29,6 +29,7 @@ export class Decoder {
 	id = 0;
 	clipId: string | null = null;
 	lastUsedTime = 0;
+	usedThisFrame = false;
 
 	constructor() {
 		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
@@ -76,7 +77,6 @@ export class Decoder {
 	play(frameNumber: number) {
 		if (this.#running) return;
 		this.#running = true;
-
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 		const { targetFrameIndex, keyFrameIndex } = this.#getKeyFrameIndex(frameTimestamp);
 
@@ -135,9 +135,11 @@ export class Decoder {
 		}
 	}
 
-	pause() {
+	async pause() {
+		if (!this.running) return;
 		this.#running = false;
-		if (DEBUG) console.log('Paused. Frames left in queue:', this.#frameQueue.length);
+		if (DEBUG)
+			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.#frameQueue.length}`);
 
 		for (let i = 0; i < this.#frameQueue.length; i++) {
 			this.#frameQueue[i].close();
@@ -145,6 +147,8 @@ export class Decoder {
 		this.#frameQueue = [];
 		this.#chunkBuffer = [];
 		this.#startToQueueFrames = false;
+		//await this.#decoder.flush();
+		//console.log(`Decoder ${this.id} flushed`);
 	}
 
 	get running() {
