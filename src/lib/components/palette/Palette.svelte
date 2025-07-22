@@ -16,7 +16,7 @@
 	}}
 >
 	<div
-		class="bg-zinc-900 w-lg h-[30rem] rounded-lg px-8"
+		class="bg-zinc-900 w-lg h-[30rem] rounded-lg flex flex-col"
 		onclick={(e) => {
 			e.stopPropagation();
 		}}

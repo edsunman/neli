@@ -190,32 +190,38 @@
 	};
 </script>
 
-<!-- svelte-ignore a11y_autofocus -->
-<form
-	onsubmit={() => {
-		if (showSeekOptions) {
-			setCurrentFrame(targetFrame);
-			appState.showPalette = false;
-		}
-		for (const category of filtered) {
-			for (const command of category.commands) {
-				if (command.selected && command.action) {
-					command.action();
-					break;
+<div class="mx-8 flex-none">
+	<!-- svelte-ignore a11y_autofocus -->
+	<form
+		onsubmit={() => {
+			if (showSeekOptions) {
+				setCurrentFrame(targetFrame);
+				appState.showPalette = false;
+			}
+			for (const category of filtered) {
+				for (const command of category.commands) {
+					if (command.selected && command.action) {
+						command.action();
+						break;
+					}
 				}
 			}
-		}
-	}}
+		}}
+	>
+		<input
+			bind:value={inputValue}
+			class="placeholder-zinc-500 w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
+			type="text"
+			placeholder="Search commands"
+			autofocus
+		/>
+	</form>
+</div>
+
+<div
+	class="px-8 flex-1 overflow-y-scroll"
+	style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
 >
-	<input
-		bind:value={inputValue}
-		class="placeholder-zinc-500 w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
-		type="text"
-		placeholder="Search commands"
-		autofocus
-	/>
-</form>
-<div>
 	{#each filtered as category}
 		{#if category.commands.length > 0}
 			<div class="mb-4">
