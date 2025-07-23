@@ -25,9 +25,6 @@ export const loadFile = async (file: File): Promise<WorkerSource> => {
 	let audioTrackId = -1;
 
 	mp4File.onReady = (info) => {
-		console.log(
-			`video tracks: ${info.videoTracks.length}, audio tracks: ${info.audioTracks.length}`
-		);
 		videoConfig = {
 			codec: info.videoTracks[0].codec.startsWith('vp08') ? 'vp8' : info.videoTracks[0].codec,
 			codedHeight: info.videoTracks[0].track_height,
@@ -87,7 +84,6 @@ export const loadFile = async (file: File): Promise<WorkerSource> => {
 		if (!mp4File || !arrayBuffer) return;
 		arrayBuffer.fileStart = 0;
 		mp4File.appendBuffer(arrayBuffer);
-		//mp4File.flush();
 	};
 	reader.readAsArrayBuffer(file);
 

@@ -3,13 +3,13 @@ import { Encoder } from './encoder';
 import { loadFile } from './file';
 import { DecoderPool } from './pool';
 import type { WorkerClip, WorkerSource } from '$lib/types';
-import { Audio } from './audio';
+import { Audio_Decoder } from './audioDecoder';
 
 let renderer: WebGPURenderer;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
 let decoderPool: DecoderPool;
-let audioDecoder: Audio;
+let audioDecoder: Audio_Decoder;
 
 let playing = false;
 let seeking = false;
@@ -27,7 +27,7 @@ self.addEventListener('message', async function (e) {
 				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
-				audioDecoder = new Audio();
+				audioDecoder = new Audio_Decoder();
 			}
 			break;
 		case 'load-file':

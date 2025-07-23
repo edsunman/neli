@@ -6,7 +6,7 @@ const BATCH_FRAMES_TARGET = AUDIO_CHUNK_FRAMES * 8; // Send 4 'internal' chunks 
  * Responsible for demuxing and storing video chunks, then
  * decoding video chunks and returning video frames.
  */
-export class Audio {
+export class Audio_Decoder {
 	#decoder;
 	#decoderConfig: AudioDecoderConfig | null = null;
 	//#ready = false;
