@@ -89,22 +89,24 @@ export const pauseWorker = () => {
 	});
 };
 
-// @ts-expect-error fds
-window.encode = async () => {
-	const audioBuffer = await renderOfflineAudio();
-	const f32Array = audioBuffer.getChannelData(0);
-	//const buffer = f32Array.buffer;
+if (typeof window !== 'undefined') {
+	// @ts-expect-error fds
+	window.encode = async () => {
+		const audioBuffer = await renderOfflineAudio();
+		const f32Array = audioBuffer.getChannelData(0);
+		//const buffer = f32Array.buffer;
 
-	//console.log(buffer);
+		//console.log(buffer);
 
-	appState.mediaWorker?.postMessage(
-		{
-			command: 'encode',
-			audioBuffer: f32Array
-		},
-		[f32Array.buffer]
-	);
-};
+		appState.mediaWorker?.postMessage(
+			{
+				command: 'encode',
+				audioBuffer: f32Array
+			},
+			[f32Array.buffer]
+		);
+	};
+}
 
 async function renderOfflineAudio() {
 	const sampleRate = 48000; // Standard sample rate

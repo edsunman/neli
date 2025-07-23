@@ -1,3 +1,5 @@
+import { audioManager } from '$lib/state.svelte';
+
 const DEBUG = false;
 const AUDIO_CHUNK_FRAMES = 1024;
 const BATCH_FRAMES_TARGET = AUDIO_CHUNK_FRAMES * 8; // Send 4 'internal' chunks at once
@@ -122,13 +124,14 @@ export class Audio_Decoder {
 					audioData.close();
 				}
 				if (DEBUG) console.log('Sending batch to main thread');
-				self.postMessage(
+				/* self.postMessage(
 					{
 						command: 'audio-chunk',
 						audioData: combinedBatchBuffer.buffer
 					},
 					{ transfer: [combinedBatchBuffer.buffer] }
-				);
+				); */
+				audioManager.push(combinedBatchBuffer);
 				this.#audioDataQueue.length = 0;
 				this.#currentBatchFrames = 0;
 			}

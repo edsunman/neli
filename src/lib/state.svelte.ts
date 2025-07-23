@@ -3,6 +3,7 @@ import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioMananger } from './audio/audio.svelte';
 import type { WebGPURenderer } from './worker/renderer';
+import { Audio_Decoder } from './worker/audioDecoder';
 
 class AppState {
 	renderer: WebGPURenderer | null = null;
@@ -37,3 +38,4 @@ export const timelineState = new TimelineState();
 
 export const audioManager = new AudioMananger();
 export const historyManager = new HistoryManager();
+export const audioDecoder = new Audio_Decoder();
