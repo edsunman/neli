@@ -31,7 +31,7 @@ export class Encoder {
 		});
 		const encoderConfig = {
 			codec: 'mp4a.40.2',
-			numberOfChannels: 1,
+			numberOfChannels: 2,
 			sampleRate: 48000,
 			bitrate: 128000
 		};
@@ -41,7 +41,7 @@ export class Encoder {
 			target: new ArrayBufferTarget(),
 			audio: {
 				codec: 'aac',
-				numberOfChannels: 1,
+				numberOfChannels: 2,
 				sampleRate: 48000
 			},
 			video: {

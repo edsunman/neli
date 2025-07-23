@@ -278,55 +278,59 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 
 	encoder.setup();
 
-	const numberOfChannels = 1;
-	// 1024 samples is a common block size in audio processing.
-	const CHUNK_SIZE_SAMPLES = 1024 * numberOfChannels; // For interleaved data * number of channels
+	const numberOfChannels = 2;
+	const totalInputFrames = 48000 * 10;
 
-	// Reset timestamp for this encoding session
-	let encodeTimestamp = 0;
-	for (let i = 0; i < audioBuffer.length; i += CHUNK_SIZE_SAMPLES) {
-		// Extract a segment of the interleaved buffer
-		const chunk = audioBuffer.subarray(i, i + CHUNK_SIZE_SAMPLES);
+	const CHUNK_SIZE_FRAMES = 1024; // Number of frames per AudioData chunk
+	//const BYTES_PER_SAMPLE = Float32Array.BYTES_PER_ELEMENT; // 4 bytes for f32
 
-		const currentNumberOfFrames = chunk.length / numberOfChannels;
-		const bytesPerSample = Float32Array.BYTES_PER_ELEMENT;
-
-		// De-interleave the chunk if the encoder expects planar (f32-planar)
-		// Most encoders (like AAC) expect planar data where each channel is a separate array.
-		const deInterleavedChannels = Array.from(
-			{ length: numberOfChannels },
-			() => new Float32Array(chunk.length / numberOfChannels)
+	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
+		// Each channel's data starts at an offset equal to 'c' times the total frames per channel
+		const startOffset = c * totalInputFrames;
+		// Create a Float32Array VIEW of the specific channel's data within the main ArrayBuffer
+		return new Float32Array(
+			audioBuffer.buffer,
+			startOffset * Float32Array.BYTES_PER_ELEMENT,
+			totalInputFrames
 		);
+	});
 
-		for (let j = 0; j < chunk.length / numberOfChannels; j++) {
-			for (let c = 0; c < numberOfChannels; c++) {
-				deInterleavedChannels[c][j] = chunk[j * numberOfChannels + c];
-			}
+	let encodeTimestamp = 0;
+	// Loop through the individual planar channels for chunking
+	// We'll chunk based on the length of the first channel
+	for (let i = 0; i < totalInputFrames; i += CHUNK_SIZE_FRAMES) {
+		const currentChunkFrames = Math.min(CHUNK_SIZE_FRAMES, totalInputFrames - i);
+
+		if (currentChunkFrames <= 0) {
+			continue; // Skip empty last chunk if total frames are exact multiple
 		}
 
-		const totalPlanarBytes = currentNumberOfFrames * numberOfChannels * bytesPerSample;
-		const combinedPlanarBuffer = new Float32Array(totalPlanarBytes / bytesPerSample); // Create a Float32Array view
+		// Create a combined planar buffer for the current AudioData chunk
+		const combinedChunkDataForAudioData = new Float32Array(currentChunkFrames * numberOfChannels);
+		let offsetInCombinedChunk = 0;
 
-		let offset = 0;
 		for (let c = 0; c < numberOfChannels; c++) {
-			combinedPlanarBuffer.set(deInterleavedChannels[c], offset);
-			offset += currentNumberOfFrames; // Offset by number of frames for next channel
-		}
+			// Get the slice of the current channel's data for this chunk
+			const channelSlice = individualPlanarChannels[c].subarray(i, i + currentChunkFrames);
 
-		//console.log(chunk.length);
+			// Copy this channel's slice into the combined chunk data
+			if (c === 0) combinedChunkDataForAudioData.set(channelSlice, offsetInCombinedChunk);
+			offsetInCombinedChunk += currentChunkFrames; // Advance offset by frames for the next channel
+		}
 
 		// Create AudioData object
 		const audioFrame = new AudioData({
 			format: 'f32-planar', // Or 'f32' if your data is already planar, or 's16' for Int16
 			sampleRate: 48000,
 			numberOfChannels: numberOfChannels,
-			numberOfFrames: chunk.length / numberOfChannels, // Number of samples per channel in this chunk
-			timestamp: encodeTimestamp, // Timestamp for this chunk in microseconds
-			data: combinedPlanarBuffer // Array of Float32Arrays for planar format
+			numberOfFrames: currentChunkFrames,
+			timestamp: encodeTimestamp, // Timestamp in microseconds
+			data: combinedChunkDataForAudioData.buffer // Pass the underlying ArrayBuffer
 		});
 
-		encodeTimestamp += audioFrame.duration;
 		encoder.encodeAudio(audioFrame);
+		encodeTimestamp += audioFrame.duration; // Advance timestamp by this frame's duration
+		audioFrame.close(); // Important: Release the AudioData buffer
 	}
 
 	await encoder.finalizeAudio();

@@ -1,8 +1,8 @@
-import { audioManager } from '$lib/state.svelte';
+//import { audioManager } from '$lib/state.svelte';
 
 const DEBUG = false;
-const AUDIO_CHUNK_FRAMES = 1024;
-const BATCH_FRAMES_TARGET = AUDIO_CHUNK_FRAMES * 8; // Send 4 'internal' chunks at once
+//const AUDIO_CHUNK_FRAMES = 1024;
+//const BATCH_FRAMES_TARGET = AUDIO_CHUNK_FRAMES * 8; // Send 4 'internal' chunks at once
 
 /**
  * Responsible for demuxing and storing video chunks, then
@@ -18,13 +18,13 @@ export class Audio_Decoder {
 	#chunks: EncodedAudioChunk[] = [];
 	/** chunks waiting to be decoded */
 	#chunkBuffer: EncodedAudioChunk[] = [];
-	#audioDataQueue: AudioData[] = [];
+	audioDataQueue: AudioData[] = [];
 
 	#lastChunkIndex = 0;
 	#lastAudioDataTimestamp = 0;
 	#feedingPaused = false;
 
-	#currentBatchFrames = 0;
+	//#currentBatchFrames = 0;
 	#startingFrameTimeStamp = 0;
 
 	constructor() {
@@ -63,22 +63,25 @@ export class Audio_Decoder {
 
 	pause() {
 		this.#running = false;
-		if (DEBUG) console.log('Paused. Audio data left in queue:', this.#audioDataQueue.length);
+		if (DEBUG) console.log('Paused. Audio data left in queue:', this.audioDataQueue.length);
 
-		for (let i = 0; i < this.#audioDataQueue.length; i++) {
-			this.#audioDataQueue[i].close();
+		for (let i = 0; i < this.audioDataQueue.length; i++) {
+			this.audioDataQueue[i].close();
 		}
-		this.#audioDataQueue = [];
+		this.audioDataQueue = [];
 		this.#chunkBuffer = [];
-		this.#currentBatchFrames = 0;
+		//this.#currentBatchFrames = 0;
 		this.#lastAudioDataTimestamp = 0;
 		this.#decoder.flush();
 	}
 
-	run(elapsedTimeMs: number) {
+	run(elapsedTimeMs: number, encoding = false) {
 		const elapsedMicroSeconds = Math.floor(elapsedTimeMs * 1000);
 
-		if (elapsedMicroSeconds + this.#startingFrameTimeStamp + 3e6 < this.#lastAudioDataTimestamp) {
+		if (
+			elapsedMicroSeconds + this.#startingFrameTimeStamp + 3e6 < this.#lastAudioDataTimestamp &&
+			!encoding
+		) {
 			// more that three seconds of audio buffer
 			return;
 		}
@@ -97,11 +100,11 @@ export class Audio_Decoder {
 
 	#onOutput = (audioData: AudioData) => {
 		if (this.#running) {
-			this.#audioDataQueue.push(audioData);
+			this.audioDataQueue.push(audioData);
 			this.#lastAudioDataTimestamp = audioData.timestamp;
-
+			/*
 			this.#currentBatchFrames += audioData.numberOfFrames;
-
+			console.log(this.#currentBatchFrames);
 			if (this.#currentBatchFrames >= BATCH_FRAMES_TARGET) {
 				const combinedBatchBuffer = new Float32Array(this.#currentBatchFrames * 2);
 
@@ -131,10 +134,10 @@ export class Audio_Decoder {
 					},
 					{ transfer: [combinedBatchBuffer.buffer] }
 				); */
-				audioManager.push(combinedBatchBuffer);
+			/* audioManager.push(combinedBatchBuffer);
 				this.#audioDataQueue.length = 0;
 				this.#currentBatchFrames = 0;
-			}
+			} */
 		}
 		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;
@@ -152,7 +155,7 @@ export class Audio_Decoder {
 			if (DEBUG)
 				console.log(
 					'Decoder backpressure: Pausing feeding. #audioDataQueue:',
-					this.#audioDataQueue.length,
+					this.audioDataQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
 				);

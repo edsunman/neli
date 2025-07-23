@@ -1,3 +1,5 @@
+import { audioDecoder } from '$lib/state.svelte';
+
 /*
  *   Controls audio playback on main thread
  */
@@ -44,7 +46,59 @@ export class AudioMananger {
 
 	run() {
 		this.#updateMeter();
-		if (this.#audioQueue.length > 0) {
+		if (audioDecoder.audioDataQueue.length > 4) {
+			let currentBatchFrames = 0;
+			for (const audioData of audioDecoder.audioDataQueue) {
+				currentBatchFrames += audioData.numberOfFrames;
+			}
+			const combinedBatchBuffer = new Float32Array(currentBatchFrames * 2);
+			let offset = 0;
+			for (const audioData of audioDecoder.audioDataQueue) {
+				for (let i = 0; i < 2; i++) {
+					const planarData = new Float32Array(audioData.numberOfFrames);
+					audioData.copyTo(planarData, {
+						planeIndex: i,
+						frameOffset: 0,
+						frameCount: audioData.numberOfFrames
+					});
+
+					for (let j = 0; j < audioData.numberOfFrames; j++) {
+						combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
+					}
+				}
+
+				offset += audioData.numberOfFrames * 2;
+				audioData.close();
+			}
+			audioDecoder.audioDataQueue.length = 0;
+
+			const framesRead = currentBatchFrames;
+			const audioBuffer = this.#audioContext.createBuffer(
+				2,
+				currentBatchFrames,
+				this.#audioContext.sampleRate
+			);
+
+			const leftChannelData = audioBuffer.getChannelData(0);
+			for (let i = 0; i < framesRead; i++) {
+				leftChannelData[i] = combinedBatchBuffer[i * 2];
+			}
+
+			const rightChannelData = audioBuffer.getChannelData(1);
+			for (let i = 0; i < framesRead; i++) {
+				rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
+			}
+
+			const source = this.#audioContext.createBufferSource();
+			source.buffer = audioBuffer;
+			if (this.#gainNode) source.connect(this.#gainNode);
+
+			const scheduledTime = Math.max(this.#audioContext.currentTime, this.#currentOffset);
+			source.start(scheduledTime);
+
+			this.#currentOffset = scheduledTime + audioBuffer.duration;
+		}
+		/*if (this.#audioQueue.length > 0) {
 			const receivedFloat32Data = this.#audioQueue.shift();
 			if (!receivedFloat32Data) return;
 
@@ -73,7 +127,7 @@ export class AudioMananger {
 			source.start(scheduledTime);
 
 			this.#currentOffset = scheduledTime + audioBuffer.duration;
-		}
+		}*/
 	}
 
 	pause() {

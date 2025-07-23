@@ -1,3 +1,4 @@
+import { renderAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source';
 import { appState, timelineState, audioManager } from '$lib/state.svelte';
@@ -92,8 +93,9 @@ export const pauseWorker = () => {
 if (typeof window !== 'undefined') {
 	// @ts-expect-error fds
 	window.encode = async () => {
-		const audioBuffer = await renderOfflineAudio();
-		const f32Array = audioBuffer.getChannelData(0);
+		const audioBuffer = await renderAudio();
+		//const f32Array = audioBuffer.getChannelData(0);
+		//console.log(f32Array);
 		//const buffer = f32Array.buffer;
 
 		//console.log(buffer);
@@ -101,14 +103,14 @@ if (typeof window !== 'undefined') {
 		appState.mediaWorker?.postMessage(
 			{
 				command: 'encode',
-				audioBuffer: f32Array
+				audioBuffer
 			},
-			[f32Array.buffer]
+			[audioBuffer.buffer]
 		);
 	};
 }
 
-async function renderOfflineAudio() {
+/* async function renderOfflineAudio() {
 	const sampleRate = 48000; // Standard sample rate
 	const duration = 10; // seconds
 	const numberOfChannels = 2; // Stereo
@@ -141,4 +143,4 @@ async function renderOfflineAudio() {
 	const renderedBuffer = await offlineAudioContext.startRendering();
 	console.log('Offline rendering complete. AudioBuffer obtained.');
 	return renderedBuffer;
-}
+} */
