@@ -6,11 +6,19 @@ import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 export class Encoder {
 	#muxer: Muxer<ArrayBufferTarget> | null = null;
 	#encoder: VideoEncoder | null = null;
+	#audioEncoder: AudioEncoder | null = null;
 	#frameCounter = 0;
 
-	setup() {
+	async setup() {
 		this.#encoder = new VideoEncoder({
 			output: (chunk, meta) => this.#muxer?.addVideoChunk(chunk, meta),
+			error: (e) => console.error(e)
+		});
+
+		this.#audioEncoder = new AudioEncoder({
+			output: (chunk, meta) => {
+				this.#muxer?.addAudioChunk(chunk, meta);
+			},
 			error: (e) => console.error(e)
 		});
 
@@ -21,8 +29,21 @@ export class Encoder {
 			bitrate: 10_000_000,
 			bitrateMode: 'constant'
 		});
+		const encoderConfig = {
+			codec: 'mp4a.40.2',
+			numberOfChannels: 1,
+			sampleRate: 48000,
+			bitrate: 128000
+		};
+		this.#audioEncoder.configure(encoderConfig);
+
 		this.#muxer = new Muxer({
 			target: new ArrayBufferTarget(),
+			audio: {
+				codec: 'aac',
+				numberOfChannels: 1,
+				sampleRate: 48000
+			},
 			video: {
 				codec: 'avc',
 				width: 1920,
@@ -42,10 +63,22 @@ export class Encoder {
 		this.#frameCounter++;
 	}
 
+	encodeAudio(audioData: AudioData) {
+		if (!this.#audioEncoder) return;
+		this.#audioEncoder.encode(audioData);
+		audioData.close();
+	}
+
+	async finalizeAudio() {
+		if (!this.#audioEncoder) return;
+		await this.#audioEncoder.flush();
+	}
+
 	async finalize() {
-		if (!this.#muxer || !this.#encoder) return;
+		if (!this.#muxer || !this.#encoder || !this.#audioEncoder) return;
 
 		await this.#encoder.flush();
+
 		this.#encoder.close();
 		this.#encoder = null;
 

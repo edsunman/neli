@@ -109,7 +109,6 @@ const getVideoDescription = (file: ISOFile | null, id: number) => {
 const getAudioDesciption = (file: ISOFile | null, id: number) => {
 	if (!file) return;
 	const trak = file.getTrackById(id);
-	console.log(file);
 	const entry = trak.mdia.minf.stbl.stsd.entries[0];
 	//@ts-expect-error esds does exist
 	return entry.esds.esd.descs[0].descs[0].data;

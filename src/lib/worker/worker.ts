@@ -40,7 +40,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'encode':
 			{
-				encodeAndCreateFile();
+				encodeAndCreateFile(e.data.audioBuffer);
 			}
 			break;
 		case 'play':
@@ -272,10 +272,64 @@ const setupNewDecoder = async (clip: WorkerClip) => {
 	decoder.setup(source.videoConfig, source.videoChunks);
 };
 
-const encodeAndCreateFile = async () => {
+const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 	encoding = true;
 
 	encoder.setup();
+
+	const numberOfChannels = 1;
+	// 1024 samples is a common block size in audio processing.
+	const CHUNK_SIZE_SAMPLES = 1024 * numberOfChannels; // For interleaved data * number of channels
+
+	// Reset timestamp for this encoding session
+	let encodeTimestamp = 0;
+	for (let i = 0; i < audioBuffer.length; i += CHUNK_SIZE_SAMPLES) {
+		// Extract a segment of the interleaved buffer
+		const chunk = audioBuffer.subarray(i, i + CHUNK_SIZE_SAMPLES);
+
+		const currentNumberOfFrames = chunk.length / numberOfChannels;
+		const bytesPerSample = Float32Array.BYTES_PER_ELEMENT;
+
+		// De-interleave the chunk if the encoder expects planar (f32-planar)
+		// Most encoders (like AAC) expect planar data where each channel is a separate array.
+		const deInterleavedChannels = Array.from(
+			{ length: numberOfChannels },
+			() => new Float32Array(chunk.length / numberOfChannels)
+		);
+
+		for (let j = 0; j < chunk.length / numberOfChannels; j++) {
+			for (let c = 0; c < numberOfChannels; c++) {
+				deInterleavedChannels[c][j] = chunk[j * numberOfChannels + c];
+			}
+		}
+
+		const totalPlanarBytes = currentNumberOfFrames * numberOfChannels * bytesPerSample;
+		const combinedPlanarBuffer = new Float32Array(totalPlanarBytes / bytesPerSample); // Create a Float32Array view
+
+		let offset = 0;
+		for (let c = 0; c < numberOfChannels; c++) {
+			combinedPlanarBuffer.set(deInterleavedChannels[c], offset);
+			offset += currentNumberOfFrames; // Offset by number of frames for next channel
+		}
+
+		//console.log(chunk.length);
+
+		// Create AudioData object
+		const audioFrame = new AudioData({
+			format: 'f32-planar', // Or 'f32' if your data is already planar, or 's16' for Int16
+			sampleRate: 48000,
+			numberOfChannels: numberOfChannels,
+			numberOfFrames: chunk.length / numberOfChannels, // Number of samples per channel in this chunk
+			timestamp: encodeTimestamp, // Timestamp for this chunk in microseconds
+			data: combinedPlanarBuffer // Array of Float32Arrays for planar format
+		});
+
+		encodeTimestamp += audioFrame.duration;
+		encoder.encodeAudio(audioFrame);
+	}
+
+	await encoder.finalizeAudio();
+
 	setupFrame(0);
 
 	let i = 0;
