@@ -1,7 +1,8 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
-import { audioDecoder, audioManager, timelineState } from '$lib/state.svelte';
+import { audioDecoder, timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
+import { pauseAudio, playAudio, runAudio } from '$lib/audio/actions';
 
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
@@ -22,7 +23,8 @@ export const play = () => {
 
 	playWorker(timelineState.currentFrame);
 	audioDecoder.play(0);
-	audioManager.play();
+	//audioManager.play();
+	playAudio();
 
 	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
 	let accumulator = 0;
@@ -56,7 +58,7 @@ export const play = () => {
 		const elapsedTimeMs = timestamp - firstTimestamp;
 
 		audioDecoder.run(elapsedTimeMs);
-		audioManager.run();
+		runAudio();
 
 		if (timelineState.currentFrame !== oldFrame) {
 			timelineState.invalidate = true;
@@ -71,7 +73,7 @@ export const pause = () => {
 	timelineState.playing = false;
 	pauseWorker();
 	audioDecoder.pause();
-	audioManager.pause();
+	pauseAudio();
 };
 
 export const centerViewOnPlayhead = () => {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { updateWorkerClip } from '$lib/worker/actions';
-	import { appState, audioManager, timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';
 	import SpeakerIcon from '../icons/SpeakerIcon.svelte';
@@ -179,12 +179,12 @@
 			<div
 				class="w-1.5 h-full"
 				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
-				style:clip-path={`rect(${(1 - audioManager.audioLevel[0]) * 100}% 100% 100% 0%)`}
+				style:clip-path={`rect(${(1 - appState.audioLevel[0]) * 100}% 100% 100% 0%)`}
 			></div>
 			<div
 				class="w-1.5 h-full"
 				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
-				style:clip-path={`rect(${(1 - audioManager.audioLevel[1]) * 100}% 100% 100% 0%)`}
+				style:clip-path={`rect(${(1 - appState.audioLevel[1]) * 100}% 100% 100% 0%)`}
 			></div>
 		</div>
 	{/if}

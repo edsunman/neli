@@ -22,13 +22,7 @@ export class Clip {
 	hovered = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';
 
-	constructor(
-		/* videoClip: VideoClip,  */ source: Source,
-		track: number,
-		start = 0,
-		duration = 0,
-		sourceOffset = 0
-	) {
+	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {
 		this.id = Math.random().toString(16).slice(2);
 		this.track = source.type === 'text' ? 1 : 2;
 

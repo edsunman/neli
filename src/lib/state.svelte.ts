@@ -1,7 +1,7 @@
 import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
-import { AudioMananger } from './audio/audio.svelte';
+import { AudioState } from './audio/audio';
 import type { WebGPURenderer } from './worker/renderer';
 import { Audio_Decoder } from './worker/audioDecoder';
 
@@ -12,6 +12,7 @@ class AppState {
 	showPalette = $state(false);
 	disableKeyboardShortcuts = false;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
+	audioLevel = $state([0, 0]);
 }
 
 export const appState = new AppState();
@@ -35,7 +36,6 @@ class TimelineState {
 }
 
 export const timelineState = new TimelineState();
-
-export const audioManager = new AudioMananger();
+export const audioState = new AudioState();
 export const historyManager = new HistoryManager();
 export const audioDecoder = new Audio_Decoder();

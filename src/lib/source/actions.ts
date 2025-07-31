@@ -7,14 +7,11 @@ export const createVideoSource = async (file: File) => {
 	const reader = new FileReader();
 	let mp4info: Movie;
 
-	const chunkSize = 1024 * 1024; // 1 MB chunks
-	let offset = 0;
-	let foundInfo = false;
-	let audioConfig: AudioEncoderConfig;
+	let audioConfig: AudioDecoderConfig;
 	const audioChunks: EncodedAudioChunk[] = [];
 	//let loop = 0;
 
-	let mp4file = createFile();
+	let mp4file: ISOFile<unknown, unknown> | null = createFile();
 	mp4file.onReady = (info) => {
 		console.log(info);
 		if (info.videoTracks.length < 1) {
@@ -22,7 +19,6 @@ export const createVideoSource = async (file: File) => {
 			return;
 		}
 		// TODO: check codec is suported by VideoDecoder
-		foundInfo = true;
 		mp4info = info;
 
 		audioConfig = {
@@ -32,12 +28,8 @@ export const createVideoSource = async (file: File) => {
 			description: getAudioDesciption(mp4file, info.audioTracks[0].id)
 		};
 		console.log(audioConfig);
-		mp4file.setExtractionOptions(info.audioTracks[0].id);
-		mp4file.start();
-
-		//const newSource = new Source('video', mp4info, file, audioConfig);
-		//appState.sources.push(newSource);
-		//sendFileToWorker(newSource);
+		mp4file!.setExtractionOptions(info.audioTracks[0].id);
+		mp4file!.start();
 	};
 	mp4file.onSamples = (id, user, samples) => {
 		//console.log(samples);
@@ -65,27 +57,10 @@ export const createVideoSource = async (file: File) => {
 		if (!arrayBuffer) return;
 
 		arrayBuffer.fileStart = 0;
-		mp4file.appendBuffer(arrayBuffer);
-
-		/* 		offset += arrayBuffer.byteLength;
-		//loop++;
-
-		if (offset < file.size && !foundInfo) {
-			readNextChunk();
-		} else {
-			// we may need to store the loop to tell the worker where the info container is
-			mp4file.flush();
-		} */
+		mp4file!.appendBuffer(arrayBuffer);
 	};
 
 	reader.readAsArrayBuffer(file);
-
-	/* 	function readNextChunk() {
-		const slice = file.slice(offset, offset + chunkSize);
-		reader.readAsArrayBuffer(slice); // Reads only the slice into memory
-	}
-
-	readNextChunk(); */
 };
 
 export const createTextSource = () => {

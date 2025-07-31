@@ -1,7 +1,7 @@
 import { renderAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source';
-import { appState, timelineState, audioManager } from '$lib/state.svelte';
+import { appState, timelineState } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
 
@@ -31,9 +31,6 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				document.body.removeChild(a);
 				URL.revokeObjectURL(event.data.link); // Clean up the URL
 				break;
-			}
-			case 'audio-chunk': {
-				audioManager.push(new Float32Array(event.data.audioData));
 			}
 		}
 	});

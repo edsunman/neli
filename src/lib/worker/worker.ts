@@ -3,13 +3,11 @@ import { Encoder } from './encoder';
 import { loadFile } from './file';
 import { DecoderPool } from './pool';
 import type { WorkerClip, WorkerSource } from '$lib/types';
-//import { Audio_Decoder } from './audioDecoder';
 
 let renderer: WebGPURenderer;
 let encoder: Encoder;
 let canvas: OffscreenCanvas;
 let decoderPool: DecoderPool;
-//let audioDecoder: Audio_Decoder;
 
 let playing = false;
 let seeking = false;
@@ -19,7 +17,6 @@ const clips: WorkerClip[] = [];
 const sources: WorkerSource[] = [];
 
 self.addEventListener('message', async function (e) {
-	//console.info(`Worker message: ${JSON.stringify(e.data)}`);
 	switch (e.data.command) {
 		case 'init':
 			{
@@ -27,7 +24,6 @@ self.addEventListener('message', async function (e) {
 				encoder = new Encoder();
 				canvas = e.data.canvas;
 				renderer = new WebGPURenderer(canvas);
-				//audioDecoder = new Audio_Decoder();
 			}
 			break;
 		case 'load-file':
@@ -36,7 +32,6 @@ self.addEventListener('message', async function (e) {
 				newSource.id = e.data.id;
 				sources.push(newSource);
 				console.log(newSource);
-				//audioDecoder.setup(newSource.audioConfig, newSource.audioChunks);
 			}
 			break;
 		case 'encode':
@@ -54,7 +49,6 @@ self.addEventListener('message', async function (e) {
 			{
 				playing = false;
 				decoderPool.pauseAll();
-				//audioDecoder.pause();
 			}
 			break;
 		case 'seek': {
@@ -77,9 +71,6 @@ self.addEventListener('message', async function (e) {
 			} else {
 				clips.push(e.data.clip);
 			}
-			// we may get multiple worker messages so don't
-			// draw just yet
-			//this.setTimeout(() => buildAndDrawFrame(e.data.frame), 0);
 			if (seeking) return;
 			seeking = true;
 			await buildAndDrawFrame(e.data.frame);
@@ -90,8 +81,6 @@ self.addEventListener('message', async function (e) {
 });
 
 const startPlayLoop = async (frame: number) => {
-	//audioDecoder.play(frame);
-
 	const startingFrame = frame;
 
 	setupFrame(startingFrame);
@@ -123,7 +112,6 @@ const startPlayLoop = async (frame: number) => {
 			firstTimestamp = timestamp;
 		}
 
-		const elapsedTimeMs = timestamp - firstTimestamp;
 		const deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
 		accumulator += deltaTime;
@@ -133,8 +121,6 @@ const startPlayLoop = async (frame: number) => {
 			targetFrame = previousFrame + 1;
 			accumulator -= MS_PER_FRAME;
 		}
-
-		//audioDecoder.run(elapsedTimeMs);
 
 		if (targetFrame === previousFrame) {
 			self.requestAnimationFrame(loop);
@@ -282,7 +268,6 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 	const totalInputFrames = 48000 * 10;
 
 	const CHUNK_SIZE_FRAMES = 1024; // Number of frames per AudioData chunk
-	//const BYTES_PER_SAMPLE = Float32Array.BYTES_PER_ELEMENT; // 4 bytes for f32
 
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
 		// Each channel's data starts at an offset equal to 'c' times the total frames per channel
@@ -314,7 +299,7 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 			const channelSlice = individualPlanarChannels[c].subarray(i, i + currentChunkFrames);
 
 			// Copy this channel's slice into the combined chunk data
-			if (c === 0) combinedChunkDataForAudioData.set(channelSlice, offsetInCombinedChunk);
+			combinedChunkDataForAudioData.set(channelSlice, offsetInCombinedChunk);
 			offsetInCombinedChunk += currentChunkFrames; // Advance offset by frames for the next channel
 		}
 
