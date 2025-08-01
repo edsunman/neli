@@ -1,9 +1,9 @@
-import { Video_Decoder } from './videoDecoder';
+import { VDecoder } from './decoder';
 
 const DEBUG = false;
 
 export class DecoderPool {
-	#activeDecoders = new Set<Video_Decoder>();
+	#activeDecoders = new Set<VDecoder>();
 	#maxDecoders = 3;
 	#decoderCount = 0;
 
@@ -15,7 +15,7 @@ export class DecoderPool {
 		let decoder;
 		if (this.#activeDecoders.size < this.#maxDecoders) {
 			// No idle decoder, create a new one
-			decoder = new Video_Decoder();
+			decoder = new VDecoder();
 			this.#decoderCount++;
 			decoder.id = this.#decoderCount;
 			if (DEBUG) console.log(`[Pool] Created new decoder`);

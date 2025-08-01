@@ -88,14 +88,9 @@ export const pauseWorker = () => {
 };
 
 if (typeof window !== 'undefined') {
-	// @ts-expect-error fds
+	// @ts-expect-error ???
 	window.encode = async () => {
 		const audioBuffer = await renderAudio();
-		//const f32Array = audioBuffer.getChannelData(0);
-		//console.log(f32Array);
-		//const buffer = f32Array.buffer;
-
-		//console.log(buffer);
 
 		appState.mediaWorker?.postMessage(
 			{
@@ -106,38 +101,3 @@ if (typeof window !== 'undefined') {
 		);
 	};
 }
-
-/* async function renderOfflineAudio() {
-	const sampleRate = 48000; // Standard sample rate
-	const duration = 10; // seconds
-	const numberOfChannels = 2; // Stereo
-
-	// Create an OfflineAudioContext
-	const offlineAudioContext = new OfflineAudioContext(
-		numberOfChannels,
-		sampleRate * duration,
-		sampleRate
-	);
-
-	// Create an oscillator (or any other source/graph)
-	const oscillator = offlineAudioContext.createOscillator();
-	oscillator.frequency.value = 440; // A4 note
-	oscillator.type = 'sine';
-
-	// Create a gain node
-	const gainNode = offlineAudioContext.createGain();
-	gainNode.gain.value = 0.5;
-
-	// Connect the graph
-	oscillator.connect(gainNode);
-	gainNode.connect(offlineAudioContext.destination);
-
-	// Start the oscillator
-	oscillator.start(0);
-	oscillator.stop(duration); // Stop at the end of the rendering duration
-
-	// Start rendering and await the result
-	const renderedBuffer = await offlineAudioContext.startRendering();
-	console.log('Offline rendering complete. AudioBuffer obtained.');
-	return renderedBuffer;
-} */

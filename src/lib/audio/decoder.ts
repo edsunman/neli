@@ -1,14 +1,10 @@
-//import { audioManager } from '$lib/state.svelte';
-
 const DEBUG = false;
-//const AUDIO_CHUNK_FRAMES = 1024;
-//const BATCH_FRAMES_TARGET = AUDIO_CHUNK_FRAMES * 8; // Send 4 'internal' chunks at once
 
 /**
  * Responsible for demuxing and storing video chunks, then
  * decoding video chunks and returning video frames.
  */
-export class Audio_Decoder {
+export class ADecoder {
 	#decoder;
 	#decoderConfig: AudioDecoderConfig | null = null;
 	//#ready = false;
@@ -24,7 +20,6 @@ export class Audio_Decoder {
 	#lastAudioDataTimestamp = 0;
 	#feedingPaused = false;
 
-	//#currentBatchFrames = 0;
 	#startingFrameTimeStamp = 0;
 
 	constructor() {
@@ -102,42 +97,6 @@ export class Audio_Decoder {
 		if (this.#running) {
 			this.audioDataQueue.push(audioData);
 			this.#lastAudioDataTimestamp = audioData.timestamp;
-			/*
-			this.#currentBatchFrames += audioData.numberOfFrames;
-			console.log(this.#currentBatchFrames);
-			if (this.#currentBatchFrames >= BATCH_FRAMES_TARGET) {
-				const combinedBatchBuffer = new Float32Array(this.#currentBatchFrames * 2);
-
-				let offset = 0;
-				for (const audioData of this.#audioDataQueue) {
-					for (let i = 0; i < 2; i++) {
-						const planarData = new Float32Array(audioData.numberOfFrames);
-						audioData.copyTo(planarData, {
-							planeIndex: i,
-							frameOffset: 0,
-							frameCount: audioData.numberOfFrames
-						});
-
-						for (let j = 0; j < audioData.numberOfFrames; j++) {
-							combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
-						}
-					}
-
-					offset += audioData.numberOfFrames * 2;
-					audioData.close();
-				}
-				if (DEBUG) console.log('Sending batch to main thread');
-				/* self.postMessage(
-					{
-						command: 'audio-chunk',
-						audioData: combinedBatchBuffer.buffer
-					},
-					{ transfer: [combinedBatchBuffer.buffer] }
-				); */
-			/* audioManager.push(combinedBatchBuffer);
-				this.#audioDataQueue.length = 0;
-				this.#currentBatchFrames = 0;
-			} */
 		}
 		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
 			this.#feedingPaused = false;

@@ -1,4 +1,4 @@
-import type { Decoder } from './worker/decoder';
+import type { VDecoder } from './worker/decoder';
 
 export type SourceType = 'text' | 'video' | 'audio';
 
@@ -14,7 +14,7 @@ export type WorkerClip = {
 	positionY: number;
 	deleted: boolean;
 	type: SourceType;
-	decoder?: Decoder | null;
+	decoder?: VDecoder | null;
 };
 
 export type WorkerSource = {
