@@ -46,8 +46,8 @@ export class DecoderPool {
 		this.decoders.get(clipId)?.play(frame);
 	}
 
-	runDecoder(clipId: string, elapsedTimeMs: number) {
-		this.decoders.get(clipId)?.run(elapsedTimeMs);
+	runDecoder(clipId: string, elapsedTimeMs: number, encoding = false) {
+		this.decoders.get(clipId)?.run(elapsedTimeMs, encoding);
 	}
 
 	pauseDecoder(clipId: string) {

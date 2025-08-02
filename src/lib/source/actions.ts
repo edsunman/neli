@@ -1,5 +1,5 @@
 import { sendFileToWorker } from '$lib/worker/actions';
-import { appState, audioDecoder } from '$lib/state.svelte';
+import { appState } from '$lib/state.svelte';
 import { Source } from './source';
 import { createFile, ISOFile, MP4BoxBuffer, type Movie } from 'mp4box';
 
@@ -48,7 +48,6 @@ export const createVideoSource = async (file: File) => {
 			const newSource = new Source('video', mp4info, file, audioChunks, audioConfig);
 			appState.sources.push(newSource);
 			sendFileToWorker(newSource);
-			audioDecoder.setup(audioConfig, audioChunks);
 		}
 	};
 

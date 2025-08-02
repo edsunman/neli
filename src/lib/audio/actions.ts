@@ -1,5 +1,5 @@
 import type { Clip } from '$lib/clip/clip.svelte';
-import { appState, audioDecoder, audioState, timelineState } from '$lib/state.svelte';
+import { appState, audioState, timelineState } from '$lib/state.svelte';
 
 export const runAudio = (frame: number, elapsedTimeMs: number) => {
 	// run decoders
@@ -133,6 +133,7 @@ const setupNewDecoder = (clip: Clip) => {
 	const decoder = audioState.decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
 	decoder.setup(source.audioConfig, source.audioChunks);
+	return decoder;
 };
 
 const updateMeter = () => {
@@ -193,7 +194,6 @@ export const renderAudio = async () => {
 	const sampleRate = 48000;
 	const duration = 10;
 	const numberOfChannels = 2;
-	const totalFrames = duration * sampleRate;
 
 	const offlineAudioContext = new OfflineAudioContext(
 		numberOfChannels,
@@ -201,19 +201,27 @@ export const renderAudio = async () => {
 		sampleRate
 	);
 
-	const masterAudioBuffer = offlineAudioContext.createBuffer(
-		numberOfChannels,
-		totalFrames,
-		sampleRate
-	);
+	for (const clip of timelineState.clips) {
+		if (clip.deleted || clip.start > 300 || clip.source.type !== 'video') continue;
 
-	await decodeSource(masterAudioBuffer);
+		let clipDurationSeconds = clip.duration / 30;
+		const clipOverflow = clip.start + clip.duration - 300;
+		if (clipOverflow > 0) clipDurationSeconds -= clipOverflow / 30;
 
-	const source = offlineAudioContext.createBufferSource();
-	source.buffer = masterAudioBuffer;
-	source.connect(offlineAudioContext.destination);
+		const audioBuffer = offlineAudioContext.createBuffer(
+			2,
+			clipDurationSeconds * sampleRate,
+			sampleRate
+		);
 
-	source.start(0);
+		await decodeSource(audioBuffer, clip);
+
+		const source = offlineAudioContext.createBufferSource();
+		source.buffer = audioBuffer;
+		source.connect(offlineAudioContext.destination);
+
+		source.start(clip.start / 30);
+	}
 
 	// Start rendering and await the result
 	const renderedBuffer = await offlineAudioContext.startRendering();
@@ -233,27 +241,27 @@ export const renderAudio = async () => {
 	return combinedPlanarBufferForTransfer;
 };
 
-const decodeSource = async (audioBuffer: AudioBuffer) => {
+const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 	let resolver: (value: boolean | PromiseLike<boolean>) => void;
 	const promise = new Promise<boolean>((resolve) => {
 		resolver = resolve;
 	});
 
-	audioDecoder.play(0);
+	const decoder = setupNewDecoder(clip);
+	if (!decoder) return;
+	decoder.play(clip.sourceOffset);
 
-	//let i = 0;
 	let currentWriteOffset = 0;
 	let done = false;
 	const decodeLoop = async () => {
-		audioDecoder.run(0, true);
+		decoder.run(0, true);
 
-		for (let i = 1; i < audioDecoder.audioDataQueue.length; i++) {
-			//console.log(`length is ${audioDecoder.audioDataQueue.length} so lets go for it`);
-			const audioData = audioDecoder.audioDataQueue.shift();
+		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
+			const audioData = decoder.audioDataQueue.shift();
 			if (!audioData) continue;
 
 			for (let c = 0; c < audioData.numberOfChannels; c++) {
-				const finalBufferChannelData = audioBuffer.getChannelData(c); // Get view from master AudioBuffer
+				const finalBufferChannelData = audioBuffer.getChannelData(c);
 
 				const destinationSlice = finalBufferChannelData.subarray(
 					currentWriteOffset,
@@ -266,9 +274,9 @@ const decodeSource = async (audioBuffer: AudioBuffer) => {
 				});
 			}
 			currentWriteOffset += audioData.numberOfFrames;
-			console.log(
+			/* console.log(
 				`current write offset: ${currentWriteOffset}, trying to copy: ${audioData.numberOfFrames}, total length: ${audioBuffer.length}`
-			);
+			); */
 			audioData.close();
 			if (currentWriteOffset + 1024 > audioBuffer.length - 1024) {
 				done = true;
@@ -279,6 +287,7 @@ const decodeSource = async (audioBuffer: AudioBuffer) => {
 		if (!done) {
 			setTimeout(decodeLoop, 0);
 		} else {
+			decoder.pause();
 			console.log('done');
 			resolver(true);
 		}
