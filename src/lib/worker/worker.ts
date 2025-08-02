@@ -66,7 +66,7 @@ self.addEventListener('message', async function (e) {
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
-				e.data.clip.decoder = clips[foundClipIndex].decoder;
+				//e.data.clip.decoder = clips[foundClipIndex].decoder;
 				clips[foundClipIndex] = e.data.clip;
 			} else {
 				clips.push(e.data.clip);
@@ -141,10 +141,7 @@ const setupFrame = (frame: number) => {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			const clipFrame = frame - clip.start + clip.sourceOffset;
-			if (!clip.decoder) {
-				return;
-			}
-			clip.decoder.play(clipFrame);
+			decoderPool.decoders.get(clip.id)?.play(clipFrame);
 		}
 	}
 };
@@ -170,28 +167,25 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 	// get frame for each video clip
 	const videoFrames = [];
 	for (const videoClip of videoClips) {
+		let decoder = decoderPool.decoders.get(videoClip.id);
 		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
-			if (!videoClip.decoder) {
-				return;
-			}
-			f = videoClip.decoder.run(clipFrame * 33.33333333);
+			f = decoder?.run(clipFrame * 33.33333333);
 		} else {
-			if (!videoClip.decoder) {
-				await setupNewDecoder(videoClip);
+			if (!decoder) {
+				decoder = setupNewDecoder(videoClip);
 			}
-			if (videoClip.decoder) f = await videoClip.decoder.decodeFrame(clipFrame);
+			f = await decoder?.decodeFrame(clipFrame);
 		}
 		if (encoding && !f) {
-			// a blank frame from a decoder while encoding
-			// is unacceptable, so abort
+			// a blank frame from a decoder while encoding, so abort
 			return;
 		}
 		videoFrames.push(f);
-		if (videoClip.decoder) {
-			videoClip.decoder.lastUsedTime = performance.now();
-			videoClip.decoder.usedThisFrame = true;
+		if (decoder) {
+			decoder.lastUsedTime = performance.now();
+			decoder.usedThisFrame = true;
 		}
 	}
 
@@ -203,12 +197,13 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 				const frameDistance = clip.start - frame;
 				//console.log(`clip starts in ${frameDistance} frames`);
 				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
-				if (!clip.decoder) {
-					await setupNewDecoder(clip);
+				const decoder = decoderPool.decoders.get(clip.id);
+				if (!decoder) {
+					setupNewDecoder(clip);
 				}
-				if (!clip.decoder) return;
-				clip.decoder.usedThisFrame = true;
-				clip.decoder.play(clipStartFrame);
+				if (!decoder) return;
+				decoder.usedThisFrame = true;
+				decoder.play(clipStartFrame);
 			}
 		}
 
@@ -244,19 +239,13 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 };
 
 // Gets decoder from pool and assignes to clip
-const setupNewDecoder = async (clip: WorkerClip) => {
+const setupNewDecoder = (clip: WorkerClip) => {
 	const source = sources.find((s) => s.id === clip.sourceId);
 	if (!source) return;
-	const decoder = await decoderPool.getDecoder();
+	const decoder = decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
-	for (const c of clips) {
-		if (c.id === decoder.clipId) {
-			c.decoder = null;
-		}
-	}
-	clip.decoder = decoder;
-	decoder.clipId = clip.id;
 	decoder.setup(source.videoConfig, source.videoChunks);
+	return decoder;
 };
 
 const encodeAndCreateFile = async (audioBuffer: Float32Array) => {

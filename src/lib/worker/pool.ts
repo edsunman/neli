@@ -3,17 +3,13 @@ import { VDecoder } from './decoder';
 const DEBUG = false;
 
 export class DecoderPool {
-	#activeDecoders = new Set<VDecoder>();
+	decoders = new Map<string, VDecoder>();
 	#maxDecoders = 3;
 	#decoderCount = 0;
 
-	constructor() {
-		this.#activeDecoders = new Set();
-	}
-
-	async getDecoder() {
+	assignDecoder(clipId: string) {
 		let decoder;
-		if (this.#activeDecoders.size < this.#maxDecoders) {
+		if (this.decoders.size < this.#maxDecoders) {
 			// No idle decoder, create a new one
 			decoder = new VDecoder();
 			this.#decoderCount++;
@@ -23,12 +19,15 @@ export class DecoderPool {
 			// Use the oldest active decoder
 			let smallest = Infinity;
 			let oldestDecoder;
-			for (const d of this.#activeDecoders) {
+			let oldestDecoderKey;
+			for (const [key, d] of this.decoders) {
 				if (d.lastUsedTime < smallest) {
 					smallest = d.lastUsedTime;
 					oldestDecoder = d;
+					oldestDecoderKey = key;
 				}
 			}
+			if (oldestDecoderKey) this.decoders.delete(oldestDecoderKey);
 			decoder = oldestDecoder;
 			if (DEBUG) console.log(`[Pool] Using decoder ${decoder!.id}`);
 		}
@@ -37,15 +36,14 @@ export class DecoderPool {
 
 		decoder.lastUsedTime = performance.now();
 		decoder.pause();
-		this.#activeDecoders.add(decoder);
+		this.decoders.set(clipId, decoder);
 
-		if (DEBUG)
-			console.log(`[Pool] Active decoders: ${this.#activeDecoders.size}/${this.#maxDecoders}`);
+		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.#maxDecoders}`);
 		return decoder;
 	}
 
 	pauseAll() {
-		for (const decoder of this.#activeDecoders) {
+		for (const [, decoder] of this.decoders) {
 			if (decoder.running) {
 				decoder.pause();
 			}
@@ -53,13 +51,13 @@ export class DecoderPool {
 	}
 
 	markAllAsUnused() {
-		for (const decoder of this.#activeDecoders) {
+		for (const [, decoder] of this.decoders) {
 			decoder.usedThisFrame = false;
 		}
 	}
 
 	pauseAllUnused() {
-		for (const decoder of this.#activeDecoders) {
+		for (const [, decoder] of this.decoders) {
 			if (!decoder.usedThisFrame) decoder.pause();
 		}
 	}
