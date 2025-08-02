@@ -13,7 +13,7 @@ export const setCurrentFrame = (frame: number) => {
 };
 
 export const setCurrentFrameFromOffset = (canvasOffset: number) => {
-	timelineState.playing = false;
+	if (timelineState.playing) pause();
 	const frame = canvasPixelToFrame(canvasOffset);
 	setCurrentFrame(frame);
 };

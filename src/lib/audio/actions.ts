@@ -1,6 +1,11 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import { appState, audioDecoder, audioState, timelineState } from '$lib/state.svelte';
 
+export const playAudio = (frame: number) => {
+	audioState.startingFrame = frame;
+	//audioState.
+};
+
 export const runAudio = (frame: number, elapsedTimeMs: number) => {
 	const currentClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
@@ -9,13 +14,18 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			currentClips.push(clip);
 			if (audioState.playingClips.find((c) => c === clip.id)) {
 				// already playing so run
-				//console.log(`run ${clip.id}`);
-				audioDecoder.run(elapsedTimeMs);
+				const decoder = audioState.decoders.get(clip.id);
+				if (!decoder) continue;
+				decoder.run(elapsedTimeMs);
 			} else {
 				// not yet playing so play
-				//console.log(`play ${clip.id}`);
 				const clipFrame = frame - clip.start + clip.sourceOffset;
-				audioDecoder.play(clipFrame);
+				const decoder = setupNewDecoder(clip);
+				if (decoder) {
+					audioState.decoders.set(clip.id, decoder);
+					decoder.play(clipFrame);
+				}
+
 				audioState.playingClips.push(clip.id);
 
 				const gainNode = audioState.audioContext.createGain();
@@ -27,103 +37,151 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				audioState.offsets.set(clip.id, audioState.audioContext.currentTime);
 			}
 		}
+		// look ahead
+		/* if (frame < clip.start && frame > clip.start - 4) {
+			const frameDistance = clip.start - frame;
+			console.log(`clip starts in ${frameDistance} frames`);
+			currentClips.push(clip);
+			const decoder = audioState.decoders.get(clip.id);
+			if (!decoder || !decoder.running) {
+				// no desoder set up
+				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
+				const decoder = setupNewDecoder(clip);
+				if (decoder) {
+					audioState.decoders.set(clip.id, decoder);
+					decoder.play(clipStartFrame);
+				}
+
+				audioState.playingClips.push(clip.id);
+
+				const gainNode = audioState.audioContext.createGain();
+				// TODO: create master gain
+				gainNode.connect(audioState.splitterNode);
+				gainNode.connect(audioState.audioContext.destination);
+				audioState.gainNodes.set(clip.id, gainNode);
+
+				console.log(audioState.audioContext.currentTime + frameDistance / 30);
+				audioState.offsets.set(clip.id, audioState.audioContext.currentTime);
+			} */
+		//const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
+		/* if (!clip.decoder) {
+					await setupNewDecoder(clip);
+				}
+				if (!clip.decoder) return;
+				clip.decoder.usedThisFrame = true;
+				clip.decoder.play(clipStartFrame); */
+		//}
 	}
+
 	for (let i = audioState.playingClips.length - 1; i >= 0; i--) {
 		if (!currentClips.find((c) => c.id === audioState.playingClips[i])) {
 			// clip no longer playing so stop
-			//console.log(`stop ${audioState.playingClips[i]}`);
-			audioDecoder.pause();
+			console.log(`stop ${audioState.playingClips[i]}`);
+			const decoder = audioState.decoders.get(audioState.playingClips[i]);
+			if (decoder) decoder.pause();
 
 			const node = audioState.gainNodes.get(audioState.playingClips[i]);
 			node?.disconnect();
 			audioState.gainNodes.delete(audioState.playingClips[i]);
-
 			audioState.offsets.delete(audioState.playingClips[i]);
 
 			audioState.playingClips.splice(i, 1);
 		}
 	}
 
-	if (audioDecoder.audioDataQueue.length > 4) {
-		let currentBatchFrames = 0;
-		for (const audioData of audioDecoder.audioDataQueue) {
-			currentBatchFrames += audioData.numberOfFrames;
-		}
-		const combinedBatchBuffer = new Float32Array(currentBatchFrames * 2);
-		let offset = 0;
-		for (const audioData of audioDecoder.audioDataQueue) {
-			for (let i = 0; i < 2; i++) {
-				const planarData = new Float32Array(audioData.numberOfFrames);
-				audioData.copyTo(planarData, {
-					planeIndex: i,
-					frameOffset: 0,
-					frameCount: audioData.numberOfFrames
-				});
+	for (const [, decoder] of audioState.decoders) {
+		if (decoder.audioDataQueue.length > 4) {
+			let currentBatchFrames = 0;
+			for (const audioData of decoder.audioDataQueue) {
+				currentBatchFrames += audioData.numberOfFrames;
+			}
+			const combinedBatchBuffer = new Float32Array(currentBatchFrames * 2);
+			let offset = 0;
+			for (const audioData of decoder.audioDataQueue) {
+				for (let i = 0; i < 2; i++) {
+					const planarData = new Float32Array(audioData.numberOfFrames);
+					audioData.copyTo(planarData, {
+						planeIndex: i,
+						frameOffset: 0,
+						frameCount: audioData.numberOfFrames
+					});
 
-				for (let j = 0; j < audioData.numberOfFrames; j++) {
-					combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
+					for (let j = 0; j < audioData.numberOfFrames; j++) {
+						combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
+					}
 				}
+
+				offset += audioData.numberOfFrames * 2;
+				audioData.close();
+			}
+			decoder.audioDataQueue.length = 0;
+
+			const framesRead = currentBatchFrames;
+			const audioBuffer = audioState.audioContext.createBuffer(
+				2,
+				currentBatchFrames,
+				audioState.audioContext.sampleRate
+			);
+
+			const leftChannelData = audioBuffer.getChannelData(0);
+			for (let i = 0; i < framesRead; i++) {
+				leftChannelData[i] = combinedBatchBuffer[i * 2];
 			}
 
-			offset += audioData.numberOfFrames * 2;
-			audioData.close();
+			const rightChannelData = audioBuffer.getChannelData(1);
+			for (let i = 0; i < framesRead; i++) {
+				rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
+			}
+
+			const source = audioState.audioContext.createBufferSource();
+			source.buffer = audioBuffer;
+
+			const gainNode = audioState.gainNodes.get(currentClips[0].id);
+			if (gainNode) source.connect(gainNode);
+
+			const currentOffset = audioState.offsets.get(currentClips[0].id);
+			let scheduledTime = audioState.audioContext.currentTime;
+
+			if (currentOffset) {
+				scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
+			}
+			console.log(`current time: ${audioState.audioContext.currentTime}`);
+			source.start(scheduledTime);
+
+			audioState.offsets.set(currentClips[0].id, scheduledTime + audioBuffer.duration);
 		}
-		audioDecoder.audioDataQueue.length = 0;
-
-		const framesRead = currentBatchFrames;
-		const audioBuffer = audioState.audioContext.createBuffer(
-			2,
-			currentBatchFrames,
-			audioState.audioContext.sampleRate
-		);
-
-		const leftChannelData = audioBuffer.getChannelData(0);
-		for (let i = 0; i < framesRead; i++) {
-			leftChannelData[i] = combinedBatchBuffer[i * 2];
-		}
-
-		const rightChannelData = audioBuffer.getChannelData(1);
-		for (let i = 0; i < framesRead; i++) {
-			rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
-		}
-
-		const source = audioState.audioContext.createBufferSource();
-		source.buffer = audioBuffer;
-
-		const gainNode = audioState.gainNodes.get(currentClips[0].id);
-		if (gainNode) source.connect(gainNode);
-
-		/* console.log(
-			`context: ${audioState.audioContext.currentTime} state: ${audioState.currentOffset}`
-		); */
-		const currentOffset = audioState.offsets.get(currentClips[0].id);
-		let scheduledTime = audioState.audioContext.currentTime;
-
-		if (currentOffset) {
-			scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
-		}
-
-		source.start(scheduledTime);
-
-		audioState.offsets.set(currentClips[0].id, scheduledTime + audioBuffer.duration);
-		//audioState.currentOffset = scheduledTime + audioBuffer.duration;
 	}
 
 	updateMeter();
 };
 
 export const pauseAudio = () => {
-	audioDecoder.pause();
+	//audioDecoder.pause();
+	audioState.decoderPool.pauseAll();
 	audioState.gainNodes.forEach((node) => {
 		if (node) node.disconnect();
 	});
 	audioState.gainNodes.clear();
 	audioState.offsets.clear();
 
-	/* 	if (audioState.gainNode) audioState.gainNode.disconnect();
-	audioState.gainNode = null; */
 	audioState.playingClips.length = 0;
 	appState.audioLevel = [0, 0];
+};
+
+const setupNewDecoder = (clip: Clip) => {
+	const source = appState.sources.find((s) => s.id === clip.source.id);
+	if (!source || !source.audioConfig) return;
+	const decoder = audioState.decoderPool.getDecoder();
+	if (!decoder) return;
+	for (const c of timelineState.clips) {
+		if (c.id === decoder.clipId) {
+			//c.decoder = null;
+		}
+	}
+	//clip.decoder = decoder;
+	decoder.clipId = clip.id;
+	decoder.setup(source.audioConfig, source.audioChunks);
+	return decoder;
 };
 
 const updateMeter = () => {

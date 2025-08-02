@@ -8,7 +8,7 @@ export class ADecoder {
 	#decoder;
 	#decoderConfig: AudioDecoderConfig | null = null;
 	//#ready = false;
-	#running = false;
+	running = false;
 
 	/** all chunks */
 	#chunks: EncodedAudioChunk[] = [];
@@ -22,6 +22,11 @@ export class ADecoder {
 
 	#startingFrameTimeStamp = 0;
 
+	id = 0;
+	clipId: string | null = null;
+	lastUsedTime = 0;
+	usedThisFrame = false;
+
 	constructor() {
 		this.#decoder = new AudioDecoder({ output: this.#onOutput, error: this.#onError });
 	}
@@ -33,8 +38,8 @@ export class ADecoder {
 	}
 
 	play(frameNumber: number) {
-		if (this.#running) return;
-		this.#running = true;
+		if (this.running) return;
+		this.running = true;
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
@@ -57,7 +62,8 @@ export class ADecoder {
 	}
 
 	pause() {
-		this.#running = false;
+		if (!this.running) return;
+		this.running = false;
 		if (DEBUG) console.log('Paused. Audio data left in queue:', this.audioDataQueue.length);
 
 		for (let i = 0; i < this.audioDataQueue.length; i++) {
@@ -94,7 +100,7 @@ export class ADecoder {
 	}
 
 	#onOutput = (audioData: AudioData) => {
-		if (this.#running) {
+		if (this.running) {
 			this.audioDataQueue.push(audioData);
 			this.#lastAudioDataTimestamp = audioData.timestamp;
 		}
