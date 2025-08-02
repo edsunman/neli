@@ -23,9 +23,7 @@ export class ADecoder {
 	#startingFrameTimeStamp = 0;
 
 	id = 0;
-	clipId: string | null = null;
 	lastUsedTime = 0;
-	usedThisFrame = false;
 
 	constructor() {
 		this.#decoder = new AudioDecoder({ output: this.#onOutput, error: this.#onError });

@@ -1,4 +1,4 @@
-import type { ADecoder } from './decoder';
+//import type { ADecoder } from './decoder';
 import { DecoderPool } from './pool';
 
 export class AudioState {
@@ -12,7 +12,7 @@ export class AudioState {
 	playingClips: string[] = [];
 	gainNodes = new Map<string, GainNode | null>();
 	offsets = new Map<string, number>();
-	decoders = new Map<string, ADecoder>();
+	//decoders = new Map<string, ADecoder>();
 	decoderPool = new DecoderPool();
 
 	startingFrame = 0;

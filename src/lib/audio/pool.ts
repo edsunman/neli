@@ -1,20 +1,16 @@
 import { ADecoder } from './decoder';
 
-const DEBUG = true;
+const DEBUG = false;
 
 export class DecoderPool {
-	#activeDecoders = new Set<ADecoder>();
+	decoders = new Map<string, ADecoder>();
 	#maxDecoders = 3;
 	#decoderCount = 0;
 
-	constructor() {
-		this.#activeDecoders = new Set();
-	}
-
-	getDecoder() {
+	assignDecoder(clipId: string) {
 		let decoder;
-		if (this.#activeDecoders.size < this.#maxDecoders) {
-			// No idle decoder, create a new one
+		if (this.decoders.size < this.#maxDecoders) {
+			// Create a new decoder
 			decoder = new ADecoder();
 			this.#decoderCount++;
 			decoder.id = this.#decoderCount;
@@ -23,12 +19,15 @@ export class DecoderPool {
 			// Use the oldest active decoder
 			let smallest = Infinity;
 			let oldestDecoder;
-			for (const d of this.#activeDecoders) {
+			let oldestDecoderKey;
+			for (const [key, d] of this.decoders) {
 				if (d.lastUsedTime < smallest) {
 					smallest = d.lastUsedTime;
 					oldestDecoder = d;
+					oldestDecoderKey = key;
 				}
 			}
+			if (oldestDecoderKey) this.decoders.delete(oldestDecoderKey);
 			decoder = oldestDecoder;
 			if (DEBUG) console.log(`[Pool] Using decoder ${decoder!.id}`);
 		}
@@ -37,31 +36,30 @@ export class DecoderPool {
 
 		decoder.lastUsedTime = performance.now();
 		decoder.pause();
-		this.#activeDecoders.add(decoder);
+		this.decoders.set(clipId, decoder);
 
-		if (DEBUG)
-			console.log(`[Pool] Active decoders: ${this.#activeDecoders.size}/${this.#maxDecoders}`);
+		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.#maxDecoders}`);
 		return decoder;
 	}
 
+	playDecoder(clipId: string, frame: number) {
+		this.decoders.get(clipId)?.play(frame);
+	}
+
+	runDecoder(clipId: string, elapsedTimeMs: number) {
+		this.decoders.get(clipId)?.run(elapsedTimeMs);
+	}
+
+	pauseDecoder(clipId: string) {
+		this.decoders.get(clipId)?.pause();
+	}
+
 	pauseAll() {
-		for (const decoder of this.#activeDecoders) {
+		for (const [, decoder] of this.decoders) {
 			if (decoder.running) {
 				decoder.pause();
 				if (DEBUG) console.log(`[Pool] Paused ${decoder.id}`);
 			}
-		}
-	}
-
-	markAllAsUnused() {
-		for (const decoder of this.#activeDecoders) {
-			decoder.usedThisFrame = false;
-		}
-	}
-
-	pauseAllUnused() {
-		for (const decoder of this.#activeDecoders) {
-			if (!decoder.usedThisFrame) decoder.pause();
 		}
 	}
 }
