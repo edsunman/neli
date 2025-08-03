@@ -59,7 +59,7 @@
 			updateScrollPosition();
 		}
 		if (dragging) {
-			moveSelectedClip(e.offsetY);
+			moveSelectedClip(offsetY);
 			return;
 		}
 		if (resizing) {

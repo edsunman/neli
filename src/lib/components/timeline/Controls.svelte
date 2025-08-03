@@ -1,5 +1,9 @@
 <script>
-	import { timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
+	import { pause, play } from '$lib/timeline/actions';
+	import PauseIcon from '../icons/PauseIcon.svelte';
+	import PlayIcon from '../icons/PlayIcon.svelte';
+	import SettingsIcon from '../icons/SettingsIcon.svelte';
 
 	let showFrames = false;
 
@@ -19,10 +23,30 @@
 	});
 </script>
 
-<div class="h-12 flex-none flex justify-center font-semibold text-2xl">
-	<div class="text-white select-none">
-		{showFrames ? timelineState.currentFrame : formattedTime}
-	</div>
+<div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
+	<button
+		class="text-white select-none hover:bg-[#26262c] pl-9 pr-3 py-1 mr-6 rounded-lg relative transition-colors duration-100 group"
+		onclick={(e) => {
+			if (timelineState.playing) {
+				pause();
+			} else {
+				play();
+			}
+			e.currentTarget.blur();
+		}}
+	>
+		{#if timelineState.playing}
+			<PauseIcon
+				class="size-4.5 absolute left-2.5 top-[11px] group-hover:opacity-100 opacity-0 transition-opacity duration-100"
+			/>
+		{:else}
+			<PlayIcon
+				class="size-4.5 absolute left-2.5 top-[11px] group-hover:opacity-100 opacity-0  transition-opacity duration-100"
+			/>
+		{/if}
+
+		<span>{showFrames ? timelineState.currentFrame : formattedTime}</span>
+	</button>
 	<!-- 	<button
 		onclick={() => {
 			timelineState.playing = true;
