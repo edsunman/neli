@@ -2,6 +2,10 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 
+const GREEN = '#50cfaf';
+const PURPLE = '#8b4fcf';
+const BLUE = '#419fda';
+
 export const drawCanvas = (context: CanvasRenderingContext2D, width: number, height: number) => {
 	context.fillStyle = '#18181b';
 	context.fillRect(0, 0, width, height);
@@ -52,6 +56,16 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	context.roundRect(
 		Math.floor(-offsetInPixels),
 		200,
+		Math.floor(timelineState.width * timelineState.zoom),
+		35,
+		8
+	);
+	context.fill();
+
+	context.beginPath();
+	context.roundRect(
+		Math.floor(-offsetInPixels),
+		250,
 		Math.floor(timelineState.width * timelineState.zoom),
 		35,
 		8
@@ -151,19 +165,31 @@ const drawClip = (
 	width: number,
 	selected = false
 ) => {
+	let clipColor = GREEN;
+	if (clip.source.type === 'text') {
+		clipColor = PURPLE;
+	} else if (clip.source.type === 'audio') {
+		clipColor = BLUE;
+	}
+
+	context.fillStyle = clipColor;
+
+	const gap = 3;
+	const trackTop = 50 + 50 * clip.track;
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
-	const durationPercent = clip.duration / timelineState.duration;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
-	const clipWidth = Math.round(durationPercent * width * timelineState.zoom);
-	const clipStart = Math.round(startPercent * width * timelineState.zoom);
-	const clipEnd = Math.round(endPercent * width * timelineState.zoom);
+	const clipFullStart = Math.round(startPercent * width * timelineState.zoom);
+	const clipFullEnd = Math.round(endPercent * width * timelineState.zoom);
 
-	if (clip.source.type === 'text') {
-		context.fillStyle = '#57babb';
-	} else {
-		context.fillStyle = 'oklch(64.5% 0.246 16.439)';
-	}
+	const clipStart = clipFullStart + 1;
+	const clipWidth = clipFullEnd - clipFullStart - gap;
+	const clipEnd = clipFullEnd - gap;
+
+	const maskStart = clip.joinLeft ? clipStart - 20 : clipStart;
+	let maskWidth = clipWidth;
+	if (clip.joinLeft || clip.joinRight) maskWidth = clipWidth + 20;
+	if (clip.joinLeft && clip.joinRight) maskWidth = clipWidth + 40;
 
 	if (clipWidth < 6) {
 		context.fillRect(clipStart + 1, 50 + 50 * clip.track, 3, 35);
@@ -173,52 +199,32 @@ const drawClip = (
 	// base shape
 	context.save();
 	context.beginPath();
-	context.roundRect(clipStart + 1, 50 + 50 * clip.track, clipWidth - 2, 35, 8);
+	context.roundRect(maskStart, trackTop, maskWidth, 35, 8);
 	context.clip();
-	context.fillRect(clipStart, 50 + 50 * clip.track, clipWidth + 2, 35);
+	context.fillRect(clipStart, trackTop, clipWidth, 35);
 	context.restore();
 
 	if (selected || clip.hovered) {
 		// handles
 		context.save();
 		context.beginPath();
-		context.roundRect(
-			clipStart + 4,
-			50 + 50 * clip.track + 3,
-			durationPercent * width * timelineState.zoom - 8,
-			29,
-			5
-		);
-
+		context.roundRect(maskStart + 3, 50 + 50 * clip.track + 3, maskWidth - 6, 29, 5);
 		context.clip();
 		context.fillStyle = '#131315';
-		context.fillRect(clipStart, 50 + 50 * clip.track, 15, 35);
-		context.fillRect(clipEnd - 15, 50 + 50 * clip.track, 15, 35);
+		context.fillRect(clipStart + 3, trackTop + 3, 11, 29);
+		context.fillRect(clipEnd - 13, trackTop + 3, 11, 29);
 		context.restore();
 
-		if (clip.source.type === 'text') {
-			context.fillStyle = '#57babb';
-		} else {
-			context.fillStyle = 'oklch(64.5% 0.246 16.439)';
-		}
+		context.fillStyle = clipColor;
 
-		context.fillRect(clipStart + 8, 50 + 50 * clip.track + 10, 3, 15);
-		context.fillRect(clipEnd - 11, 50 + 50 * clip.track + 10, 3, 15);
+		context.fillRect(clipStart + 7, trackTop + 10, 3, 15);
+		context.fillRect(clipEnd - 9, trackTop + 10, 3, 15);
 
 		context.fillStyle = '#131315';
 
 		if (selected) {
-			context.beginPath();
-			context.roundRect(
-				Math.round(startPercent * width * timelineState.zoom + 5),
-				50 + 50 * clip.track + 4,
-				Math.ceil(durationPercent * width * timelineState.zoom - 10),
-				27,
-				5
-			);
-			context.strokeStyle = '#131315';
-			context.lineWidth = 2;
-			context.stroke();
+			context.fillRect(clipStart + 14, trackTop + 3, clipWidth - 20, 2);
+			context.fillRect(clipStart + 14, trackTop + 30, clipWidth - 20, 2);
 		}
 	}
 };

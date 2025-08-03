@@ -11,6 +11,8 @@ export class Clip {
 	savedSourceOffset = 0;
 	duration = 0;
 	savedDuration = 0;
+	joinLeft = false;
+	joinRight = false;
 
 	scaleX = $state(1);
 	scaleY = $state(1);

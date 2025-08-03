@@ -4,7 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions';
 
-export const createClip = async (
+export const createClip = (
 	sourceId: string,
 	track: number,
 	start = 0,
@@ -26,6 +26,8 @@ export const createClip = async (
 
 	updateWorkerClip(clip);
 	historyManager.newCommand({ action: 'addClip', data: { clipId: clip.id } });
+
+	return clip;
 };
 
 export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
@@ -34,6 +36,7 @@ export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
 			clip.deleted = unDelete ? false : true;
 			//clip.videoClip.disabled = unDelete ? false : true;
 			timelineState.selectedClip = null;
+			setClipJoins(clip);
 			if (!noHistory)
 				historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
 			updateWorkerClip(clip);
@@ -41,7 +44,7 @@ export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
 	}
 };
 
-export const moveSelectedClip = () => {
+export const moveSelectedClip = (mouseY: number) => {
 	const frame = canvasPixelToFrame(timelineState.dragOffset, false);
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
@@ -77,13 +80,17 @@ export const moveSelectedClip = () => {
 	if (clip.start + clip.duration > timelineState.duration) {
 		clip.start = timelineState.duration - clip.duration;
 	}
-};
 
-const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: number) => {
-	if (frame < targetFrame + snapRange && frame > targetFrame - snapRange) {
-		return true;
+	// move between tracks
+	if (clip.source.type === 'video') {
+		if (mouseY > 192) {
+			clip.track = 3;
+		} else {
+			clip.track = 2;
+		}
 	}
-	return false;
+
+	setClipJoins(clip);
 };
 
 export const resizeSelctedClip = () => {
@@ -109,20 +116,8 @@ export const resizeSelctedClip = () => {
 			clip.sourceOffset = clip.savedSourceOffset - delta;
 		}
 
-		// find nearest neighbour
-		let neighbour;
-		let prevDistance = 10000;
-		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
-				continue;
-			const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
-			if (distance > 0 && distance < prevDistance) {
-				neighbour = siblingClip;
-				prevDistance = distance;
-			}
-		}
-
-		const hardStop = neighbour ? neighbour.start + neighbour.duration : 0;
+		const leftSibling = getLeftSibling(clip);
+		const hardStop = leftSibling ? leftSibling.start + leftSibling.duration : 0;
 
 		// boundry check
 		if (clip.start < hardStop) {
@@ -139,10 +134,8 @@ export const resizeSelctedClip = () => {
 			clip.sourceOffset = clip.savedSourceOffset + clip.savedDuration - minimumSize;
 		}
 
-		if (!clip.source.duration) return;
-
 		// source length checks
-		if (clip.sourceOffset < 0) {
+		if (clip.source.duration && clip.sourceOffset < 0) {
 			clip.start = clip.savedStart - clip.savedSourceOffset;
 			clip.duration = clip.savedDuration + clip.savedSourceOffset;
 			clip.sourceOffset = 0;
@@ -157,22 +150,8 @@ export const resizeSelctedClip = () => {
 		}
 
 		const maxLength = clip.source.duration ? clip.source.duration - clip.sourceOffset : 1000;
-
-		//  find nearest neighbour
-		let neighbour;
-		let prevDistance = Infinity;
-		for (const siblingClip of timelineState.clips) {
-			if (clip.id === siblingClip.id || siblingClip.deleted || siblingClip.track !== clip.track)
-				continue;
-			const distance = siblingClip.start - clip.start;
-			//if (distance < 0) continue;
-			if (distance > 0 && distance < prevDistance) {
-				neighbour = siblingClip;
-				prevDistance = distance;
-			}
-		}
-
-		const hardStop = neighbour ? neighbour.start : timelineState.duration;
+		const rightSibling = getRightSibling(clip);
+		const hardStop = rightSibling ? rightSibling.start : timelineState.duration;
 
 		// boundry check
 		if (clip.start + clip.duration > hardStop) {
@@ -184,14 +163,14 @@ export const resizeSelctedClip = () => {
 			clip.duration = minimumSize;
 		}
 
-		if (!clip.source.duration) return;
-
 		// source length checks
-		if (clip.duration > maxLength) {
+		if (clip.source.duration && clip.duration > maxLength) {
 			clip.duration = maxLength;
 			clip.invalid = true;
 		}
 	}
+
+	setClipJoins(clip);
 };
 
 export const trimSiblingClips = () => {
@@ -213,6 +192,7 @@ export const trimSiblingClips = () => {
 		if (clip.start > siblingClip.start && clipEnd < siblingEnd) {
 			// clip fits inside sibling so split it
 			splitClip(siblingClip.id, clip.start, clip.duration);
+			setClipJoins(clip);
 			continue;
 		}
 
@@ -220,6 +200,7 @@ export const trimSiblingClips = () => {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
 			siblingClip.duration = siblingClip.duration - trimAmount;
+			setClipJoins(clip);
 			updateWorkerClip(siblingClip);
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
@@ -228,6 +209,7 @@ export const trimSiblingClips = () => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
+			setClipJoins(clip);
 			updateWorkerClip(siblingClip);
 		}
 	}
@@ -250,7 +232,14 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 
 	// create new clip
 	// TODO: need to copy settings to new clip!
-	createClip(clip.source.id, clip.track, frame + gapSize, newClipDuration, newClipOffset);
+	const newClip = createClip(
+		clip.source.id,
+		clip.track,
+		frame + gapSize,
+		newClipDuration,
+		newClipOffset
+	);
+	if (newClip) setClipJoins(newClip);
 };
 
 export const removeHoverAllClips = () => {
@@ -301,4 +290,77 @@ export const getClip = (id: string) => {
 		}
 	}
 	return foundClip ?? null;
+};
+
+const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: number) => {
+	if (frame < targetFrame + snapRange && frame > targetFrame - snapRange) {
+		return true;
+	}
+	return false;
+};
+
+const setClipJoins = (clip: Clip) => {
+	clip.joinLeft = false;
+	clip.joinRight = false;
+
+	const leftSibling = getLeftSibling(clip);
+	if (leftSibling) {
+		leftSibling.joinRight = false;
+		if (leftSibling.start + leftSibling.duration === clip.start && !clip.deleted) {
+			// joined!
+			clip.joinLeft = true;
+			leftSibling.joinRight = true;
+		}
+	}
+
+	const rightSibling = getRightSibling(clip);
+	if (rightSibling) {
+		rightSibling.joinLeft = false;
+		if (rightSibling.start === clip.start + clip.duration && !clip.deleted) {
+			// joined!
+			clip.joinRight = true;
+			rightSibling.joinLeft = true;
+		}
+	}
+};
+
+const getLeftSibling = (clip: Clip) => {
+	let sibling;
+	let previousDistance = Infinity;
+	for (const siblingClip of timelineState.clips) {
+		if (
+			siblingClip.id === clip.id ||
+			siblingClip.deleted ||
+			siblingClip.track !== clip.track ||
+			siblingClip.start + siblingClip.duration > clip.start + clip.duration
+		)
+			continue;
+		const distance = clip.start + clip.duration - (siblingClip.start + siblingClip.duration);
+		if (distance < previousDistance) {
+			sibling = siblingClip;
+			previousDistance = distance;
+		}
+	}
+	return sibling;
+};
+
+const getRightSibling = (clip: Clip) => {
+	let sibling;
+	let previousDistance = Infinity;
+	for (const siblingClip of timelineState.clips) {
+		if (
+			siblingClip.id === clip.id ||
+			siblingClip.deleted ||
+			siblingClip.track !== clip.track ||
+			siblingClip.start < clip.start
+		)
+			continue;
+
+		const distance = siblingClip.start - clip.start;
+		if (distance < previousDistance) {
+			sibling = siblingClip;
+			previousDistance = distance;
+		}
+	}
+	return sibling;
 };
