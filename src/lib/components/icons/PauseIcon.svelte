@@ -6,12 +6,16 @@
 	{...rest}
 	role="img"
 	xmlns="http://www.w3.org/2000/svg"
-	viewBox="0 0 24 24"
-	stroke="currentColor"
-	stroke-width="2"
-	stroke-linecap="round"
-	stroke-linejoin="round"
-	fill="none"
+	viewBox="0 0 240 240"
+	fill="currentColor"
 >
-	<rect width="4" height="16" x="5" y="4" /><rect width="4" height="16" x="15" y="4" />
+	<rect class="cls-1" x="21.71" y="12.01" width="72.27" height="218.54" rx="35.8" ry="35.8" /><rect
+		class="cls-1"
+		x="145.38"
+		y="12.01"
+		width="72.27"
+		height="218.54"
+		rx="36.13"
+		ry="36.13"
+	/>
 </svg>
