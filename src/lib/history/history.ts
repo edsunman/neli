@@ -8,7 +8,13 @@ type Command =
 	| { action: 'deleteClip'; data: { clipId: string } }
 	| {
 			action: 'moveClip';
-			data: { clipId: string; oldStart: number; newStart: number; track: number };
+			data: {
+				clipId: string;
+				oldStart: number;
+				newStart: number;
+				oldTrack: number;
+				newTrack: number;
+			};
 	  }
 	| {
 			action: 'trimClip';
@@ -22,7 +28,7 @@ type Command =
 	  };
 
 export class HistoryManager {
-	#debug = true;
+	#debug = false;
 	#undoStack: Command[][] = [];
 	#redoStack: Command[][] = [];
 	#tempCommand: Command[] = [];
@@ -82,6 +88,7 @@ export class HistoryManager {
 					const clip = getClip(command.data.clipId);
 					if (!clip) break;
 					clip.start = command.data.oldStart;
+					clip.track = command.data.oldTrack;
 					updatedClips.add(clip);
 					break;
 				}
@@ -138,6 +145,7 @@ export class HistoryManager {
 					const clip = getClip(command.data.clipId);
 					if (!clip) break;
 					clip.start = command.data.newStart;
+					clip.track = command.data.newTrack;
 					updatedClips.add(clip);
 					break;
 				}

@@ -12,6 +12,7 @@ let decoderPool: DecoderPool;
 let playing = false;
 let seeking = false;
 let encoding = false;
+let latestSeekFrame = 0;
 
 const clips: WorkerClip[] = [];
 const sources: WorkerSource[] = [];
@@ -52,6 +53,13 @@ self.addEventListener('message', async function (e) {
 			}
 			break;
 		case 'seek': {
+			latestSeekFrame = e.data.frame;
+			if (seeking) {
+				break;
+			}
+			processSeekFrame();
+			/* 			lastSeekFrame = e.data.frame;
+			console.log(lastSeekFrame);
 			playing = false;
 			if (seeking) return;
 			seeking = true;
@@ -59,18 +67,18 @@ self.addEventListener('message', async function (e) {
 			decoderPool.pauseAll();
 			await buildAndDrawFrame(e.data.frame);
 
-			seeking = false;
+			seeking = false; */
 			break;
 		}
 		case 'clip': {
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
-				//e.data.clip.decoder = clips[foundClipIndex].decoder;
 				clips[foundClipIndex] = e.data.clip;
 			} else {
 				clips.push(e.data.clip);
 			}
+
 			if (seeking) return;
 			seeking = true;
 			await buildAndDrawFrame(e.data.frame);
@@ -79,6 +87,23 @@ self.addEventListener('message', async function (e) {
 		}
 	}
 });
+
+const processSeekFrame = async () => {
+	seeking = true;
+
+	while (true) {
+		const frameToProcess = latestSeekFrame;
+
+		decoderPool.pauseAll();
+		await buildAndDrawFrame(frameToProcess);
+
+		if (latestSeekFrame === frameToProcess) {
+			break;
+		}
+	}
+
+	seeking = false;
+};
 
 const startPlayLoop = async (frame: number) => {
 	const startingFrame = frame;

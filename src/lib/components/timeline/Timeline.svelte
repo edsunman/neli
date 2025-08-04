@@ -116,6 +116,7 @@
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
+			clip.savedTrack = clip.track;
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
@@ -141,14 +142,15 @@
 			if (clip) {
 				trimSiblingClips(clip);
 				updateWorkerClip(clip);
-				if (clip.start !== clip.savedStart) {
+				if (clip.start !== clip.savedStart || clip.track !== clip.savedTrack) {
 					historyManager.pushAction({
 						action: 'moveClip',
 						data: {
 							clipId: clip.id,
 							newStart: clip.start,
 							oldStart: clip.savedStart,
-							track: clip.track
+							newTrack: clip.track,
+							oldTrack: clip.savedTrack
 						}
 					});
 				}
