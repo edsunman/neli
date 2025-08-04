@@ -25,7 +25,7 @@
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
 	<button
-		class="text-white select-none hover:bg-[#26262c] pl-9 pr-3 py-1 mr-6 rounded-lg relative transition-colors duration-100 group"
+		class="text-white select-none hover:bg-[#26262c] pl-9 pr-3 py-1 mr-6 rounded-lg relative group"
 		onclick={(e) => {
 			if (timelineState.playing) {
 				pause();
@@ -36,13 +36,9 @@
 		}}
 	>
 		{#if timelineState.playing}
-			<PauseIcon
-				class="size-4.5 absolute left-2.5 top-[11px] group-hover:opacity-100 opacity-0 transition-opacity duration-100"
-			/>
+			<PauseIcon class="absolute size-3.5 left-3 top-[13px] group-hover:opacity-100 opacity-0 " />
 		{:else}
-			<PlayIcon
-				class="size-4.5 absolute left-2.5 top-[11px] group-hover:opacity-100 opacity-0  transition-opacity duration-100"
-			/>
+			<PlayIcon class="absolute size-3.5 left-3 top-[13px] group-hover:opacity-100 opacity-0" />
 		{/if}
 
 		<span>{showFrames ? timelineState.currentFrame : formattedTime}</span>

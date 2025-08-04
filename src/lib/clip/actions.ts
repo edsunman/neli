@@ -30,15 +30,13 @@ export const createClip = (
 	return clip;
 };
 
-export const deleteClip = (id: string, unDelete = false, noHistory = false) => {
+export const deleteClip = (id: string) => {
 	for (const clip of timelineState.clips) {
 		if (clip.id === id) {
-			clip.deleted = unDelete ? false : true;
-			//clip.videoClip.disabled = unDelete ? false : true;
+			clip.deleted = true;
 			timelineState.selectedClip = null;
 			setClipJoins(clip);
-			if (!noHistory)
-				historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
+			historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
 			updateWorkerClip(clip);
 		}
 	}
@@ -173,10 +171,8 @@ export const resizeSelctedClip = () => {
 	setClipJoins(clip);
 };
 
-export const trimSiblingClips = () => {
-	const clip = timelineState.selectedClip;
-	if (!clip) return;
-	const clipsToRemove: string[] = [];
+export const trimSiblingClips = (clip: Clip) => {
+	const clipsToRemove: Clip[] = [];
 	for (const siblingClip of timelineState.clips) {
 		if (siblingClip.id === clip.id || siblingClip.deleted || siblingClip.track !== clip.track)
 			continue;
@@ -185,7 +181,7 @@ export const trimSiblingClips = () => {
 
 		if (clip.start < siblingClip.start && clipEnd > siblingEnd) {
 			// clip covers sibling so remove it
-			clipsToRemove.push(siblingClip.id);
+			clipsToRemove.push(siblingClip);
 			continue;
 		}
 
@@ -199,22 +195,52 @@ export const trimSiblingClips = () => {
 		if (clip.start > siblingClip.start && clip.start < siblingEnd) {
 			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
+			const oldDuration = siblingClip.duration;
 			siblingClip.duration = siblingClip.duration - trimAmount;
 			setClipJoins(clip);
 			updateWorkerClip(siblingClip);
+			historyManager.pushAction({
+				action: 'trimClip',
+				data: {
+					clipId: siblingClip.id,
+					newStart: siblingClip.start,
+					oldStart: siblingClip.start,
+					newDuration: siblingClip.duration,
+					oldDuration: oldDuration
+				}
+			});
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
 			// need to trim start
 			const trimAmount = clipEnd - siblingClip.start;
+			const oldStart = siblingClip.start;
+			const oldDuration = siblingClip.duration;
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
 			setClipJoins(clip);
 			updateWorkerClip(siblingClip);
+			historyManager.pushAction({
+				action: 'trimClip',
+				data: {
+					clipId: siblingClip.id,
+					newStart: siblingClip.start,
+					oldStart: oldStart,
+					newDuration: siblingClip.duration,
+					oldDuration: oldDuration
+				}
+			});
 		}
 	}
-	for (const clipId of clipsToRemove) {
-		deleteClip(clipId);
+
+	for (const clip of clipsToRemove) {
+		clip.deleted = true;
+		historyManager.pushAction({
+			action: 'deleteClip',
+			data: {
+				clipId: clip.id
+			}
+		});
 	}
 };
 
@@ -222,24 +248,38 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	const clip = getClip(clipId);
 	if (!clip) return;
 
+	const oldDuration = clip.duration;
 	const ogClipDuration = frame - clip.start;
 	const newClipDuration = clip.duration - ogClipDuration - gapSize;
 	const newClipOffset = clip.sourceOffset + ogClipDuration + gapSize;
 
 	// trim clip
 	clip.duration = ogClipDuration;
+	historyManager.pushAction({
+		action: 'trimClip',
+		data: {
+			clipId: clip.id,
+			newStart: clip.start,
+			oldStart: clip.start,
+			newDuration: clip.duration,
+			oldDuration: oldDuration
+		}
+	});
 	updateWorkerClip(clip);
 
 	// create new clip
 	// TODO: need to copy settings to new clip!
-	const newClip = createClip(
-		clip.source.id,
+	const newClip = new Clip(
+		clip.source,
 		clip.track,
 		frame + gapSize,
 		newClipDuration,
 		newClipOffset
 	);
-	if (newClip) setClipJoins(newClip);
+	timelineState.clips.push(newClip);
+	updateWorkerClip(newClip);
+	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
+	setClipJoins(newClip);
 };
 
 export const removeHoverAllClips = () => {
@@ -299,7 +339,7 @@ const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: numbe
 	return false;
 };
 
-const setClipJoins = (clip: Clip) => {
+export const setClipJoins = (clip: Clip) => {
 	clip.joinLeft = false;
 	clip.joinRight = false;
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setCurrentFrameFromOffset,
@@ -132,23 +132,49 @@
 	};
 
 	mouseUp = (e: MouseEvent) => {
+		const clip = timelineState.selectedClip;
 		if (scrubbing) {
 			scrubbing = false;
-			//setCurrentFrameFromOffset(e.offsetX);
 		}
 		if (dragging) {
 			dragging = false;
-			trimSiblingClips();
-			updateWorkerClip(timelineState.selectedClip);
+			if (clip) {
+				trimSiblingClips(clip);
+				updateWorkerClip(clip);
+				if (clip.start !== clip.savedStart) {
+					historyManager.pushAction({
+						action: 'moveClip',
+						data: {
+							clipId: clip.id,
+							newStart: clip.start,
+							oldStart: clip.savedStart,
+							track: clip.track
+						}
+					});
+				}
+			}
 		}
 		if (resizing) {
 			resizing = false;
-			updateWorkerClip(timelineState.selectedClip);
+			if (clip) {
+				updateWorkerClip(clip);
+				historyManager.newCommand({
+					action: 'trimClip',
+					data: {
+						clipId: clip.id,
+						newStart: clip.start,
+						oldStart: clip.savedStart,
+						newDuration: clip.duration,
+						oldDuration: clip.savedDuration
+					}
+				});
+			}
 		}
 		if (scrolling) {
 			scrolling = false;
 		}
 		timelineState.dragOffset = 0;
+		historyManager.finishCommand();
 		removeInvalidAllClips();
 	};
 

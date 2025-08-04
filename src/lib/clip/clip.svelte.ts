@@ -5,6 +5,7 @@ export class Clip {
 	source: Source;
 
 	track = 0;
+	savedTrack = 0;
 	start = 0;
 	savedStart = 0;
 	sourceOffset = 0;
