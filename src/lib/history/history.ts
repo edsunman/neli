@@ -1,7 +1,7 @@
 import { getClip, setClipJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
-import { updateWorkerClip } from '$lib/worker/actions';
+import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 type Command =
 	| { action: 'addClip'; data: { clipId: string } }
@@ -25,6 +25,10 @@ type Command =
 				oldDuration: number;
 				newDuration: number;
 			};
+	  }
+	| {
+			action: 'clipParam';
+			data: { clipId: string; paramIndex: number; oldValue: number; newValue: number };
 	  };
 
 export class HistoryManager {
@@ -46,6 +50,7 @@ export class HistoryManager {
 
 	finishCommand() {
 		if (this.#tempCommand.length < 1) return;
+		this.#redoStack = [];
 		const newCommand = structuredClone(this.#tempCommand);
 		this.#undoStack.unshift(newCommand);
 		this.#tempCommand = [];
@@ -97,6 +102,13 @@ export class HistoryManager {
 					if (!clip) break;
 					clip.start = command.data.oldStart;
 					clip.duration = command.data.oldDuration;
+					updatedClips.add(clip);
+					break;
+				}
+				case 'clipParam': {
+					const clip = getClip(command.data.clipId);
+					if (!clip) break;
+					clip.params[command.data.paramIndex] = command.data.oldValue;
 					updatedClips.add(clip);
 					break;
 				}
@@ -154,6 +166,13 @@ export class HistoryManager {
 					if (!clip) break;
 					clip.start = command.data.newStart;
 					clip.duration = command.data.newDuration;
+					updatedClips.add(clip);
+					break;
+				}
+				case 'clipParam': {
+					const clip = getClip(command.data.clipId);
+					if (!clip) break;
+					clip.params[command.data.paramIndex] = command.data.newValue;
 					updatedClips.add(clip);
 					break;
 				}

@@ -6,19 +6,16 @@ export class Clip {
 
 	track = 0;
 	savedTrack = 0;
-	start = 0;
+	start = $state(0);
 	savedStart = 0;
 	sourceOffset = 0;
 	savedSourceOffset = 0;
-	duration = 0;
+	duration = $state(0);
 	savedDuration = 0;
 	joinLeft = false;
 	joinRight = false;
 
-	scaleX = $state(1);
-	scaleY = $state(1);
-	positionX = $state(0);
-	positionY = $state(0);
+	params = $state([1, 1, 0, 0]);
 
 	deleted = false;
 	invalid = false;

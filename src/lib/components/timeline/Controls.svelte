@@ -3,7 +3,6 @@
 	import { pause, play } from '$lib/timeline/actions';
 	import PauseIcon from '../icons/PauseIcon.svelte';
 	import PlayIcon from '../icons/PlayIcon.svelte';
-	import SettingsIcon from '../icons/SettingsIcon.svelte';
 
 	let showFrames = false;
 
@@ -28,7 +27,7 @@
 		class={[
 			!appState.disableHoverStates && 'hover:bg-[#26262c] group',
 			'text-white select-non pl-9 pr-3 py-1 mr-6 rounded-lg relative',
-			'transition-colors duration-200 hover:duration-0'
+			'transition-colors duration-200 hover:duration-0 select-none'
 		]}
 		onclick={(e) => {
 			if (timelineState.playing) {
@@ -57,14 +56,4 @@
 
 		<span>{showFrames ? timelineState.currentFrame : formattedTime}</span>
 	</button>
-	<!-- 	<button
-		onclick={() => {
-			timelineState.playing = true;
-		}}>play</button
-	>
-	<button
-		onclick={() => {
-			timelineState.playing = false;
-		}}>pause</button
-	> -->
 </div>

@@ -25,7 +25,7 @@
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
-	import { updateWorkerClip } from '$lib/worker/actions';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 

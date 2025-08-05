@@ -2,7 +2,7 @@ import { historyManager, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
-import { updateWorkerClip } from '$lib/worker/actions';
+import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 export const createClip = (
 	sourceId: string,

@@ -71,6 +71,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		}
 		case 'clip': {
+			//console.log(e.data.clip);
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
@@ -242,20 +243,20 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		if (!frame) continue;
 		renderer.videoPass(
 			frame,
-			videoClips[i].scaleX,
-			videoClips[i].scaleY,
-			videoClips[i].positionX,
-			videoClips[i].positionY
+			videoClips[i].params[0],
+			videoClips[i].params[1],
+			videoClips[i].params[2],
+			videoClips[i].params[3]
 		);
 	}
 
 	for (let i = 0; i < shapeClips.length; i++) {
 		renderer.shapePass(
 			1,
-			shapeClips[i].scaleX,
-			shapeClips[i].scaleY,
-			shapeClips[i].positionX,
-			shapeClips[i].positionY
+			shapeClips[i].params[0],
+			shapeClips[i].params[1],
+			shapeClips[i].params[2],
+			shapeClips[i].params[3]
 		);
 	}
 

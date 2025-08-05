@@ -8,10 +8,11 @@ export type WorkerClip = {
 	start: number;
 	duration: number;
 	sourceOffset: number;
-	scaleX: number;
+	params: number[];
+	/* scaleX: number;
 	scaleY: number;
 	positionX: number;
-	positionY: number;
+	positionY: number; */
 	deleted: boolean;
 	type: SourceType;
 };

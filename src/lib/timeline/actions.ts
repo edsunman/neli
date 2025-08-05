@@ -1,4 +1,4 @@
-import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions';
+import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame } from './utils';
 import { deselectClipIfTooSmall } from '$lib/clip/actions';
@@ -20,6 +20,7 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 
 export const play = () => {
 	timelineState.playing = true;
+	timelineState.selectedClip = null;
 
 	playWorker(timelineState.currentFrame);
 

@@ -1,4 +1,4 @@
-import { sendFileToWorker } from '$lib/worker/actions';
+import { sendFileToWorker } from '$lib/worker/actions.svelte';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source';
 import { createFile, ISOFile, MP4BoxBuffer, type Movie } from 'mp4box';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { updateWorkerClip } from '$lib/worker/actions';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
 	import { untrack } from 'svelte';
@@ -15,16 +15,6 @@
 		} else {
 			selected = 'audio';
 		}
-	});
-
-	$effect(() => {
-		timelineState.selectedClip?.scaleX;
-		timelineState.selectedClip?.scaleY;
-		timelineState.selectedClip?.positionX;
-		timelineState.selectedClip?.positionY;
-		untrack(() => {
-			if (timelineState.selectedClip) updateWorkerClip(timelineState.selectedClip);
-		});
 	});
 </script>
 
@@ -101,10 +91,13 @@
 						}}
 						onblur={() => {
 							appState.disableKeyboardShortcuts = false;
-							if (!clip.scaleX) clip.scaleX = 0;
+							if (!clip.params[0]) clip.params[0] = 0;
+						}}
+						oninput={() => {
+							updateWorkerClip(timelineState.selectedClip);
 						}}
 						step=".01"
-						bind:value={clip.scaleX}
+						bind:value={clip.params[0]}
 					/><input
 						type="number"
 						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
@@ -113,26 +106,32 @@
 						}}
 						onblur={() => {
 							appState.disableKeyboardShortcuts = false;
-							if (!clip.scaleY) clip.scaleY = 0;
+							if (!clip.params[1]) clip.params[1] = 0;
 						}}
-						bind:value={clip.scaleY}
+						bind:value={clip.params[1]}
 					/>
 				</div>
 			</div>
 			<div class="text-sm font-medium mt-2">
-				<span>Position</span>
+				<span class="select-none">Position</span>
 				<div class="mt-2">
 					<input
 						type="number"
-						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
+						class={[
+							appState.disableHoverStates && 'selection:bg-[rgba(0,0,0,0)]',
+							'bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none'
+						]}
 						onfocus={() => {
 							appState.disableKeyboardShortcuts = true;
 						}}
 						onblur={() => {
 							appState.disableKeyboardShortcuts = false;
-							if (!clip.positionX) clip.positionX = 0;
+							//if (!clip.positionX) clip.positionX = 0;
 						}}
-						bind:value={clip.positionX}
+						oninput={() => {
+							updateWorkerClip(timelineState.selectedClip);
+						}}
+						bind:value={clip.params[2]}
 					/><input
 						type="number"
 						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
@@ -141,9 +140,9 @@
 						}}
 						onblur={() => {
 							appState.disableKeyboardShortcuts = false;
-							if (!clip.positionY) clip.positionY = 0;
+							//if (!clip.positionY) clip.positionY = 0;
 						}}
-						bind:value={clip.positionY}
+						bind:value={clip.params[3]}
 					/>
 				</div>
 			</div>
