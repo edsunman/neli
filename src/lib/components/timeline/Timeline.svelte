@@ -89,7 +89,8 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		appState.mouseMoveOwner = 'timeline';
-		if (e.offsetY < 40) {
+		appState.disableHoverStates = true;
+		if (e.offsetY < 80) {
 			scrubbing = true;
 			setCurrentFrameFromOffset(e.offsetX);
 		}
@@ -175,6 +176,8 @@
 		if (scrolling) {
 			scrolling = false;
 		}
+
+		appState.disableHoverStates = false;
 		timelineState.dragOffset = 0;
 		historyManager.finishCommand();
 		removeInvalidAllClips();

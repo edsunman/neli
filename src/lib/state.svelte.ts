@@ -2,16 +2,16 @@ import type { Source } from './source/source';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio';
-import type { WebGPURenderer } from './worker/renderer';
 
 class AppState {
-	renderer: WebGPURenderer | null = null;
 	mediaWorker: Worker | null = null;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
+	audioLevel = $state([0, 0]);
+	disableHoverStates = $state(false);
+
 	disableKeyboardShortcuts = false;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
-	audioLevel = $state([0, 0]);
 }
 
 export const appState = new AppState();

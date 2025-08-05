@@ -26,7 +26,8 @@
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
 	<button
 		class={[
-			'text-white select-non hover:bg-[#26262c] pl-9 pr-3 py-1 mr-6 rounded-lg relative group',
+			!appState.disableHoverStates && 'hover:bg-[#26262c] group',
+			'text-white select-non pl-9 pr-3 py-1 mr-6 rounded-lg relative',
 			'transition-colors duration-200 hover:duration-0'
 		]}
 		onclick={(e) => {

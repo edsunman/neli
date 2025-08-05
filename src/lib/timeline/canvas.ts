@@ -84,18 +84,19 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, 0, 2, height - 60);
+	context.fillRect(playheadPosition, 20, 2, height - 80);
 
 	const radius = 3;
 	context.beginPath();
-	context.arc(playheadPosition - 4, 3, radius, 2.2, -1.4);
-	context.arc(playheadPosition + 10 - 4, 3, radius, 4.6, 1.0);
-	context.arc(playheadPosition + 5 - 4, 14, 1, 0.6, 2.6);
-	context.arc(playheadPosition - 4, 3, radius, 2.2, -1.4);
+	context.arc(playheadPosition - 4, 23, radius, 2.2, -1.4);
+	context.arc(playheadPosition + 10 - 4, 23, radius, 4.6, 1.0);
+	context.arc(playheadPosition + 5 - 4, 34, 1, 0.6, 2.6);
+	context.arc(playheadPosition - 4, 23, radius, 2.2, -1.4);
 	context.fill();
 };
 
 const drawRuler = (context: CanvasRenderingContext2D) => {
+	const rulerPosition = 20;
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
 	const minuteInPixels = (timelineState.width / durationInMinutes) * timelineState.zoom;
@@ -114,8 +115,8 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 		let startMinute = Math.floor(startFrame / 1800);
 		for (let i = 0; i < numberOfMinutesToShow; i++) {
 			const position = Math.floor(minuteInPixels * startMinute - offsetInPixels);
-			context.fillRect(position, 10, 1, 22);
-			context.fillText(secondsToTimecode(startMinute * 60), position + 5, 25);
+			context.fillRect(position, rulerPosition + 10, 1, 22);
+			context.fillText(secondsToTimecode(startMinute * 60), position + 5, rulerPosition + 25);
 			startMinute++;
 		}
 	}
@@ -126,8 +127,8 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
 			const position = Math.floor((minuteInPixels / 6) * startSecond - offsetInPixels);
-			context.fillRect(position, 10, 1, 22);
-			context.fillText(secondsToTimecode(startSecond * 10), position + 5, 25);
+			context.fillRect(position, rulerPosition + 10, 1, 22);
+			context.fillText(secondsToTimecode(startSecond * 10), position + 5, rulerPosition + 25);
 			startSecond++;
 		}
 	}
@@ -138,8 +139,8 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
 			const position = Math.floor((minuteInPixels / 60) * startSecond - offsetInPixels);
-			context.fillRect(position, 10, 1, 22);
-			context.fillText(secondsToTimecode(startSecond), position + 5, 25);
+			context.fillRect(position, rulerPosition + 10, 1, 22);
+			context.fillText(secondsToTimecode(startSecond), position + 5, rulerPosition + 25);
 			startSecond++;
 		}
 	}
@@ -153,7 +154,7 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 				continue;
 			}
 			const position = Math.floor((minuteInPixels / 60 / 30) * frame - offsetInPixels);
-			context.fillRect(position, 19, 1, 5);
+			context.fillRect(position, rulerPosition + 19, 1, 5);
 			frame++;
 		}
 	}
