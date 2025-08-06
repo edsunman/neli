@@ -43,5 +43,8 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"wgpu-matrix": "^3.4.0"
 	}
 }

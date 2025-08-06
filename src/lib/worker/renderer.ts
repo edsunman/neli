@@ -1,6 +1,7 @@
 import videoShader from './shaders/video.wgsl?raw';
 import shapeShader from './shaders/shape.wgsl?raw';
 import testShader from './shaders/test.wgsl?raw';
+import { MsdfFont, MsdfTextRenderer } from './text';
 
 export class WebGPURenderer {
 	#canvas: OffscreenCanvas | undefined;
@@ -13,6 +14,9 @@ export class WebGPURenderer {
 	#testPipeline: GPURenderPipeline | undefined;
 	#sampler: GPUSampler | undefined;
 	#commandEncoder: GPUCommandEncoder | undefined;
+	#depthFormat = 'depth24plus' as GPUTextureFormat;
+	#font: MsdfFont | undefined;
+	#textRenderer: MsdfTextRenderer | undefined;
 
 	#pendingFrames: VideoFrame[] = [];
 
@@ -61,6 +65,11 @@ export class WebGPURenderer {
 			},
 			primitive: {
 				topology: 'triangle-list'
+			},
+			depthStencil: {
+				depthWriteEnabled: true,
+				depthCompare: 'less',
+				format: this.#depthFormat
 			}
 		});
 
@@ -103,6 +112,9 @@ export class WebGPURenderer {
 				topology: 'triangle-list'
 			}
 		});
+
+		this.#textRenderer = new MsdfTextRenderer(this.#device, this.#format, this.#depthFormat);
+		this.#font = await this.#textRenderer.createFont('/text.json');
 
 		// Default sampler configuration is nearset + clamp.
 		this.#sampler = this.#device.createSampler({});
@@ -176,6 +188,13 @@ export class WebGPURenderer {
 			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
 		});
 
+		const depthTexture = this.#device.createTexture({
+			size: { width: 1920, height: 1080 },
+			format: 'depth24plus', // Must match the render bundle's format
+			usage: GPUTextureUsage.RENDER_ATTACHMENT
+		});
+		const depthTextureView = depthTexture.createView();
+
 		const textureView = this.#ctx.getCurrentTexture().createView();
 		const renderPassDescriptor = {
 			colorAttachments: [
@@ -184,13 +203,30 @@ export class WebGPURenderer {
 					loadOp: 'load' as GPULoadOp,
 					storeOp: 'store' as GPUStoreOp
 				}
-			]
+			],
+			depthStencilAttachment: {
+				view: depthTextureView,
+				depthClearValue: 1.0,
+				depthLoadOp: 'clear' as GPULoadOp,
+				depthStoreOp: 'store' as GPUStoreOp
+			}
 		};
+		if (!this.#textRenderer || !this.#font) return;
+
+		const text = [
+			this.#textRenderer.formatText(this.#font, `01:23:14`, {
+				centered: true,
+				lineHeight: 0,
+				pixelScale: 1 / 50,
+				color: [1, 1, 1, 1]
+			})
+		];
 
 		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
 		passEncoder.setPipeline(this.#shapePipeline);
 		passEncoder.setBindGroup(0, uniformBindGroup);
-		passEncoder.draw(6, 1, 0, 0);
+		//passEncoder.draw(6, 1, 0, 0);
+		this.#textRenderer.render(passEncoder, ...text);
 		passEncoder.end();
 	}
 
