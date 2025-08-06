@@ -66,6 +66,10 @@ export const createTextSource = () => {
 	appState.sources.push(new Source('text'));
 };
 
+export const createTestSource = () => {
+	appState.sources.push(new Source('test'));
+};
+
 export const getSourceFromId = (id: string) => {
 	let foundSource;
 	for (const source of appState.sources) {

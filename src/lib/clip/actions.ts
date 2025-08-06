@@ -80,7 +80,7 @@ export const moveSelectedClip = (mouseY: number) => {
 	}
 
 	// move between tracks
-	if (clip.source.type === 'video') {
+	if (clip.source.type === 'video' || clip.source.type === 'test') {
 		if (mouseY > 192) {
 			clip.track = 3;
 		} else {

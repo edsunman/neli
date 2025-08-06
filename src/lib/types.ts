@@ -1,6 +1,6 @@
 //import type { VDecoder } from './worker/decoder';
 
-export type SourceType = 'text' | 'video' | 'audio';
+export type SourceType = 'text' | 'video' | 'audio' | 'test';
 
 export type WorkerClip = {
 	id: string;
@@ -8,11 +8,8 @@ export type WorkerClip = {
 	start: number;
 	duration: number;
 	sourceOffset: number;
+	track: number;
 	params: number[];
-	/* scaleX: number;
-	scaleY: number;
-	positionX: number;
-	positionY: number; */
 	deleted: boolean;
 	type: SourceType;
 };

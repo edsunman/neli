@@ -1,16 +1,18 @@
 import videoShader from './shaders/video.wgsl?raw';
 import shapeShader from './shaders/shape.wgsl?raw';
+import testShader from './shaders/test.wgsl?raw';
 
 export class WebGPURenderer {
-	#canvas: OffscreenCanvas | null = null;
+	#canvas: OffscreenCanvas | undefined;
 	#ctx: GPUCanvasContext | null = null;
 
-	#format: GPUTextureFormat | null = null;
-	#device: GPUDevice | null = null;
-	#pipeline: GPURenderPipeline | null = null;
-	#shapePipeline: GPURenderPipeline | null = null;
-	#sampler: GPUSampler | null = null;
-	#commandEncoder: GPUCommandEncoder | null = null;
+	#format: GPUTextureFormat | undefined;
+	#device: GPUDevice | undefined;
+	#pipeline: GPURenderPipeline | undefined;
+	#shapePipeline: GPURenderPipeline | undefined;
+	#testPipeline: GPURenderPipeline | undefined;
+	#sampler: GPUSampler | undefined;
+	#commandEncoder: GPUCommandEncoder | undefined;
 
 	#pendingFrames: VideoFrame[] = [];
 
@@ -53,6 +55,26 @@ export class WebGPURenderer {
 			fragment: {
 				module: this.#device.createShaderModule({
 					code: shapeShader
+				}),
+				entryPoint: 'frag_main',
+				targets: [{ format: this.#format }]
+			},
+			primitive: {
+				topology: 'triangle-list'
+			}
+		});
+
+		this.#testPipeline = this.#device.createRenderPipeline({
+			layout: 'auto',
+			vertex: {
+				module: this.#device.createShaderModule({
+					code: testShader
+				}),
+				entryPoint: 'vert_main'
+			},
+			fragment: {
+				module: this.#device.createShaderModule({
+					code: testShader
 				}),
 				entryPoint: 'frag_main',
 				targets: [{ format: this.#format }]
@@ -125,13 +147,7 @@ export class WebGPURenderer {
 		pass.end();
 	}
 
-	shapePass(
-		redValue: number,
-		scaleX: number,
-		scaleY: number,
-		positionX: number,
-		positionY: number
-	) {
+	shapePass(frameNumber: number, params: number[]) {
 		if (
 			!this.#device ||
 			!this.#shapePipeline ||
@@ -141,11 +157,9 @@ export class WebGPURenderer {
 		)
 			return;
 
-		this.#uniformArray.set([redValue, 0, scaleX, scaleY, positionX, positionY], 0);
-
-		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 6; // Size for three f32
+		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
 		const uniformBuffer = this.#device.createBuffer({
-			size: uniformBufferSize,
+			size: this.#uniformArray.byteLength,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		});
 
@@ -180,17 +194,59 @@ export class WebGPURenderer {
 		passEncoder.end();
 	}
 
-	videoPass(
-		frame: VideoFrame,
-		scaleX: number,
-		scaleY: number,
-		positionX: number,
-		positionY: number
-	) {
+	testPass(frameNumber: number, params: number[]) {
+		if (
+			!this.#device ||
+			!this.#testPipeline ||
+			!this.#sampler ||
+			!this.#ctx ||
+			!this.#commandEncoder
+		)
+			return;
+
+		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
+		const uniformBuffer = this.#device.createBuffer({
+			size: this.#uniformArray.byteLength,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		this.#device.queue.writeBuffer(
+			uniformBuffer,
+			0,
+			this.#uniformArray.buffer,
+			0,
+			this.#uniformArray.byteLength
+		);
+
+		const uniformBindGroup = this.#device.createBindGroup({
+			layout: this.#testPipeline.getBindGroupLayout(0),
+			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
+		});
+
+		const textureView = this.#ctx.getCurrentTexture().createView();
+		const renderPassDescriptor = {
+			colorAttachments: [
+				{
+					view: textureView,
+					loadOp: 'load' as GPULoadOp,
+					storeOp: 'store' as GPUStoreOp
+				}
+			]
+		};
+
+		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
+		passEncoder.setPipeline(this.#testPipeline);
+		passEncoder.setBindGroup(0, uniformBindGroup);
+		// Draw 6 vertices for each of the 4 instances
+		passEncoder.draw(6, 5);
+		passEncoder.end();
+	}
+
+	videoPass(frame: VideoFrame, params: number[]) {
 		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler || !this.#commandEncoder)
 			return;
 
-		this.#uniformArray.set([0, 0, scaleX, scaleY, positionX, positionY], 0);
+		this.#uniformArray.set([0, 0, params[0], params[1], params[2], params[3]], 0);
 
 		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 6; // Size for three f32
 		const uniformBuffer = this.#device.createBuffer({

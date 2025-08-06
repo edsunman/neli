@@ -24,9 +24,9 @@ export class Source {
 		this.id = Math.random().toString(16).slice(2);
 		this.type = type;
 
-		if (type === 'text') {
-			this.name = 'Text';
-		}
+		if (type === 'text') this.name = 'Text';
+		if (type === 'test') this.name = 'Test card';
+
 		if (file) {
 			this.name = file.name;
 			this.file = file;

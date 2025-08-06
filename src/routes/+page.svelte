@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { appState, historyManager } from '$lib/state.svelte';
-	import { createTextSource } from '$lib/source/actions';
+	import { createTestSource, createTextSource } from '$lib/source/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -24,6 +24,7 @@
 
 	onMount(async () => {
 		createTextSource();
+		createTestSource();
 	});
 </script>
 

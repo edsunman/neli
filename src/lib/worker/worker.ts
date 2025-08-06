@@ -58,16 +58,6 @@ self.addEventListener('message', async function (e) {
 				break;
 			}
 			processSeekFrame();
-			/* 			lastSeekFrame = e.data.frame;
-			console.log(lastSeekFrame);
-			playing = false;
-			if (seeking) return;
-			seeking = true;
-
-			decoderPool.pauseAll();
-			await buildAndDrawFrame(e.data.frame);
-
-			seeking = false; */
 			break;
 		}
 		case 'clip': {
@@ -162,39 +152,38 @@ const startPlayLoop = async (frame: number) => {
 	self.requestAnimationFrame(loop);
 };
 
-const setupFrame = (frame: number) => {
+const setupFrame = (frameNumber: number) => {
 	for (const clip of clips) {
 		if (clip.type !== 'video' || clip.deleted) continue;
-		if (clip.start <= frame && clip.start + clip.duration > frame) {
-			const clipFrame = frame - clip.start + clip.sourceOffset;
+		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
+			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
 			decoderPool.decoders.get(clip.id)?.play(clipFrame);
 		}
 	}
 };
 
-const buildAndDrawFrame = async (frame: number, run = false) => {
+const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	if (!renderer) return;
 
-	const shapeClips = [];
-	const videoClips = [];
+	const activeClips = [];
 	for (const clip of clips) {
 		if (clip.deleted) continue;
-		if (clip.start <= frame && clip.start + clip.duration > frame) {
-			if (clip.type === 'text') {
-				shapeClips.push(clip);
-			} else {
-				videoClips.push(clip);
-			}
+		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
+			activeClips.push(clip);
 		}
 	}
+	activeClips.sort((a, b) => {
+		return b.track - a.track;
+	});
 
 	decoderPool.markAllAsUnused();
 
 	// get frame for each video clip
-	const videoFrames = [];
-	for (const videoClip of videoClips) {
+	const videoFrames = new Map();
+	for (const videoClip of activeClips) {
+		if (videoClip.type !== 'video') continue;
 		let decoder = decoderPool.decoders.get(videoClip.id);
-		const clipFrame = frame - videoClip.start + videoClip.sourceOffset;
+		const clipFrame = frameNumber - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
 			f = decoder?.run(clipFrame * 33.33333333);
@@ -208,7 +197,7 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 			// a blank frame from a decoder while encoding, so abort
 			return;
 		}
-		videoFrames.push(f);
+		videoFrames.set(videoClip.id, f);
 		if (decoder) {
 			decoder.lastUsedTime = performance.now();
 			decoder.usedThisFrame = true;
@@ -219,10 +208,9 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 		// look ahead
 		for (const clip of clips) {
 			if (clip.type !== 'video' || clip.deleted) continue;
-			if (frame < clip.start && frame > clip.start - 4) {
-				const frameDistance = clip.start - frame;
-				//console.log(`clip starts in ${frameDistance} frames`);
-				const clipStartFrame = frame - clip.start + clip.sourceOffset + frameDistance;
+			if (frameNumber < clip.start && frameNumber > clip.start - 4) {
+				const frameDistance = clip.start - frameNumber;
+				const clipStartFrame = frameNumber - clip.start + clip.sourceOffset + frameDistance;
 				const decoder = decoderPool.decoders.get(clip.id);
 				if (!decoder) {
 					setupNewDecoder(clip);
@@ -238,26 +226,18 @@ const buildAndDrawFrame = async (frame: number, run = false) => {
 
 	renderer.startPaint();
 
-	for (let i = 0; i < videoClips.length; i++) {
-		const frame = videoFrames[i];
-		if (!frame) continue;
-		renderer.videoPass(
-			frame,
-			videoClips[i].params[0],
-			videoClips[i].params[1],
-			videoClips[i].params[2],
-			videoClips[i].params[3]
-		);
-	}
-
-	for (let i = 0; i < shapeClips.length; i++) {
-		renderer.shapePass(
-			1,
-			shapeClips[i].params[0],
-			shapeClips[i].params[1],
-			shapeClips[i].params[2],
-			shapeClips[i].params[3]
-		);
+	for (const clip of activeClips) {
+		if (clip.type === 'video') {
+			const frame = videoFrames.get(clip.id);
+			if (!frame) continue;
+			renderer.videoPass(frame, clip.params);
+		}
+		if (clip.type === 'text') {
+			renderer.shapePass(1, clip.params);
+		}
+		if (clip.type === 'test') {
+			renderer.testPass(frameNumber - clip.start, clip.params);
+		}
 	}
 
 	await renderer.endPaint();

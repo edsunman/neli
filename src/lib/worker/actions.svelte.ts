@@ -53,11 +53,8 @@ export const updateWorkerClip = (clip: Clip | null) => {
 		start: clip.start,
 		duration: clip.duration,
 		sourceOffset: clip.sourceOffset,
+		track: clip.track,
 		params: $state.snapshot(clip.params),
-		/* 		scaleX: clip.params[0],
-		scaleY: clip.params[1],
-		positionX: clip.params[2],
-		positionY: clip.params[3], */
 		type: clip.source.type,
 		deleted: clip.deleted
 	};
