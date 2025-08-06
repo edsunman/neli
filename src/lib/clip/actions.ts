@@ -268,7 +268,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	updateWorkerClip(clip);
 
 	// create new clip
-	// TODO: need to copy settings to new clip!
 	const newClip = new Clip(
 		clip.source,
 		clip.track,
@@ -276,6 +275,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 		newClipDuration,
 		newClipOffset
 	);
+	newClip.params = [...clip.params];
 	timelineState.clips.push(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });

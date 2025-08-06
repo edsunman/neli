@@ -3,7 +3,7 @@
 	import { appState, historyManager } from '$lib/state.svelte';
 	import { createTextSource } from '$lib/source/actions';
 
-	import Project from '$lib/components/panels/Project.svelte';
+	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
 	import Controls from '$lib/components/panels/Settings.svelte';
@@ -28,8 +28,11 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="h-dvh grid grid-cols-[25%_50%_25%] grid-rows-[55%_45%] bg-zinc-900" {onmousemove}>
-	<div><Project /></div>
+<div
+	class="h-dvh grid grid-cols-[25%_50%_25%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] bg-zinc-900"
+	{onmousemove}
+>
+	<div><Sources /></div>
 	<div><Program bind:mouseMove={programMouseMove} /></div>
 	<div><Controls /></div>
 	<div class="col-span-3">

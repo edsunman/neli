@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { Slider, ToggleGroup } from 'bits-ui';
-	import { untrack } from 'svelte';
 	import SpeakerIcon from '../icons/SpeakerIcon.svelte';
 	import SettingsIcon from '../icons/SettingsIcon.svelte';
 	import AudioIcon from '../icons/AudioIcon.svelte';
+	import SettingsInput from '../ui/SettingsInput.svelte';
+	import SettingsGroup from '../ui/SettingsGroup.svelte';
 
 	let selected = $state<'audio' | 'project' | 'clip'>('audio');
 
@@ -23,14 +23,14 @@
 		<!-- svelte-ignore a11y_consider_explicit_label -->
 		<button
 			onclick={() => (selected = 'audio')}
-			class={[selected === 'audio' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
+			class={[selected === 'audio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
 		>
 			<SpeakerIcon class="w-6 h-6" />
 		</button>
 		<button
 			onclick={() => (selected = 'project')}
 			class={[
-				selected === 'project' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400',
+				selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
 				'p-2'
 			]}
 		>
@@ -39,7 +39,7 @@
 		{#if timelineState.selectedClip}
 			<button
 				onclick={() => (selected = 'clip')}
-				class={[selected === 'clip' ? 'text-zinc-400' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
+				class={[selected === 'clip' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
 			>
 				<AudioIcon class="w-6 h-6" />
 			</button>
@@ -79,73 +79,14 @@
 
 		{#if selected === 'clip' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-
-			<div class="text-sm font-medium">
-				<span>Size</span>
-				<div class="mt-2">
-					<input
-						type="number"
-						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
-						onfocus={() => {
-							appState.disableKeyboardShortcuts = true;
-						}}
-						onblur={() => {
-							appState.disableKeyboardShortcuts = false;
-							if (!clip.params[0]) clip.params[0] = 0;
-						}}
-						oninput={() => {
-							updateWorkerClip(timelineState.selectedClip);
-						}}
-						step=".01"
-						bind:value={clip.params[0]}
-					/><input
-						type="number"
-						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
-						onfocus={() => {
-							appState.disableKeyboardShortcuts = true;
-						}}
-						onblur={() => {
-							appState.disableKeyboardShortcuts = false;
-							if (!clip.params[1]) clip.params[1] = 0;
-						}}
-						bind:value={clip.params[1]}
-					/>
-				</div>
-			</div>
-			<div class="text-sm font-medium mt-2">
-				<span class="select-none">Position</span>
-				<div class="mt-2">
-					<input
-						type="number"
-						class={[
-							appState.disableHoverStates && 'selection:bg-[rgba(0,0,0,0)]',
-							'bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none'
-						]}
-						onfocus={() => {
-							appState.disableKeyboardShortcuts = true;
-						}}
-						onblur={() => {
-							appState.disableKeyboardShortcuts = false;
-							//if (!clip.positionX) clip.positionX = 0;
-						}}
-						oninput={() => {
-							updateWorkerClip(timelineState.selectedClip);
-						}}
-						bind:value={clip.params[2]}
-					/><input
-						type="number"
-						class="bg-zinc-800 w-12 text-right px-1 py-0.5 rounded-sm ml-2 [&::-webkit-inner-spin-button]:appearance-none"
-						onfocus={() => {
-							appState.disableKeyboardShortcuts = true;
-						}}
-						onblur={() => {
-							appState.disableKeyboardShortcuts = false;
-							//if (!clip.positionY) clip.positionY = 0;
-						}}
-						bind:value={clip.params[3]}
-					/>
-				</div>
-			</div>
+			<SettingsGroup label={'size'}>
+				<SettingsInput bind:value={clip.params[0]} fallback={1} />
+				<SettingsInput bind:value={clip.params[1]} fallback={1} />
+			</SettingsGroup>
+			<SettingsGroup label={'position'}>
+				<SettingsInput bind:value={clip.params[2]} />
+				<SettingsInput bind:value={clip.params[3]} />
+			</SettingsGroup>
 
 			<!-- <div class="flex flex-col gap-3 mt-4">
 				<div class="flex items-center justify-between text-sm font-medium">

@@ -8,7 +8,7 @@
 	let canvas = $state<HTMLCanvasElement>();
 	let width = $state(0);
 	let height = $state(0);
-	let scale = $derived((width / 1920) * 80);
+	let scale = $derived((width / 1920) * 70);
 
 	let dragging = false;
 	let draggedOffset = { x: 0, y: 0 };
@@ -18,6 +18,7 @@
 	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
 		if (appState.mouseMoveOwner !== 'program' || !dragging) return;
 		if (e.buttons < 1 || !timelineState.selectedClip) return;
+		e.preventDefault();
 
 		draggedOffset.x = e.clientX - mouseDownPosition.x;
 		draggedOffset.y = e.clientY - mouseDownPosition.y;
@@ -60,6 +61,7 @@
 			style:height={`${boxSizeY}px`}
 			class="border-2 border-white absolute top-0 left-0"
 			onmousedown={(e) => {
+				e.preventDefault();
 				dragging = true;
 				savedClipPosition = { x: clip.params[2], y: clip.params[3] };
 				mouseDownPosition = { x: e.clientX, y: e.clientY };

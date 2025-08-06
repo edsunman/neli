@@ -43,13 +43,12 @@
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
 
-		timelineState.invalidate = true;
 		canvas.style.cursor = 'default';
-
 		const offsetY = parentY - canvasContainer.offsetTop;
 
 		if (scrubbing) {
 			setCurrentFrameFromOffset(parentX);
+			timelineState.invalidate = true;
 			return;
 		}
 		if (dragging || resizing || scrolling) {
@@ -57,24 +56,30 @@
 		}
 		if (scrolling) {
 			updateScrollPosition();
+			timelineState.invalidate = true;
+			return;
 		}
 		if (dragging) {
 			moveSelectedClip(offsetY);
+			timelineState.invalidate = true;
 			return;
 		}
 		if (resizing) {
 			resizeSelctedClip();
 			canvas.style.cursor = 'col-resize';
+			timelineState.invalidate = true;
 			return;
 		}
 
 		if (offsetY < 0) return;
+		timelineState.invalidate = true;
 
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
 		if (!clip) return;
 
+		// hovering over a clip
 		clip.resizeHover = 'none';
 		const start = frameToCanvasPixel(clip.start);
 		const end = frameToCanvasPixel(clip.start + clip.duration);
