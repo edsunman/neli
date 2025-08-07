@@ -10,6 +10,7 @@ export type WorkerClip = {
 	sourceOffset: number;
 	track: number;
 	params: number[];
+	text: string;
 	deleted: boolean;
 	type: SourceType;
 };

@@ -55,6 +55,7 @@ export const updateWorkerClip = (clip: Clip | null) => {
 		sourceOffset: clip.sourceOffset,
 		track: clip.track,
 		params: $state.snapshot(clip.params),
+		text: clip.text,
 		type: clip.source.type,
 		deleted: clip.deleted
 	};

@@ -16,6 +16,7 @@ export class Clip {
 	joinRight = false;
 
 	params = $state([1, 1, 0, 0]);
+	text = $state('hello');
 
 	deleted = false;
 	invalid = false;

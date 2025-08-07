@@ -233,7 +233,8 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 			renderer.videoPass(frame, clip.params);
 		}
 		if (clip.type === 'text') {
-			renderer.shapePass(frameNumber, clip.params);
+			if (!clip.text) clip.text = '_';
+			renderer.textPass(frameNumber, clip.params, clip.text);
 		}
 		if (clip.type === 'test') {
 			renderer.testPass(frameNumber - clip.start, clip.params);

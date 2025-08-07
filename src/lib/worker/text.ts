@@ -348,7 +348,12 @@ export class MsdfTextRenderer {
 		);
 	}
 
-	formatText(font: MsdfFont, text: string, options: MsdfTextFormattingOptions = {}): MsdfText {
+	formatText(
+		font: MsdfFont,
+		text: string,
+		options: MsdfTextFormattingOptions = {},
+		params: number[]
+	): MsdfText {
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
 			size: (text.length + 6) * Float32Array.BYTES_PER_ELEMENT * 4,
@@ -396,13 +401,21 @@ export class MsdfTextRenderer {
 
 		textBuffer.unmap();
 
+		const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
+		const uniformBuffer = this.device.createBuffer({
+			size: a.byteLength,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		this.device.queue.writeBuffer(uniformBuffer, 0, a.buffer, 0, a.byteLength);
+
 		const bindGroup = this.device.createBindGroup({
 			label: 'msdf text bind group',
 			layout: this.textBindGroupLayout,
 			entries: [
 				{
 					binding: 0,
-					resource: { buffer: this.cameraUniformBuffer }
+					resource: { buffer: uniformBuffer }
 				},
 				{
 					binding: 1,

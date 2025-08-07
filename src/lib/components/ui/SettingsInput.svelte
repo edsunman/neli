@@ -2,11 +2,16 @@
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
-	let { value = $bindable(), fallback = 0 } = $props();
+	type Props = {
+		value: any;
+		fallback?: number | string;
+		type?: string;
+	};
+	let { value = $bindable(), fallback = 0, type = 'number' }: Props = $props();
 </script>
 
 <input
-	type="number"
+	{type}
 	class={[
 		'bg-hover w-12 text-right px-1 py-0.5 rounded-sm ml-2 text-zinc-400 focus:text-zinc-100 outline-0',
 		'[&::-webkit-inner-spin-button]:appearance-none'

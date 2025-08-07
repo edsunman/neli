@@ -87,6 +87,9 @@
 				<SettingsInput bind:value={clip.params[2]} />
 				<SettingsInput bind:value={clip.params[3]} />
 			</SettingsGroup>
+			<SettingsGroup label={'text'}>
+				<SettingsInput bind:value={clip.text} type="text" fallback={'_'} />
+			</SettingsGroup>
 
 			<!-- <div class="flex flex-col gap-3 mt-4">
 				<div class="flex items-center justify-between text-sm font-medium">

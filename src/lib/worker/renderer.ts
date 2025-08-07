@@ -10,7 +10,7 @@ export class WebGPURenderer {
 	#format: GPUTextureFormat | undefined;
 	#device: GPUDevice | undefined;
 	#pipeline: GPURenderPipeline | undefined;
-	#shapePipeline: GPURenderPipeline | undefined;
+	#textPipeline: GPURenderPipeline | undefined;
 	#testPipeline: GPURenderPipeline | undefined;
 	#sampler: GPUSampler | undefined;
 	#commandEncoder: GPUCommandEncoder | undefined;
@@ -48,7 +48,7 @@ export class WebGPURenderer {
 			alphaMode: 'opaque'
 		});
 
-		this.#shapePipeline = this.#device.createRenderPipeline({
+		this.#textPipeline = this.#device.createRenderPipeline({
 			layout: 'auto',
 			vertex: {
 				module: this.#device.createShaderModule({
@@ -159,10 +159,10 @@ export class WebGPURenderer {
 		pass.end();
 	}
 
-	shapePass(frameNumber: number, params: number[]) {
+	textPass(frameNumber: number, params: number[], inputText: string) {
 		if (
 			!this.#device ||
-			!this.#shapePipeline ||
+			!this.#textPipeline ||
 			!this.#sampler ||
 			!this.#ctx ||
 			!this.#commandEncoder
@@ -184,7 +184,7 @@ export class WebGPURenderer {
 		);
 
 		const uniformBindGroup = this.#device.createBindGroup({
-			layout: this.#shapePipeline.getBindGroupLayout(0),
+			layout: this.#textPipeline.getBindGroupLayout(0),
 			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
 		});
 
@@ -212,18 +212,22 @@ export class WebGPURenderer {
 			}
 		};
 		if (!this.#textRenderer || !this.#font) return;
-
 		const text = [
-			this.#textRenderer.formatText(this.#font, `01:23:14`, {
-				centered: true,
-				lineHeight: 0,
-				pixelScale: 1 / 50,
-				color: [1, 1, 1, 1]
-			})
+			this.#textRenderer.formatText(
+				this.#font,
+				inputText,
+				{
+					centered: true,
+					lineHeight: 0,
+					pixelScale: 1 / 50,
+					color: [1, 1, 1, 1]
+				},
+				params
+			)
 		];
 
 		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
-		passEncoder.setPipeline(this.#shapePipeline);
+		passEncoder.setPipeline(this.#textPipeline);
 		passEncoder.setBindGroup(0, uniformBindGroup);
 		//passEncoder.draw(6, 1, 0, 0);
 		this.#textRenderer.render(passEncoder, ...text);
