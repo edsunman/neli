@@ -241,6 +241,7 @@ export const trimSiblingClips = (clip: Clip) => {
 				clipId: clip.id
 			}
 		});
+		updateWorkerClip(clip);
 	}
 };
 

@@ -17,9 +17,7 @@ struct VertexOutput {
 };
 
 @vertex
-fn vert_main(
-    in: VertexInput
-) -> VertexOutput {
+fn vertexMain(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     var pos = array<vec2<f32>, 6>(
         vec2<f32>( 1,  1),
@@ -56,19 +54,17 @@ fn vert_main(
 
     positions[4].x = ((uniforms.frameNumber % 30) / 20) - 0.75;
 
-    let instance_pos = pos[in.VertexIndex] * scales[in.InstanceIndex] + positions[in.InstanceIndex];
+    let instance_pos = pos[input.VertexIndex] * scales[input.InstanceIndex] + positions[input.InstanceIndex];
     let zoomed_pos = instance_pos * uniforms.scale + uniforms.position;
 
 
     out.Position = vec4<f32>(zoomed_pos, 0.0, 1.0);
-    out.color = colors[in.InstanceIndex];
+    out.color = colors[input.InstanceIndex];
     return out;
 }
 
 @fragment
-fn frag_main(
-    @location(0) color: vec4<f32>,
-) -> @location(0) vec4<f32> {
+fn fragmentMain(@location(0) color: vec4<f32>,) -> @location(0) vec4<f32> {
     return color;
 }
 

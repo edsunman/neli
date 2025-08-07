@@ -14,7 +14,7 @@ struct VertexOutput {
 }
 
 @vertex
-fn vert_main(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
+fn vertexMain(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
     var pos = array<vec2<f32>, 6>(
     vec2<f32>( 1.0,  1.0),
     vec2<f32>( 1.0, -1.0),
@@ -45,6 +45,6 @@ fn vert_main(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
 }
 
 @fragment
-fn frag_main(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
+fn fragmentMain(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
     return textureSampleBaseClampToEdge(myTexture, mySampler, uv);
 }

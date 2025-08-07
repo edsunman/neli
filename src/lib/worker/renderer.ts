@@ -1,7 +1,6 @@
-import videoShader from './shaders/video.wgsl?raw';
-import shapeShader from './shaders/shape.wgsl?raw';
-import testShader from './shaders/test.wgsl?raw';
-import { MsdfFont, MsdfTextRenderer } from './text';
+import { MsdfFont, MsdfTextRenderer } from './render/text';
+import { TestRenderer } from './render/test';
+import { VideoRenderer } from './render/video';
 
 export class WebGPURenderer {
 	#canvas: OffscreenCanvas | undefined;
@@ -9,19 +8,17 @@ export class WebGPURenderer {
 
 	#format: GPUTextureFormat | undefined;
 	#device: GPUDevice | undefined;
-	#pipeline: GPURenderPipeline | undefined;
-	#textPipeline: GPURenderPipeline | undefined;
-	#testPipeline: GPURenderPipeline | undefined;
 	#sampler: GPUSampler | undefined;
 	#commandEncoder: GPUCommandEncoder | undefined;
-	#depthFormat = 'depth24plus' as GPUTextureFormat;
+	#passEncoder: GPURenderPassEncoder | undefined;
+
 	#font: MsdfFont | undefined;
 	#textRenderer: MsdfTextRenderer | undefined;
+	#testRenderer: TestRenderer | undefined;
+	#videoRenderer: VideoRenderer | undefined;
 
 	#pendingFrames: VideoFrame[] = [];
-
 	bitmap: ImageBitmap | undefined;
-
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
 	constructor(canvas: OffscreenCanvas) {
@@ -48,90 +45,37 @@ export class WebGPURenderer {
 			alphaMode: 'opaque'
 		});
 
-		this.#textPipeline = this.#device.createRenderPipeline({
-			layout: 'auto',
-			vertex: {
-				module: this.#device.createShaderModule({
-					code: shapeShader
-				}),
-				entryPoint: 'vert_main'
-			},
-			fragment: {
-				module: this.#device.createShaderModule({
-					code: shapeShader
-				}),
-				entryPoint: 'frag_main',
-				targets: [{ format: this.#format }]
-			},
-			primitive: {
-				topology: 'triangle-list'
-			},
-			depthStencil: {
-				depthWriteEnabled: true,
-				depthCompare: 'less',
-				format: this.#depthFormat
-			}
-		});
-
-		this.#testPipeline = this.#device.createRenderPipeline({
-			layout: 'auto',
-			vertex: {
-				module: this.#device.createShaderModule({
-					code: testShader
-				}),
-				entryPoint: 'vert_main'
-			},
-			fragment: {
-				module: this.#device.createShaderModule({
-					code: testShader
-				}),
-				entryPoint: 'frag_main',
-				targets: [{ format: this.#format }]
-			},
-			primitive: {
-				topology: 'triangle-list'
-			}
-		});
-
-		this.#pipeline = this.#device.createRenderPipeline({
-			layout: 'auto',
-			vertex: {
-				module: this.#device.createShaderModule({
-					code: videoShader
-				}),
-				entryPoint: 'vert_main'
-			},
-			fragment: {
-				module: this.#device.createShaderModule({
-					code: videoShader
-				}),
-				entryPoint: 'frag_main',
-				targets: [{ format: this.#format }]
-			},
-			primitive: {
-				topology: 'triangle-list'
-			}
-		});
-
-		this.#textRenderer = new MsdfTextRenderer(this.#device, this.#format, this.#depthFormat);
-		this.#font = await this.#textRenderer.createFont('/text.json');
-
-		// Default sampler configuration is nearset + clamp.
 		this.#sampler = this.#device.createSampler({});
 
+		this.#testRenderer = new TestRenderer(this.#device, this.#format);
+		this.#videoRenderer = new VideoRenderer(this.#device, this.#format, this.#sampler);
+		this.#textRenderer = new MsdfTextRenderer(this.#device, this.#format);
+		this.#font = await this.#textRenderer.createFont('/text.json');
+
 		this.startPaint();
-		this.blankFramePass();
 		this.endPaint();
 	}
 
 	startPaint() {
-		if (!this.#device) return;
+		if (!this.#device || !this.#ctx) return;
 		this.#commandEncoder = this.#device.createCommandEncoder();
 		this.blankFramePass();
+		const textureView = this.#ctx.getCurrentTexture().createView();
+		const renderPassDescriptor = {
+			colorAttachments: [
+				{
+					view: textureView,
+					loadOp: 'load' as GPULoadOp,
+					storeOp: 'store' as GPUStoreOp
+				}
+			]
+		};
+		this.#passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
 	}
 
 	async endPaint() {
-		if (!this.#device || !this.#commandEncoder || !this.#canvas) return;
+		if (!this.#device || !this.#commandEncoder || !this.#canvas || !this.#passEncoder) return;
+		this.#passEncoder.end();
 		this.#device.queue.submit([this.#commandEncoder.finish()]);
 
 		this.bitmap = await createImageBitmap(this.#canvas);
@@ -146,7 +90,6 @@ export class WebGPURenderer {
 
 	blankFramePass() {
 		if (!this.#commandEncoder || !this.#ctx) return;
-
 		const pass = this.#commandEncoder.beginRenderPass({
 			colorAttachments: [
 				{
@@ -160,173 +103,33 @@ export class WebGPURenderer {
 	}
 
 	textPass(frameNumber: number, params: number[], inputText: string) {
-		if (
-			!this.#device ||
-			!this.#textPipeline ||
-			!this.#sampler ||
-			!this.#ctx ||
-			!this.#commandEncoder
-		)
-			return;
-
-		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
-		const uniformBuffer = this.#device.createBuffer({
-			size: this.#uniformArray.byteLength,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
-
-		this.#device.queue.writeBuffer(
-			uniformBuffer,
-			0,
-			this.#uniformArray.buffer,
-			0,
-			this.#uniformArray.byteLength
+		if (!this.#textRenderer || !this.#font || !this.#passEncoder) return;
+		const text = this.#textRenderer.prepareText(
+			this.#font,
+			inputText,
+			{
+				centered: true,
+				lineHeight: 0,
+				pixelScale: 1 / 100,
+				color: [1, 1, 1, 1]
+			},
+			params
 		);
-
-		const uniformBindGroup = this.#device.createBindGroup({
-			layout: this.#textPipeline.getBindGroupLayout(0),
-			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
-		});
-
-		const depthTexture = this.#device.createTexture({
-			size: { width: 1920, height: 1080 },
-			format: 'depth24plus', // Must match the render bundle's format
-			usage: GPUTextureUsage.RENDER_ATTACHMENT
-		});
-		const depthTextureView = depthTexture.createView();
-
-		const textureView = this.#ctx.getCurrentTexture().createView();
-		const renderPassDescriptor = {
-			colorAttachments: [
-				{
-					view: textureView,
-					loadOp: 'load' as GPULoadOp,
-					storeOp: 'store' as GPUStoreOp
-				}
-			],
-			depthStencilAttachment: {
-				view: depthTextureView,
-				depthClearValue: 1.0,
-				depthLoadOp: 'clear' as GPULoadOp,
-				depthStoreOp: 'store' as GPUStoreOp
-			}
-		};
-		if (!this.#textRenderer || !this.#font) return;
-		const text = [
-			this.#textRenderer.formatText(
-				this.#font,
-				inputText,
-				{
-					centered: true,
-					lineHeight: 0,
-					pixelScale: 1 / 50,
-					color: [1, 1, 1, 1]
-				},
-				params
-			)
-		];
-
-		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
-		passEncoder.setPipeline(this.#textPipeline);
-		passEncoder.setBindGroup(0, uniformBindGroup);
-		//passEncoder.draw(6, 1, 0, 0);
-		this.#textRenderer.render(passEncoder, ...text);
-		passEncoder.end();
+		this.#textRenderer.render(this.#passEncoder, [text]);
 	}
 
 	testPass(frameNumber: number, params: number[]) {
-		if (
-			!this.#device ||
-			!this.#testPipeline ||
-			!this.#sampler ||
-			!this.#ctx ||
-			!this.#commandEncoder
-		)
-			return;
+		if (!this.#passEncoder) return;
 
 		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
-		const uniformBuffer = this.#device.createBuffer({
-			size: this.#uniformArray.byteLength,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
-
-		this.#device.queue.writeBuffer(
-			uniformBuffer,
-			0,
-			this.#uniformArray.buffer,
-			0,
-			this.#uniformArray.byteLength
-		);
-
-		const uniformBindGroup = this.#device.createBindGroup({
-			layout: this.#testPipeline.getBindGroupLayout(0),
-			entries: [{ binding: 0, resource: { buffer: uniformBuffer } }]
-		});
-
-		const textureView = this.#ctx.getCurrentTexture().createView();
-		const renderPassDescriptor = {
-			colorAttachments: [
-				{
-					view: textureView,
-					loadOp: 'load' as GPULoadOp,
-					storeOp: 'store' as GPUStoreOp
-				}
-			]
-		};
-
-		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
-		passEncoder.setPipeline(this.#testPipeline);
-		passEncoder.setBindGroup(0, uniformBindGroup);
-		// Draw 6 vertices for each of the 4 instances
-		passEncoder.draw(6, 5);
-		passEncoder.end();
+		this.#testRenderer?.draw(this.#passEncoder, this.#uniformArray);
 	}
 
 	videoPass(frame: VideoFrame, params: number[]) {
-		if (!this.#ctx || !this.#device || !this.#pipeline || !this.#sampler || !this.#commandEncoder)
-			return;
+		if (!this.#passEncoder) return;
 
 		this.#uniformArray.set([0, 0, params[0], params[1], params[2], params[3]], 0);
-
-		const uniformBufferSize = Float32Array.BYTES_PER_ELEMENT * 6; // Size for three f32
-		const uniformBuffer = this.#device.createBuffer({
-			size: uniformBufferSize,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
-
-		this.#device.queue.writeBuffer(
-			uniformBuffer,
-			0,
-			this.#uniformArray.buffer,
-			0,
-			this.#uniformArray.byteLength
-		);
-
-		const uniformBindGroup = this.#device.createBindGroup({
-			layout: this.#pipeline.getBindGroupLayout(0),
-			entries: [
-				{ binding: 0, resource: { buffer: uniformBuffer } },
-				{ binding: 1, resource: this.#sampler },
-				{ binding: 2, resource: this.#device.importExternalTexture({ source: frame }) }
-			]
-		});
-
-		const textureView = this.#ctx.getCurrentTexture().createView();
-		const renderPassDescriptor = {
-			colorAttachments: [
-				{
-					view: textureView,
-					loadOp: 'load' as GPULoadOp,
-					storeOp: 'store' as GPUStoreOp
-				}
-			]
-		};
-
-		const passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
-		passEncoder.setPipeline(this.#pipeline);
-		passEncoder.setBindGroup(0, uniformBindGroup);
-		passEncoder.draw(6, 1, 0, 0);
-		passEncoder.end();
+		this.#videoRenderer?.draw(this.#passEncoder, frame, this.#uniformArray);
 
 		this.#pendingFrames.push(frame);
 	}

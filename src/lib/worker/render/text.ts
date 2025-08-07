@@ -1,13 +1,11 @@
-import { mat4, type Mat4 } from 'wgpu-matrix';
-
-import msdfTextWGSL from './shaders/text.wgsl?raw';
+import msdfTextWGSL from '../shaders/text.wgsl?raw';
 
 // The kerning map stores a spare map of character ID pairs with an associated
 // X offset that should be applied to the character spacing when the second
 // character ID is rendered after the first.
 type KerningMap = Map<number, Map<number, number>>;
 
-interface MsdfChar {
+type MsdfChar = {
 	id: number;
 	index: number;
 	char: string;
@@ -21,7 +19,14 @@ interface MsdfChar {
 	y: number;
 	page: number;
 	charIndex: number;
-}
+};
+
+type MsdfTextMeasurements = {
+	width: number;
+	height: number;
+	lineWidths: number[];
+	printedCharCount: number;
+};
 
 export class MsdfFont {
 	charCount: number;
@@ -60,15 +65,8 @@ export class MsdfFont {
 	}
 }
 
-export interface MsdfTextMeasurements {
-	width: number;
-	height: number;
-	lineWidths: number[];
-	printedCharCount: number;
-}
-
 export class MsdfText {
-	private bufferArray = new Float32Array(24);
+	private bufferArray = new Float32Array(8);
 	private bufferArrayDirty = true;
 
 	constructor(
@@ -78,7 +76,6 @@ export class MsdfText {
 		public font: MsdfFont,
 		public textBuffer: GPUBuffer
 	) {
-		mat4.identity(this.bufferArray);
 		this.setColor(1, 1, 1, 1);
 		this.setPixelScale(1 / 512);
 		this.bufferArrayDirty = true;
@@ -98,21 +95,17 @@ export class MsdfText {
 		return this.renderBundle;
 	}
 
-	setTransform(matrix: Mat4) {
-		mat4.copy(matrix, this.bufferArray);
-		this.bufferArrayDirty = true;
-	}
-
+	// Not used, but an example of how we could set color per bundle
 	setColor(r: number, g: number, b: number, a: number = 1.0) {
-		this.bufferArray[16] = r;
-		this.bufferArray[17] = g;
-		this.bufferArray[18] = b;
-		this.bufferArray[19] = a;
+		this.bufferArray[0] = r;
+		this.bufferArray[1] = g;
+		this.bufferArray[2] = b;
+		this.bufferArray[3] = a;
 		this.bufferArrayDirty = true;
 	}
 
 	setPixelScale(pixelScale: number) {
-		this.bufferArray[20] = pixelScale;
+		this.bufferArray[4] = pixelScale;
 		this.bufferArrayDirty = true;
 	}
 }
@@ -130,18 +123,18 @@ export class MsdfTextRenderer {
 	pipelinePromise: Promise<GPURenderPipeline>;
 	sampler: GPUSampler;
 	cameraUniformBuffer: GPUBuffer;
+	uniformBuffer: GPUBuffer;
+	a = new Float32Array([0, 0, 0, 0, 0, 0]);
 
 	renderBundleDescriptor: GPURenderBundleEncoderDescriptor;
 	cameraArray: Float32Array = new Float32Array(16 * 2);
 
 	constructor(
 		public device: GPUDevice,
-		colorFormat: GPUTextureFormat,
-		depthFormat: GPUTextureFormat
+		colorFormat: GPUTextureFormat
 	) {
 		this.renderBundleDescriptor = {
-			colorFormats: [colorFormat],
-			depthStencilFormat: depthFormat
+			colorFormats: [colorFormat]
 		};
 
 		this.sampler = device.createSampler({
@@ -231,12 +224,12 @@ export class MsdfTextRenderer {
 			primitive: {
 				topology: 'triangle-strip',
 				stripIndexFormat: 'uint32'
-			},
-			depthStencil: {
-				depthWriteEnabled: false,
-				depthCompare: 'less',
-				format: depthFormat
 			}
+		});
+
+		this.uniformBuffer = this.device.createBuffer({
+			size: this.a.byteLength,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		});
 	}
 
@@ -348,7 +341,8 @@ export class MsdfTextRenderer {
 		);
 	}
 
-	formatText(
+	// This can be called multiple times before calling render()
+	prepareText(
 		font: MsdfFont,
 		text: string,
 		options: MsdfTextFormattingOptions = {},
@@ -362,7 +356,7 @@ export class MsdfTextRenderer {
 		});
 
 		const textArray = new Float32Array(textBuffer.getMappedRange());
-		let offset = 24; // Accounts for the values managed by MsdfText internally.
+		let offset = 8; // Accounts for the values managed by MsdfText internally.
 
 		if (!options.lineHeight) options.lineHeight = 0;
 		let measurements: MsdfTextMeasurements;
@@ -398,16 +392,11 @@ export class MsdfTextRenderer {
 				}
 			);
 		}
-
 		textBuffer.unmap();
 
 		const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
-		const uniformBuffer = this.device.createBuffer({
-			size: a.byteLength,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
 
-		this.device.queue.writeBuffer(uniformBuffer, 0, a.buffer, 0, a.byteLength);
+		this.device.queue.writeBuffer(this.uniformBuffer, 0, a.buffer, 0, a.byteLength);
 
 		const bindGroup = this.device.createBindGroup({
 			label: 'msdf text bind group',
@@ -415,7 +404,7 @@ export class MsdfTextRenderer {
 			entries: [
 				{
 					binding: 0,
-					resource: { buffer: uniformBuffer }
+					resource: { buffer: this.uniformBuffer }
 				},
 				{
 					binding: 1,
@@ -496,13 +485,7 @@ export class MsdfTextRenderer {
 		};
 	}
 
-	updateCamera(projection: Mat4, view: Mat4) {
-		this.cameraArray.set(projection, 0);
-		this.cameraArray.set(view, 16);
-		this.device.queue.writeBuffer(this.cameraUniformBuffer, 0, this.cameraArray);
-	}
-
-	render(renderPass: GPURenderPassEncoder, ...text: MsdfText[]) {
+	render(renderPass: GPURenderPassEncoder, text: MsdfText[]) {
 		const renderBundles = text.map((t) => t.getRenderBundle());
 		renderPass.executeBundles(renderBundles);
 	}
