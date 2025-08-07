@@ -13,6 +13,7 @@ export class WebGPURenderer {
 	#passEncoder: GPURenderPassEncoder | undefined;
 
 	#font: MsdfFont | undefined;
+	#testFont: MsdfFont | undefined;
 	#textRenderer: MsdfTextRenderer | undefined;
 	#testRenderer: TestRenderer | undefined;
 	#videoRenderer: VideoRenderer | undefined;
@@ -51,6 +52,7 @@ export class WebGPURenderer {
 		this.#videoRenderer = new VideoRenderer(this.#device, this.#format, this.#sampler);
 		this.#textRenderer = new MsdfTextRenderer(this.#device, this.#format);
 		this.#font = await this.#textRenderer.createFont('/text.json');
+		this.#testFont = await this.#textRenderer.createFont('/FiraMono-Bold-msdf.json');
 
 		this.startPaint();
 		this.endPaint();
@@ -119,10 +121,34 @@ export class WebGPURenderer {
 	}
 
 	testPass(frameNumber: number, params: number[]) {
-		if (!this.#passEncoder) return;
+		if (!this.#passEncoder || !this.#textRenderer || !this.#testFont) return;
 
 		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
 		this.#testRenderer?.draw(this.#passEncoder, this.#uniformArray);
+
+		const FF = frameNumber % 30;
+		const seconds = (frameNumber - FF) / 30;
+		const SS = seconds % 60;
+		const minutes = (seconds - SS) / 60;
+		const MM = minutes % 60;
+		const t =
+			String(MM).padStart(2, '0') +
+			':' +
+			String(SS).padStart(2, '0') +
+			':' +
+			String(FF).padStart(2, '0');
+		const text = this.#textRenderer.prepareText(
+			this.#testFont,
+			t,
+			{
+				centered: true,
+				lineHeight: 0,
+				pixelScale: 1 / 150,
+				color: [1, 1, 1, 1]
+			},
+			params
+		);
+		this.#textRenderer.render(this.#passEncoder, [text]);
 	}
 
 	videoPass(frame: VideoFrame, params: number[]) {

@@ -396,7 +396,11 @@ export class MsdfTextRenderer {
 
 		const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
 
-		this.device.queue.writeBuffer(this.uniformBuffer, 0, a.buffer, 0, a.byteLength);
+		const buffer = this.device.createBuffer({
+			size: this.a.byteLength,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+		this.device.queue.writeBuffer(buffer, 0, a.buffer, 0, a.byteLength);
 
 		const bindGroup = this.device.createBindGroup({
 			label: 'msdf text bind group',
@@ -404,7 +408,7 @@ export class MsdfTextRenderer {
 			entries: [
 				{
 					binding: 0,
-					resource: { buffer: this.uniformBuffer }
+					resource: { buffer: buffer }
 				},
 				{
 					binding: 1,

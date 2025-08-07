@@ -19,7 +19,23 @@ export class TestRenderer {
 					code: testShader
 				}),
 				entryPoint: 'fragmentMain',
-				targets: [{ format: format }]
+				targets: [
+					{
+						format: format,
+						blend: {
+							color: {
+								srcFactor: 'src-alpha',
+								dstFactor: 'one-minus-src-alpha',
+								operation: 'add'
+							},
+							alpha: {
+								srcFactor: 'one',
+								dstFactor: 'zero',
+								operation: 'add'
+							}
+						}
+					}
+				]
 			},
 			primitive: {
 				topology: 'triangle-list'
@@ -47,6 +63,6 @@ export class TestRenderer {
 		passEncoder.setPipeline(this.#pipeline);
 		passEncoder.setBindGroup(0, bindGroup);
 		// Draw 6 vertices for each of the 5 instances
-		passEncoder.draw(6, 5);
+		passEncoder.draw(6, 23);
 	}
 }

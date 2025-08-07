@@ -45,7 +45,7 @@ fn vertexMain(input : VertexInput) -> VertexOutput {
     let char = chars[u32(textElement.z)];
     let charPos = (pos[input.vertex] * char.size + textElement.xy + char.offset) * text.scale;
     // Adjust for aspect ratio
-    let scale = vec2f(clip.scale.x * 0.6, clip.scale.y);
+    let scale = vec2f(clip.scale.x * 0.562, clip.scale.y);
     let newCharPos = charPos * scale + clip.position;
 
     var output : VertexOutput;
