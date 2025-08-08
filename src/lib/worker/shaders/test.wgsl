@@ -16,7 +16,7 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
 };
 
-const instanceCount: u32 = 23;
+const instanceCount: u32 = 24;
 
 @vertex
 fn vertexMain(input: VertexInput) -> VertexOutput {
@@ -44,12 +44,13 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
         vec2<f32>(0.832, -0.967),
         vec2<f32>(-0.832, 0.967),
         vec2<f32>(-0.832, -0.967),
-        vec2<f32>(0, -0.5),
+        vec2<f32>(0, -0.4),
+        vec2<f32>(0, -0.6),
         vec2<f32>(0, -0.5)
     );
 
 
-    positions[22].x = ((uniforms.frameNumber % 30) / 30) - 0.5;
+    positions[23].x = ((uniforms.frameNumber % 30) / 30) - 0.5;
 
     let instance_pos = baseTriangles[input.VertexIndex] * scales[input.InstanceIndex] + positions[input.InstanceIndex];
     let zoomed_pos = instance_pos * uniforms.scale + uniforms.position;
@@ -97,7 +98,8 @@ const colors = array<vec4<f32>, instanceCount>(
     vec4<f32>(0.2, 0.2, 0.2, 1), 
     vec4<f32>(0.2, 0.2, 0.2, 1), 
     vec4<f32>(0.2, 0.2, 0.2, 1), 
-    vec4<f32>(0.5, 0.5, 0.5, 1),
+    vec4<f32>(1, 1, 1, 1),
+    vec4<f32>(1, 1, 1, 1),
     vec4<f32>(1, 1, 1, 1)
 );
 
@@ -123,6 +125,7 @@ const scales = array<vec2<f32>, instanceCount>(
     vec2<f32>(0.168, 0.033),
     vec2<f32>(0.168, 0.033),
     vec2<f32>(0.168, 0.033),
-    vec2<f32>(0.003, 0.12),
+    vec2<f32>(0.003, 0.02),
+    vec2<f32>(0.003, 0.02),
     vec2<f32>(0.016, 0.08)
 );
