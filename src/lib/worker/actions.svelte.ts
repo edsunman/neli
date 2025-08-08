@@ -1,6 +1,7 @@
 import { renderAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
-import type { Source } from '$lib/source/source';
+import { setSourceThumbnail } from '$lib/source/actions';
+import type { Source } from '$lib/source/source.svelte';
 import { appState, timelineState } from '$lib/state.svelte';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
@@ -16,13 +17,36 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 		},
 		{ transfer: [offscreenCanvas] }
 	);
-	appState.mediaWorker.addEventListener('message', (event) => {
+	appState.mediaWorker.addEventListener('message', async (event) => {
 		switch (event.data.command) {
+			case 'thumbnail': {
+				const videoFrame = event.data.videoFrame;
+				//console.log(frame);
+				const canvas = document.createElement('canvas');
+				canvas.width = videoFrame.codedWidth * 0.1;
+				canvas.height = videoFrame.codedHeight * 0.1;
+
+				const ctx = canvas.getContext('2d');
+				ctx?.drawImage(videoFrame, 0, 0, videoFrame.codedWidth * 0.1, videoFrame.codedHeight * 0.1);
+
+				videoFrame.close();
+
+				const imgData = canvas.toDataURL('image/webp', 0.8);
+				console.log(imgData);
+
+				setSourceThumbnail(event.data.sourceId, imgData);
+
+				break;
+			}
+			case 'encode-progress': {
+				appState.encoderProgress.percentage = event.data.percentComplete;
+				break;
+			}
 			case 'download-link': {
 				console.log(event.data);
 				const a = document.createElement('a');
 				a.href = event.data.link;
-				a.download = 'download.mp4';
+				a.download = event.data.fileName;
 				a.style.display = 'none'; // Keep it hidden
 
 				document.body.appendChild(a);
@@ -30,6 +54,10 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 
 				document.body.removeChild(a);
 				URL.revokeObjectURL(event.data.link); // Clean up the URL
+
+				appState.encoderProgress.message = 'done';
+				appState.encoderProgress.percentage = 100;
+				appState.lockPalette = false;
 				break;
 			}
 		}
@@ -86,17 +114,15 @@ export const pauseWorker = () => {
 	});
 };
 
-if (typeof window !== 'undefined') {
-	// @ts-expect-error ???
-	window.encode = async () => {
-		const audioBuffer = await renderAudio();
-
-		appState.mediaWorker?.postMessage(
-			{
-				command: 'encode',
-				audioBuffer
-			},
-			[audioBuffer.buffer]
-		);
-	};
-}
+export const encode = async (fileName: string) => {
+	const audioBuffer = await renderAudio();
+	appState.encoderProgress.message = 'encoding video...';
+	appState.mediaWorker?.postMessage(
+		{
+			command: 'encode',
+			fileName,
+			audioBuffer
+		},
+		[audioBuffer.buffer]
+	);
+};

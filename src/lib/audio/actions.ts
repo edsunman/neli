@@ -137,7 +137,7 @@ const setupNewDecoder = (clip: Clip) => {
 };
 
 const updateMeter = () => {
-	const MIN_METER_DB = -100; // Bar will be 0% at this dB level
+	const MIN_METER_DB = -60; // Bar will be 0% at this dB level
 
 	audioState.analyserNodeLeft.getFloatTimeDomainData(audioState.dummyF32Array);
 

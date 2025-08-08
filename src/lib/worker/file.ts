@@ -9,6 +9,8 @@ import {
 	MultiBufferStream
 } from 'mp4box';
 
+// TODO: we don't need audio samples
+
 /** Load file and demux */
 export const loadFile = async (file: File): Promise<WorkerSource> => {
 	let resolver: (value: WorkerSource) => void;

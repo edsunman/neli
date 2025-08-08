@@ -117,16 +117,16 @@
 	{#if selected === 'audio'}
 		<div
 			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
-			style="background:linear-gradient(90deg,#131315 43%, #18181b 43%, #18181b 57%,#131315 57%);"
+			style="background:linear-gradient(90deg,#090909 43%, #18181b 43%, #18181b 57%,#090909 57%);"
 		>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
+				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(178, 178, 178, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[0]) * 100}% 100% 100% 0%)`}
 			></div>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(87, 199, 133, 1) 0%, rgba(87, 199, 133, 1) 83%, rgba(237, 221, 83, 1) 83%);"
+				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(178, 178, 178, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[1]) * 100}% 100% 100% 0%)`}
 			></div>
 		</div>

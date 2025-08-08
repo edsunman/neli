@@ -80,6 +80,7 @@ export class WebGPURenderer {
 		this.#passEncoder.end();
 		this.#device.queue.submit([this.#commandEncoder.finish()]);
 
+		// TODO: do we only need to do when encoding?
 		this.bitmap = await createImageBitmap(this.#canvas);
 
 		for (let i = 1; i < this.#pendingFrames.length; i++) {

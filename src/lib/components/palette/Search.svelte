@@ -27,30 +27,34 @@
 			commands: [
 				{
 					id: 1,
-					text: 'Import',
+					text: 'import',
 					selected: false,
 					icon: ImportIcon,
-					action: () => console.log(1)
+					shortcuts: [],
+					action: () => (page = 'import')
 				},
 				{
 					id: 2,
-					text: 'Export',
+					text: 'export',
 					selected: false,
 					icon: ExportIcon,
+					shortcuts: [],
 					action: () => (page = 'export')
 				},
 				{
 					id: 3,
-					text: 'Settings',
+					text: 'settings',
 					selected: false,
 					icon: SettingsIcon,
+					shortcuts: [],
 					action: () => console.log(2)
 				},
 				{
 					id: 4,
-					text: 'Welcome',
+					text: 'welcome',
 					selected: false,
 					icon: TestIcon,
+					shortcuts: [],
 					action: () => console.log(3)
 				}
 			]
@@ -61,39 +65,18 @@
 			commands: [
 				{
 					id: 5,
-					text: 'Zoom in',
+					text: 'zoom in',
 					selected: false,
 					icon: ZoomInIcon,
+					shortcuts: ['Ctrl', 'E'],
 					action: () => console.log(1)
 				},
 				{
 					id: 6,
-					text: 'Zoom out',
+					text: 'zoom out',
 					selected: false,
 					icon: ZoomOutIcon,
-					action: () => (page = 'export')
-				}
-			]
-		},
-		{
-			id: 3,
-			name: 'Project',
-			commands: [
-				{
-					id: 7,
-					text: 'Add text',
-					selected: false,
-					icon: TextIcon,
-					action: () => {
-						createTextSource();
-						appState.showPalette = false;
-					}
-				},
-				{
-					id: 8,
-					text: 'Add test card',
-					selected: false,
-					icon: TestIcon,
+					shortcuts: [],
 					action: () => (page = 'export')
 				}
 			]
@@ -182,6 +165,11 @@
 		filtered = [...filtered];
 	};
 
+	const seekEvent = () => {
+		setCurrentFrame(targetFrame);
+		appState.showPalette = false;
+	};
+
 	const formatString = (string: string) => {
 		const reg = new RegExp(inputValue ?? '', 'gi');
 		return string.replace(reg, function (str) {
@@ -195,8 +183,7 @@
 	<form
 		onsubmit={() => {
 			if (showSeekOptions) {
-				setCurrentFrame(targetFrame);
-				appState.showPalette = false;
+				seekEvent();
 			}
 			for (const category of filtered) {
 				for (const command of category.commands) {
@@ -233,14 +220,19 @@
 						onmousemove={() => {
 							if (!command.selected) selectDataById(command.id);
 						}}
-						onclick={command.action}
+						onclick={() => {
+							command.action();
+						}}
 						class={[
 							'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
-							command.selected ? 'text-zinc-800 bg-zinc-300' : ' text-zinc-200'
+							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
 						]}
 					>
-						<command.icon class="size-5 inline mr-2" />
+						<command.icon class="size-5 inline mr-3" />
 						<p>{@html formatString(command.text)}</p>
+						{#each command.shortcuts as key}
+							<span>{key}</span>
+						{/each}
 					</button>
 				{/each}
 			</div>
@@ -252,6 +244,7 @@
 				'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
 				'text-zinc-800 bg-zinc-300'
 			]}
+			onclick={seekEvent}
 		>
 			<SeekIcon class="size-5 inline mr-2" />
 			<!-- {@html formatString(command.text)} -->

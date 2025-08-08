@@ -46,16 +46,10 @@
 {/if}
 
 <svelte:window
-	onkeydown={(event) => {
-		switch (event.code) {
-			case 'Escape':
-				if (appState.showPalette) appState.showPalette = false;
-				break;
-		}
-	}}
 	onkeyup={(event) => {
 		switch (event.code) {
 			case 'KeyP':
+				if (appState.disableKeyboardShortcuts) break;
 				if (!appState.showPalette) appState.showPalette = true;
 				break;
 			case 'KeyZ':

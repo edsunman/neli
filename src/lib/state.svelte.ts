@@ -8,9 +8,11 @@ class AppState {
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 	audioLevel = $state([0, 0]);
+	encoderProgress = $state({ message: 'starting', percentage: 0 });
 	disableHoverStates = $state(false);
 
 	disableKeyboardShortcuts = false;
+	lockPalette = false;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 

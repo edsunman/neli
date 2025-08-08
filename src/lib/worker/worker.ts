@@ -33,11 +33,12 @@ self.addEventListener('message', async function (e) {
 				newSource.id = e.data.id;
 				sources.push(newSource);
 				console.log(newSource);
+				sendFrameForThumbnail(e.data.id, newSource);
 			}
 			break;
 		case 'encode':
 			{
-				encodeAndCreateFile(e.data.audioBuffer);
+				encodeAndCreateFile(e.data.audioBuffer, e.data.fileName);
 			}
 			break;
 		case 'play':
@@ -78,6 +79,16 @@ self.addEventListener('message', async function (e) {
 		}
 	}
 });
+
+const sendFrameForThumbnail = async (sourceId: string, source: WorkerSource) => {
+	const decoder = decoderPool.assignDecoder('thumbnail');
+	if (!decoder) return;
+	decoder.setup(source.videoConfig, source.videoChunks);
+	const videoFrame = await decoder?.decodeFrame(1);
+	if (!videoFrame) return;
+	//@ts-expect-error scope issue?
+	self.postMessage({ command: 'thumbnail', sourceId, videoFrame }, [videoFrame]);
+};
 
 const processSeekFrame = async () => {
 	seeking = true;
@@ -255,7 +266,7 @@ const setupNewDecoder = (clip: WorkerClip) => {
 	return decoder;
 };
 
-const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
+const encodeAndCreateFile = async (audioBuffer: Float32Array, fileName: string) => {
 	encoding = true;
 
 	encoder.setup();
@@ -321,6 +332,9 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 	let i = 0;
 	let retries = 0;
 	const maxRetries = 300;
+	const totalFrames = 300;
+	let percentComplete = 0;
+	let lastPercent = 0;
 	const decodeLoop = async () => {
 		const success = await buildAndDrawFrame(i, true);
 		if (!success) {
@@ -346,13 +360,20 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array) => {
 		newFrame.close();
 		i++;
 
-		if (i < 300) {
+		percentComplete = Math.floor((i / totalFrames) * 100);
+
+		if (percentComplete > lastPercent) {
+			lastPercent = percentComplete;
+			self.postMessage({ command: 'encode-progress', percentComplete });
+		}
+
+		if (i < totalFrames) {
 			setTimeout(decodeLoop, 0);
 		} else {
 			//	decoder.pause();
 			encoding = false;
 			const url = await encoder.finalize();
-			self.postMessage({ command: 'download-link', link: url });
+			self.postMessage({ command: 'download-link', fileName: `${fileName}.mp4`, link: url });
 		}
 	};
 

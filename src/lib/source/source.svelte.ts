@@ -6,8 +6,10 @@ export class Source {
 	type: SourceType;
 	name?: string;
 	duration?: number;
+	frameRate?: number;
 	file?: File;
 	fileInfo?: Movie;
+	thumbnail = $state('');
 	audioChunks: EncodedAudioChunk[] = [];
 	audioConfig?: AudioEncoderConfig;
 

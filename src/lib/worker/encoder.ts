@@ -91,6 +91,8 @@ export class Encoder {
 		// clear buffer
 		this.#muxer = null;
 
+		// TODO: there must be a better way to do this
+		// transfer buffer to main thread?
 		return URL.createObjectURL(blob);
 	}
 }

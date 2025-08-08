@@ -30,7 +30,6 @@
 		"mp4box": "^0.6.5",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
-		"ringbuf.js": "^0.4.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
@@ -43,8 +42,5 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
-	},
-	"dependencies": {
-		"wgpu-matrix": "^3.4.0"
 	}
 }
