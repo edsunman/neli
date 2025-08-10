@@ -12,6 +12,7 @@ export class Source {
 	thumbnail = $state('');
 	audioChunks: EncodedAudioChunk[] = [];
 	audioConfig?: AudioEncoderConfig;
+	audioWaveform: Float32Array | undefined;
 
 	width = 1920;
 	height = 1080;

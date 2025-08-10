@@ -1,10 +1,11 @@
-import type { Source } from './source/source';
+import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio';
 
 class AppState {
-	mediaWorker: Worker | null = null;
+	mediaWorker: Worker | undefined;
+	waveformCanvas: HTMLCanvasElement | undefined;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 	audioLevel = $state([0, 0]);
@@ -34,6 +35,7 @@ class TimelineState {
 	hoverClipId = '';
 	highlightTrack = 0;
 	invalidate = false;
+	invalidateWaveform = false;
 }
 
 export const timelineState = new TimelineState();

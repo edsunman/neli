@@ -1,4 +1,4 @@
-import type { Source } from '../source/source';
+import type { Source } from '../source/source.svelte';
 
 export class Clip {
 	id = '';

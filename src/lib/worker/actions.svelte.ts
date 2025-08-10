@@ -1,4 +1,4 @@
-import { renderAudio } from '$lib/audio/actions';
+import { renderAudioForExport } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { setSourceThumbnail } from '$lib/source/actions';
 import type { Source } from '$lib/source/source.svelte';
@@ -115,7 +115,7 @@ export const pauseWorker = () => {
 };
 
 export const encode = async (fileName: string) => {
-	const audioBuffer = await renderAudio();
+	const audioBuffer = await renderAudioForExport();
 	appState.encoderProgress.message = 'encoding video...';
 	appState.mediaWorker?.postMessage(
 		{

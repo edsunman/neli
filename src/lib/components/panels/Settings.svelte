@@ -121,12 +121,12 @@
 		>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(178, 178, 178, 1) 70%);"
+				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(190, 190, 190, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[0]) * 100}% 100% 100% 0%)`}
 			></div>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(178, 178, 178, 1) 70%);"
+				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(190, 190, 190, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[1]) * 100}% 100% 100% 0%)`}
 			></div>
 		</div>

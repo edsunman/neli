@@ -21,7 +21,7 @@
 		splitClip,
 		deleteClip
 	} from '$lib/clip/actions';
-	import { drawCanvas } from '$lib/timeline/canvas';
+	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
@@ -31,6 +31,8 @@
 
 	let canvas = $state<HTMLCanvasElement>();
 	let context: CanvasRenderingContext2D | null;
+	let waveCanvas: OffscreenCanvas;
+	let waveContext: OffscreenCanvasRenderingContext2D | null;
 	let canvasContainer = $state<HTMLDivElement>();
 	let height = $state(0);
 	let scrubbing = false;
@@ -190,8 +192,14 @@
 
 	const step = () => {
 		if (timelineState.invalidate && fontsLoaded) {
-			if (context) drawCanvas(context, timelineState.width, height);
+			if (waveContext) drawWaveform(waveContext);
+			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 			timelineState.invalidate = false;
+		}
+		if (timelineState.invalidateWaveform) {
+			if (waveContext) drawWaveform(waveContext);
+			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+			timelineState.invalidateWaveform = false;
 		}
 		requestAnimationFrame(step);
 	};
@@ -206,6 +214,9 @@
 
 		context.fillStyle = '#18181b';
 		context.fillRect(0, 0, timelineState.width, height);
+
+		waveCanvas = new OffscreenCanvas(2000, 100);
+		waveContext = waveCanvas.getContext('2d');
 
 		document.fonts.ready.then(() => {
 			fontsLoaded = true;

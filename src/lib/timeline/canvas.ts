@@ -1,12 +1,17 @@
 import type { Clip } from '$lib/clip/clip.svelte';
-import { timelineState } from '$lib/state.svelte';
+import { appState, timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 
 const GREEN = '#50cfaf';
 const PURPLE = '#8b4fcf';
 const BLUE = '#419fda';
 
-export const drawCanvas = (context: CanvasRenderingContext2D, width: number, height: number) => {
+export const drawCanvas = (
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number,
+	waveCanvas: OffscreenCanvas
+) => {
 	context.fillStyle = '#18181b';
 	context.fillRect(0, 0, width, height);
 
@@ -81,6 +86,8 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
+	if (waveCanvas) context.drawImage(waveCanvas, 0, 118);
+
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
@@ -93,6 +100,62 @@ export const drawCanvas = (context: CanvasRenderingContext2D, width: number, hei
 	context.arc(playheadPosition + 5 - 4, 34, 1, 0.6, 2.6);
 	context.arc(playheadPosition - 4, 23, radius, 2.2, -1.4);
 	context.fill();
+};
+
+export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
+	//clipWidth = 300 * timelineState.zoom;
+
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+
+	const clipWidth = frameToCanvasPixel(clip.duration, false);
+	const clipStartPixel = frameToCanvasPixel(clip.start);
+
+	const TARGET_FPS = 30;
+	const startTimeInSeconds = clip.sourceOffset / TARGET_FPS;
+	const durationInSeconds = clip.duration / TARGET_FPS;
+	console.log(`clip width: ${clipWidth}`);
+	console.log(`start: ${startTimeInSeconds}, duration: ${durationInSeconds}`);
+	const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3555.5);
+	const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3555.5);
+	console.log(`offset: ${audioDataOffset}, length ${audioDataLength}`);
+
+	const scaleFactor = audioDataLength / clipWidth;
+	//console.log(scaleFactor);
+	context.clearRect(0, 0, 2000, 100);
+
+	const canvasHeight = 100;
+	const waveHeight = 25;
+	if (appState.sources[2] && appState.sources[2].audioWaveform) {
+		const data = appState.sources[2].audioWaveform;
+		let count = 0;
+		let lastPosition = 0;
+		let lastValue = 0;
+		for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
+			const position = j / scaleFactor + clipStartPixel;
+			if (position < 0 || position > 2000) continue;
+			if (position === lastPosition) {
+				// already drawn to this pixel
+				if (data[i] < lastValue) {
+					//lastPosition = position;
+					continue;
+				}
+				//continue;
+			}
+			lastPosition = position;
+			lastValue = data[i];
+			context.fillStyle = '#131315';
+
+			context.fillRect(
+				position,
+				canvasHeight / 2 - (data[i] * waveHeight) / 2,
+				1,
+				data[i] * waveHeight
+			);
+			count++;
+		}
+		console.log(`drawn: ${count}`);
+	}
 };
 
 const drawRuler = (context: CanvasRenderingContext2D) => {

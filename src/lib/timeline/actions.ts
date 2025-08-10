@@ -93,6 +93,7 @@ export const zoomIn = () => {
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
+	timelineState.invalidateWaveform = true;
 };
 
 export const zoomOut = () => {
@@ -104,6 +105,7 @@ export const zoomOut = () => {
 	checkViewBounds();
 	deselectClipIfTooSmall();
 	timelineState.invalidate = true;
+	timelineState.invalidateWaveform = true;
 };
 
 export const setZoom = (zoomAmount: number) => {
@@ -111,6 +113,7 @@ export const setZoom = (zoomAmount: number) => {
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
+	timelineState.invalidateWaveform = true;
 };
 
 export const updateScrollPosition = () => {

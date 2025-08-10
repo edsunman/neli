@@ -2,6 +2,7 @@ import { sendFileToWorker } from '$lib/worker/actions.svelte';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { createFile, ISOFile, MP4BoxBuffer, type Movie } from 'mp4box';
+import { generateWaveformData } from '$lib/audio/actions';
 
 export const checkDroppedSource = (file: File) => {
 	let resolver: (value: Movie) => void;
@@ -93,6 +94,7 @@ export const createVideoSource = async (file: File) => {
 			appState.sources.push(newSource);
 			sendFileToWorker(newSource);
 			console.log('sent to worker');
+			generateWaveformData(newSource);
 		}
 	};
 

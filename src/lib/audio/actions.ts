@@ -1,4 +1,5 @@
 import type { Clip } from '$lib/clip/clip.svelte';
+import type { Source } from '$lib/source/source.svelte';
 import { appState, audioState, timelineState } from '$lib/state.svelte';
 
 export const runAudio = (frame: number, elapsedTimeMs: number) => {
@@ -189,8 +190,88 @@ const updateMeter = () => {
 	}
 };
 
+export const generateWaveformData = (source: Source) => {
+	if (!source.audioConfig) return;
+	const decoder = audioState.decoderPool.assignDecoder(source.id);
+	if (!decoder) return;
+	decoder.setup(source.audioConfig, source.audioChunks);
+
+	decoder.play(0);
+
+	// each audio data ha 1024 samples
+	// we got 6 amplitude values for each audio data
+	// so we check the number of audio chunks and * by 6
+
+	const data = new Float32Array(source.audioChunks.length * 6);
+
+	//let done = false;
+	let count = 0;
+	let arrayOffset = 0;
+	const decodeLoop = async () => {
+		decoder.run(0, true);
+
+		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
+			const audioData = decoder.audioDataQueue.shift();
+			if (!audioData) continue;
+
+			const f32 = generatePeaksFromAudioData(audioData);
+			data.set(f32, arrayOffset);
+
+			//console.log(`duration microseconds: ${audioData.duration / f32.length}`);
+			arrayOffset += f32.length;
+			audioData.close();
+			count++;
+
+			/* if (count > source.audioChunks.length - 2) {
+				done = true;
+				break;
+			} */
+		}
+
+		if (count < source.audioChunks.length - 2) {
+			setTimeout(decodeLoop, 0);
+		} else {
+			console.log(data);
+			source.audioWaveform = data;
+			timelineState.invalidateWaveform = true;
+			return;
+		}
+	};
+	decodeLoop();
+};
+
+const generatePeaksFromAudioData = (audioData: AudioData) => {
+	// We need to pre-allocate a buffer to copy the samples into.
+	const numberOfSamples = audioData.numberOfFrames;
+	const rawData = new Float32Array(numberOfSamples);
+
+	// Copy the raw samples from channel 0 into our buffer.
+	audioData.copyTo(rawData, {
+		planeIndex: 0,
+		frameOffset: 0,
+		frameCount: numberOfSamples
+	});
+
+	const peaks = [];
+	const step = 200; // You can adjust this to change the resolution.
+
+	// Iterate through the samples and find the peak for each step.
+	for (let i = 0; i < numberOfSamples; i += step) {
+		let max = 0;
+		for (let j = 0; j < step && i + j < numberOfSamples; j++) {
+			const absValue = Math.abs(rawData[i + j]);
+			if (absValue > max) {
+				max = absValue;
+			}
+		}
+		peaks.push(max);
+	}
+
+	return new Float32Array(peaks);
+};
+
 // Generate float 32 array to send to worker
-export const renderAudio = async () => {
+export const renderAudioForExport = async () => {
 	const sampleRate = 48000;
 	const duration = 10;
 	const numberOfChannels = 2;
@@ -288,7 +369,6 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 			setTimeout(decodeLoop, 0);
 		} else {
 			decoder.pause();
-			console.log('done');
 			resolver(true);
 		}
 	};
