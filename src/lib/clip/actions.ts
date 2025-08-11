@@ -81,7 +81,7 @@ export const moveSelectedClip = (mouseY: number) => {
 
 	// move between tracks
 	if (clip.source.type === 'video' || clip.source.type === 'test') {
-		if (mouseY > 192) {
+		if (mouseY > timelineState.trackTops[2] - 5) {
 			clip.track = 3;
 		} else {
 			clip.track = 2;
@@ -302,9 +302,15 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		if (clip.deleted || clip.duration < minimumSize) continue;
 		clip.hovered = false;
 		if (
-			(offsetY > 100 && offsetY < 135 && clip.track === 1) ||
-			(offsetY > 150 && offsetY < 185 && clip.track === 2) ||
-			(offsetY > 200 && offsetY < 235 && clip.track === 3)
+			(offsetY > timelineState.trackTops[0] &&
+				offsetY < timelineState.trackTops[0] + timelineState.trackHeights[0] &&
+				clip.track === 1) ||
+			(offsetY > timelineState.trackTops[1] &&
+				offsetY < timelineState.trackTops[1] + timelineState.trackHeights[1] &&
+				clip.track === 2) ||
+			(offsetY > timelineState.trackTops[2] &&
+				offsetY < timelineState.trackTops[2] + timelineState.trackHeights[2] &&
+				clip.track === 3)
 		) {
 			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 				foundClip = clip;

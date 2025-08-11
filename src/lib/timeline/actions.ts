@@ -75,6 +75,7 @@ export const centerViewOnPlayhead = () => {
 	const playheadPercent = timelineState.currentFrame / timelineState.duration;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
 	timelineState.offset = playheadPercent - percentOfTimelineVisible / 2;
+	checkViewBounds();
 };
 
 export const checkViewBounds = () => {
@@ -123,4 +124,22 @@ export const updateScrollPosition = () => {
 	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
 	const barWidth = 1 / timelineState.zoom;
 	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
+};
+
+export const focusTrack = (trackNumber: number) => {
+	timelineState.focusedTrack = trackNumber;
+	if (trackNumber === 0) {
+		timelineState.trackHeights = [35, 35, 35, 35];
+		timelineState.trackTops = [100, 150, 200, 250];
+	} else if (trackNumber === 1) {
+		timelineState.trackHeights = [35, 20, 20, 20];
+		timelineState.trackTops = [90, 215, 245, 275];
+	} else if (trackNumber === 2) {
+		timelineState.trackHeights = [20, 35, 20, 20];
+		timelineState.trackTops = [90, 120, 245, 275];
+	} else if (trackNumber === 3) {
+		timelineState.trackHeights = [20, 20, 35, 20];
+		timelineState.trackTops = [90, 120, 150, 275];
+	}
+	timelineState.invalidateWaveform = true;
 };

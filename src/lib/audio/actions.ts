@@ -231,7 +231,7 @@ export const generateWaveformData = (source: Source) => {
 		if (count < source.audioChunks.length - 2) {
 			setTimeout(decodeLoop, 0);
 		} else {
-			console.log(data);
+			//console.log(data);
 			source.audioWaveform = data;
 			timelineState.invalidateWaveform = true;
 			return;

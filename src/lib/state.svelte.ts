@@ -34,7 +34,9 @@ class TimelineState {
 	dragOffset = 0; // pixels
 	dragStart = 0; // pixels
 	hoverClipId = '';
-	highlightTrack = 0;
+	focusedTrack = 0;
+	trackTops = [100, 150, 200, 250];
+	trackHeights = [35, 35, 35, 35];
 	invalidate = false;
 	invalidateWaveform = false;
 }

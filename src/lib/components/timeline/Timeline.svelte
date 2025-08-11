@@ -8,7 +8,8 @@
 		updateScrollPosition,
 		setZoom,
 		pause,
-		play
+		play,
+		focusTrack
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -58,18 +59,18 @@
 		}
 		if (scrolling) {
 			updateScrollPosition();
-			timelineState.invalidate = true;
+			timelineState.invalidateWaveform = true;
 			return;
 		}
 		if (dragging) {
 			moveSelectedClip(offsetY);
-			timelineState.invalidate = true;
+			timelineState.invalidateWaveform = true;
 			return;
 		}
 		if (resizing) {
 			resizeSelctedClip();
 			canvas.style.cursor = 'col-resize';
-			timelineState.invalidate = true;
+			timelineState.invalidateWaveform = true;
 			return;
 		}
 
@@ -192,16 +193,17 @@
 	};
 
 	const step = () => {
-		if (timelineState.invalidate && fontsLoaded) {
+		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveform(waveContext);
+			//if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+			timelineState.invalidateWaveform = false;
+			timelineState.invalidate = true;
+		}
+		if (timelineState.invalidate && fontsLoaded) {
 			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 			timelineState.invalidate = false;
 		}
-		if (timelineState.invalidateWaveform) {
-			if (waveContext) drawWaveform(waveContext);
-			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
-			timelineState.invalidateWaveform = false;
-		}
+
 		requestAnimationFrame(step);
 	};
 	requestAnimationFrame(step);
@@ -223,6 +225,17 @@
 			fontsLoaded = true;
 			timelineState.invalidate = true;
 		});
+
+		canvasContainer?.addEventListener(
+			'wheel',
+			(e) => {
+				e.preventDefault();
+				if (!e.ctrlKey) return;
+				if (e.deltaY > 50) zoomOut();
+				if (e.deltaY < -50) zoomIn();
+			},
+			{ passive: false }
+		);
 	});
 </script>
 
@@ -283,6 +296,17 @@
 				deleteClip(selectedClip.id);
 				timelineState.invalidate = true;
 				break;
+			case 'KeyF': {
+				if (timelineState.selectedClip) {
+					if (timelineState.selectedClip.track === timelineState.focusedTrack) {
+						focusTrack(0);
+					} else {
+						focusTrack(timelineState.selectedClip.track);
+					}
+				} else {
+					focusTrack(0);
+				}
+			}
 		}
 	}}
 />

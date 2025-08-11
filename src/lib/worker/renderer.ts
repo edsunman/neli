@@ -75,13 +75,15 @@ export class WebGPURenderer {
 		this.#passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
 	}
 
-	async endPaint() {
+	async endPaint(createBitmap = false) {
 		if (!this.#device || !this.#commandEncoder || !this.#canvas || !this.#passEncoder) return;
 		this.#passEncoder.end();
 		this.#device.queue.submit([this.#commandEncoder.finish()]);
 
 		// TODO: do we only need to do when encoding?
-		this.bitmap = await createImageBitmap(this.#canvas);
+		if (createBitmap) {
+			this.bitmap = await createImageBitmap(this.#canvas);
+		}
 
 		for (let i = 1; i < this.#pendingFrames.length; i++) {
 			const frame = this.#pendingFrames.shift();

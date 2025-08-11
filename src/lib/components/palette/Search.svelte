@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { appState, timelineState } from '$lib/state.svelte';
-	import { pause, play, setCurrentFrame, zoomIn, zoomOut } from '$lib/timeline/actions';
+	import {
+		centerViewOnPlayhead,
+		pause,
+		play,
+		setCurrentFrame,
+		zoomIn,
+		zoomOut
+	} from '$lib/timeline/actions';
 
 	import InfoIcon from '../icons/InfoIcon.svelte';
 	import ZoomInIcon from '../icons/ZoomInIcon.svelte';
@@ -182,6 +189,7 @@
 	const seekEvent = () => {
 		setCurrentFrame(targetFrame);
 		appState.showPalette = false;
+		centerViewOnPlayhead();
 	};
 
 	const formatString = (string: string) => {
@@ -265,7 +273,7 @@
 		<button
 			class={[
 				'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
-				'text-zinc-800 bg-zinc-300'
+				'text-zinc-200 bg-hover'
 			]}
 			onclick={seekEvent}
 		>

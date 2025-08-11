@@ -44,6 +44,7 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				playing = true;
+				seeking = false;
 				startPlayLoop(e.data.frame);
 			}
 			break;
@@ -252,7 +253,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		}
 	}
 
-	await renderer.endPaint();
+	await renderer.endPaint(encoding);
 	return true;
 };
 
