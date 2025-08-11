@@ -1,11 +1,8 @@
 <script lang="ts">
-	import { createTextSource } from '$lib/source/actions';
-	import { appState } from '$lib/state.svelte';
-	import { untrack } from 'svelte';
-	import { setCurrentFrame } from '$lib/timeline/actions';
+	import { appState, timelineState } from '$lib/state.svelte';
+	import { pause, play, setCurrentFrame, zoomIn, zoomOut } from '$lib/timeline/actions';
 
-	import TextIcon from '../icons/TextIcon.svelte';
-	import TestIcon from '../icons/TestIcon.svelte';
+	import InfoIcon from '../icons/InfoIcon.svelte';
 	import ZoomInIcon from '../icons/ZoomInIcon.svelte';
 	import ZoomOutIcon from '../icons/ZoomOutIcon.svelte';
 	import ImportIcon from '../icons/ImportIcon.svelte';
@@ -13,7 +10,6 @@
 	import SettingsIcon from '../icons/SettingsIcon.svelte';
 	import SeekIcon from '../icons/SeekIcon.svelte';
 
-	let { page = $bindable() } = $props();
 	let inputValue = $state<string>();
 	let selectedIndex = -1;
 	let showSeekOptions = $state(false);
@@ -30,32 +26,32 @@
 					text: 'import',
 					selected: false,
 					icon: ImportIcon,
-					shortcuts: [],
-					action: () => (page = 'import')
+					shortcuts: ['I'],
+					action: () => (appState.palettePage = 'import')
 				},
 				{
 					id: 2,
 					text: 'export',
 					selected: false,
 					icon: ExportIcon,
-					shortcuts: [],
-					action: () => (page = 'export')
+					shortcuts: ['E'],
+					action: () => (appState.palettePage = 'export')
 				},
-				{
+				/* {
 					id: 3,
 					text: 'settings',
 					selected: false,
 					icon: SettingsIcon,
 					shortcuts: [],
 					action: () => console.log(2)
-				},
+				}, */
 				{
 					id: 4,
-					text: 'welcome',
+					text: 'about',
 					selected: false,
-					icon: TestIcon,
+					icon: InfoIcon,
 					shortcuts: [],
-					action: () => console.log(3)
+					action: () => (appState.palettePage = 'about')
 				}
 			]
 		},
@@ -64,20 +60,41 @@
 			name: 'Timeline',
 			commands: [
 				{
+					id: 7,
+					text: 'play / pause',
+					selected: false,
+					icon: ZoomOutIcon,
+					shortcuts: ['Space'],
+					action: () => {
+						if (timelineState.playing) {
+							pause();
+						} else {
+							play();
+						}
+						appState.showPalette = false;
+					}
+				},
+				{
 					id: 5,
 					text: 'zoom in',
 					selected: false,
 					icon: ZoomInIcon,
-					shortcuts: ['Ctrl', 'E'],
-					action: () => console.log(1)
+					shortcuts: ['='],
+					action: () => {
+						zoomIn();
+						appState.showPalette = false;
+					}
 				},
 				{
 					id: 6,
 					text: 'zoom out',
 					selected: false,
 					icon: ZoomOutIcon,
-					shortcuts: [],
-					action: () => (page = 'export')
+					shortcuts: ['-'],
+					action: () => {
+						zoomOut();
+						appState.showPalette = false;
+					}
 				}
 			]
 		}
@@ -110,25 +127,22 @@
 		return;
 	};
 
-	$effect(() => {
-		inputValue;
-		untrack(() => {
-			if (typeof inputValue === 'undefined') return;
-			if (/^\d/.test(inputValue)) {
-				showSeekOptions = true;
-				parseInputNumbers(inputValue);
-			} else {
-				showSeekOptions = false;
-			}
-			let filteredCount = 0;
-			filtered.forEach((category) => {
-				filteredCount += category.commands.length;
-			});
-			if (inputValue.length < 1) {
-				selectDataById(-1);
-			} else if (filteredCount > 0) selectDataByIndex(0);
+	const onInputChange = () => {
+		if (typeof inputValue === 'undefined') return;
+		if (/^\d/.test(inputValue)) {
+			showSeekOptions = true;
+			parseInputNumbers(inputValue);
+		} else {
+			showSeekOptions = false;
+		}
+		let filteredCount = 0;
+		filtered.forEach((category) => {
+			filteredCount += category.commands.length;
 		});
-	});
+		if (inputValue.length < 1) {
+			selectDataById(-1);
+		} else if (filteredCount > 0) selectDataByIndex(0);
+	};
 
 	const selectDataByIndex = (index: number) => {
 		let filteredCount = 0;
@@ -197,6 +211,7 @@
 	>
 		<input
 			bind:value={inputValue}
+			oninput={onInputChange}
 			class="placeholder-zinc-500 w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 			type="text"
 			placeholder="Search commands"
@@ -215,8 +230,9 @@
 				<div class="text-zinc-200 select-none text-sm mb-2">{category.name}</div>
 
 				{#each category.commands as command}
-					<!-- svelte-ignore a11y_mouse_events_have_key_events -->
-					<button
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
 						onmousemove={() => {
 							if (!command.selected) selectDataById(command.id);
 						}}
@@ -224,16 +240,23 @@
 							command.action();
 						}}
 						class={[
-							'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
+							'cursor-pointer w-full p-2 rounded-lg text-left flex items-center group',
 							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
 						]}
 					>
 						<command.icon class="size-5 inline mr-3" />
-						<p>{@html formatString(command.text)}</p>
+						<p class="flex-1">{@html formatString(command.text)}</p>
 						{#each command.shortcuts as key}
-							<span>{key}</span>
+							<div
+								class={[
+									'ml-2 text-sm  px-1.5 py-0.5 rounded-sm ',
+									command.selected ? 'bg-zinc-700' : ' bg-zinc-800'
+								]}
+							>
+								{key}
+							</div>
 						{/each}
-					</button>
+					</div>
 				{/each}
 			</div>
 		{/if}

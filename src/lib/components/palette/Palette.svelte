@@ -4,8 +4,7 @@
 	import Search from './Search.svelte';
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
-
-	let page = $state<'search' | 'export' | 'import'>('search');
+	import About from './About.svelte';
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -15,6 +14,7 @@
 	onmousedown={() => {
 		if (appState.lockPalette) return;
 		appState.showPalette = false;
+		appState.palettePage = 'search';
 	}}
 >
 	<div
@@ -23,12 +23,14 @@
 			e.stopPropagation();
 		}}
 	>
-		{#if page === 'search'}
-			<Search bind:page />
-		{:else if page === 'export'}
-			<Export bind:page />
-		{:else if page === 'import'}
-			<Import bind:page />
+		{#if appState.palettePage === 'search'}
+			<Search />
+		{:else if appState.palettePage === 'export'}
+			<Export />
+		{:else if appState.palettePage === 'import'}
+			<Import />
+		{:else if appState.palettePage === 'about'}
+			<About />
 		{/if}
 	</div>
 </div>
@@ -38,6 +40,7 @@
 			case 'Escape':
 				if (appState.lockPalette) return;
 				appState.showPalette = false;
+				appState.palettePage = 'search';
 				break;
 		}
 	}}

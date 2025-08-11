@@ -2,8 +2,6 @@
 	import { appState } from '$lib/state.svelte';
 	import { checkDroppedSource } from '$lib/source/actions';
 
-	let { page = $bindable() } = $props();
-
 	let showDetails = $state(false);
 	let fileDetails = $state({
 		name: '',
@@ -82,7 +80,7 @@
 		switch (event.code) {
 			case 'Backspace':
 				if (appState.disableKeyboardShortcuts) break;
-				page = 'search';
+				appState.palettePage = 'search';
 				break;
 		}
 	}}

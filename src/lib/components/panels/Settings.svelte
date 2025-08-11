@@ -6,46 +6,84 @@
 	import AudioIcon from '../icons/AudioIcon.svelte';
 	import SettingsInput from '../ui/SettingsInput.svelte';
 	import SettingsGroup from '../ui/SettingsGroup.svelte';
+	import TextIcon from '../icons/TextIcon.svelte';
+	import MoveIcon from '../icons/MoveIcon.svelte';
 
-	let selected = $state<'audio' | 'project' | 'clip'>('audio');
+	let selected = $state<'masterAudio' | 'project' | 'layout' | 'audio' | 'text'>('audio');
 
 	$effect(() => {
 		if (timelineState.selectedClip) {
-			selected = 'clip';
+			const type = timelineState.selectedClip.source.type;
+			if (type === 'audio') selected = 'audio';
+			if (type === 'test' || type === 'text' || type === 'video') selected = 'layout';
 		} else {
-			selected = 'audio';
+			selected = 'masterAudio';
 		}
 	});
 </script>
 
 <div class="flex mt-12 mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative">
-	<div class="absolute -right-13 flex flex-col bg-[#131315] rounded">
-		<!-- svelte-ignore a11y_consider_explicit_label -->
-		<button
-			onclick={() => (selected = 'audio')}
-			class={[selected === 'audio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
-		>
-			<SpeakerIcon class="w-6 h-6" />
-		</button>
-		<button
-			onclick={() => (selected = 'project')}
-			class={[
-				selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
-				'p-2'
-			]}
-		>
-			<SettingsIcon class="w-6 h-6" />
-		</button>
-		{#if timelineState.selectedClip}
+	<div class="absolute -right-13">
+		<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<button
-				onclick={() => (selected = 'clip')}
-				class={[selected === 'clip' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400', 'p-2']}
+				onclick={() => (selected = 'masterAudio')}
+				class={[
+					selected === 'masterAudio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+					'p-2'
+				]}
 			>
-				<AudioIcon class="w-6 h-6" />
+				<SpeakerIcon class="w-6 h-6" />
 			</button>
+			<button
+				onclick={() => (selected = 'project')}
+				class={[
+					selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+					'p-2'
+				]}
+			>
+				<SettingsIcon class="w-6 h-6" />
+			</button>
+		</div>
+		{#if timelineState.selectedClip}
+			{@const source = timelineState.selectedClip.source}
+			<div class=" bg-zinc-950 rounded flex flex-col">
+				{#if source.type !== 'audio'}
+					<button
+						onclick={() => (selected = 'layout')}
+						class={[
+							selected === 'layout' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							'p-2'
+						]}
+					>
+						<MoveIcon class="w-6 h-6" />
+					</button>
+				{/if}
+				{#if source.type === 'text'}
+					<button
+						onclick={() => (selected = 'text')}
+						class={[
+							selected === 'text' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							'p-2'
+						]}
+					>
+						<TextIcon class="w-6 h-6" />
+					</button>
+				{/if}
+				{#if source.type !== 'text'}
+					<button
+						onclick={() => (selected = 'audio')}
+						class={[
+							selected === 'audio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							'p-2'
+						]}
+					>
+						<AudioIcon class="w-6 h-6" />
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</div>
-
 	<div class="flex-1 flex flex-col gap-3 mt-2 mr-3">
 		{#if selected === 'project'}
 			<div class="text-sm font-medium">
@@ -77,7 +115,7 @@
 			</div>
 		{/if}
 
-		{#if selected === 'clip' && timelineState.selectedClip}
+		{#if selected === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<SettingsGroup label={'size'}>
 				<SettingsInput bind:value={clip.params[0]} fallback={1} />
@@ -87,11 +125,14 @@
 				<SettingsInput bind:value={clip.params[2]} />
 				<SettingsInput bind:value={clip.params[3]} />
 			</SettingsGroup>
+		{/if}
+		{#if selected === 'text' && timelineState.selectedClip}
 			<SettingsGroup label={'text'}>
-				<SettingsInput bind:value={clip.text} type="text" fallback={'_'} />
+				<SettingsInput bind:value={timelineState.selectedClip.text} type="text" fallback={'_'} />
 			</SettingsGroup>
-
-			<!-- <div class="flex flex-col gap-3 mt-4">
+		{/if}
+		{#if selected === 'audio' && timelineState.selectedClip}
+			<div class="flex flex-col gap-3 mt-4">
 				<div class="flex items-center justify-between text-sm font-medium">
 					<span>Volume</span>
 					<span>50%</span>
@@ -111,10 +152,11 @@
 						class={'bg-rose-600 ring-white focus-visible:ring-2  ring-offset-transparent focus-visible:ring-foreground focus-visible:outline-hidden block size-[15px] cursor-pointer rounded-full  '}
 					/>
 				</Slider.Root>
-			</div> -->
+			</div>
 		{/if}
 	</div>
-	{#if selected === 'audio'}
+
+	{#if selected === 'masterAudio'}
 		<div
 			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
 			style="background:linear-gradient(90deg,#090909 43%, #18181b 43%, #18181b 57%,#090909 57%);"

@@ -52,6 +52,20 @@
 				if (appState.disableKeyboardShortcuts) break;
 				if (!appState.showPalette) appState.showPalette = true;
 				break;
+			case 'KeyI':
+				if (appState.disableKeyboardShortcuts) break;
+				if (!appState.showPalette) {
+					appState.palettePage = 'import';
+					appState.showPalette = true;
+				}
+				break;
+			case 'KeyE':
+				if (appState.disableKeyboardShortcuts) break;
+				if (!appState.showPalette) {
+					appState.palettePage = 'export';
+					appState.showPalette = true;
+				}
+				break;
 			case 'KeyZ':
 				if (!event.ctrlKey) break;
 				if (event.shiftKey) {

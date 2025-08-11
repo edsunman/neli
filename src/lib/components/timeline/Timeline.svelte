@@ -95,6 +95,7 @@
 	};
 
 	const mouseDown = (e: MouseEvent) => {
+		if (appState.disableKeyboardShortcuts) return;
 		appState.mouseMoveOwner = 'timeline';
 		appState.disableHoverStates = true;
 		if (e.offsetY < 80) {

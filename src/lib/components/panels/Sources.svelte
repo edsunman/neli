@@ -18,7 +18,7 @@
 </script>
 
 <div class="pt-12 ml-[calc(100svw/20)] retative">
-	<div class="absolute left-[calc(100svw/20-50px)] flex flex-col bg-[#131315] rounded">
+	<div class="absolute left-[calc(100svw/20-50px)] flex flex-col bg-zinc-950 rounded">
 		<!-- svelte-ignore a11y_consider_explicit_label -->
 		<button class="p-2 text-zinc-200">
 			<svg

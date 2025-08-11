@@ -3,8 +3,6 @@
 	import { appState } from '$lib/state.svelte';
 	import { encode } from '$lib/worker/actions.svelte';
 
-	let { page = $bindable() } = $props();
-
 	let inputValue = $state('');
 	let encodingStarted = $state(false);
 	const labelId = useId();
@@ -92,7 +90,7 @@
 		switch (event.code) {
 			case 'Backspace':
 				if (appState.disableKeyboardShortcuts || encodingStarted) break;
-				page = 'search';
+				appState.palettePage = 'search';
 				break;
 			case 'Enter':
 				if (encodingStarted) break;
