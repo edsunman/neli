@@ -12,7 +12,7 @@ export class Source {
 	thumbnail = $state('');
 	audioChunks: EncodedAudioChunk[] = [];
 	audioConfig?: AudioEncoderConfig;
-	audioWaveform: Float32Array | undefined;
+	audioWaveform?: Float32Array;
 
 	width = 1920;
 	height = 1080;
@@ -35,7 +35,13 @@ export class Source {
 			this.file = file;
 		}
 		if (info) {
-			this.duration = info.videoTracks[0].nb_samples;
+			const trackInfo = info.videoTracks[0];
+			this.frameRate = trackInfo.nb_samples / (trackInfo.samples_duration / trackInfo.timescale);
+			const frameCount = trackInfo.nb_samples;
+
+			// limit to 2 mins
+			const maxSampleCount = this.frameRate * 120;
+			this.duration = frameCount > maxSampleCount ? maxSampleCount : frameCount;
 			this.fileInfo = info;
 		}
 		if (audioChunks && audioConfig) {

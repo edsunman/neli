@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 
+	let smallBox = $state(false);
+	const shrinkBox = () => {
+		console.log('shrink');
+		smallBox = true;
+	};
+
 	import Search from './Search.svelte';
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
@@ -18,7 +24,10 @@
 	}}
 >
 	<div
-		class="bg-zinc-900 w-lg h-[30rem] rounded-lg flex flex-col"
+		class={[
+			smallBox ? 'h-60' : 'h-[30rem]',
+			'bg-zinc-900 w-lg rounded-lg flex flex-col transition-all duration-500 ease-in-out'
+		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
 		}}
@@ -26,7 +35,7 @@
 		{#if appState.palettePage === 'search'}
 			<Search />
 		{:else if appState.palettePage === 'export'}
-			<Export />
+			<Export {shrinkBox} />
 		{:else if appState.palettePage === 'import'}
 			<Import />
 		{:else if appState.palettePage === 'about'}

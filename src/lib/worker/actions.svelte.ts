@@ -21,7 +21,6 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 		switch (event.data.command) {
 			case 'thumbnail': {
 				const videoFrame = event.data.videoFrame;
-				//console.log(frame);
 				const canvas = document.createElement('canvas');
 				canvas.width = videoFrame.codedWidth * 0.1;
 				canvas.height = videoFrame.codedHeight * 0.1;
@@ -32,14 +31,19 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				videoFrame.close();
 
 				const imgData = canvas.toDataURL('image/webp', 0.8);
-				console.log(imgData);
 
-				setSourceThumbnail(event.data.sourceId, imgData);
-
+				setSourceThumbnail(event.data.sourceId, imgData, event.data.gap);
 				break;
 			}
 			case 'encode-progress': {
-				appState.encoderProgress.percentage = event.data.percentComplete;
+				if (event.data.percentComplete > -1) {
+					appState.encoderProgress.percentage = event.data.percentComplete;
+				} else {
+					appState.encoderProgress.percentage = 0;
+					appState.encoderProgress.message = 'encoding failed';
+					appState.encoderProgress.fail = true;
+				}
+
 				break;
 			}
 			case 'download-link': {

@@ -261,6 +261,7 @@
 		if (appState.showPalette) return;
 		switch (event.code) {
 			case 'Home':
+				if (timelineState.playing) pause();
 				setCurrentFrame(0);
 				break;
 			case 'ArrowLeft':

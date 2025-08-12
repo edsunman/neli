@@ -79,7 +79,9 @@ export const drawCanvas = (
 export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 	if (timelineState.focusedTrack === 0) return;
 	context.clearRect(0, 0, 2000, 100);
-	let count = 0;
+	context.fillStyle = '#131315';
+
+	//let count = 0;
 	for (const clip of timelineState.clips) {
 		if (
 			clip.track !== timelineState.focusedTrack ||
@@ -120,19 +122,21 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 				}
 			}
 
+			context.beginPath();
 			for (const [position, value] of maxLines) {
-				context.fillStyle = '#131315';
-				context.fillRect(
+				context.rect(
 					position,
 					canvasHeight / 2 - (value * waveHeight) / 2,
 					lineWidth,
 					value * waveHeight
 				);
-				count++;
+				//count++;
 			}
+			context.fill(); // Fill the entire path with the specified fillStyle
+			context.closePath();
 		}
 	}
-	console.log(`drawn: ${count}`);
+	//console.log(`drawn: ${count}`);
 };
 
 const drawRuler = (context: CanvasRenderingContext2D) => {

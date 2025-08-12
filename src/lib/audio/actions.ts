@@ -190,7 +190,11 @@ const updateMeter = () => {
 	}
 };
 
-export const generateWaveformData = (source: Source) => {
+export const generateWaveformData = async (source: Source) => {
+	let resolve: (value: boolean) => void;
+	const promise = new Promise((res) => {
+		resolve = res;
+	});
 	if (!source.audioConfig) return;
 	const decoder = audioState.decoderPool.assignDecoder(source.id);
 	if (!decoder) return;
@@ -198,13 +202,12 @@ export const generateWaveformData = (source: Source) => {
 
 	decoder.play(0);
 
-	// each audio data ha 1024 samples
-	// we got 6 amplitude values for each audio data
+	// each audio data has 1024 samples
+	// we get 6 amplitude values for each audio data
 	// so we check the number of audio chunks and * by 6
 
 	const data = new Float32Array(source.audioChunks.length * 6);
 
-	//let done = false;
 	let count = 0;
 	let arrayOffset = 0;
 	const decodeLoop = async () => {
@@ -216,16 +219,9 @@ export const generateWaveformData = (source: Source) => {
 
 			const f32 = generatePeaksFromAudioData(audioData);
 			data.set(f32, arrayOffset);
-
-			//console.log(`duration microseconds: ${audioData.duration / f32.length}`);
 			arrayOffset += f32.length;
 			audioData.close();
 			count++;
-
-			/* if (count > source.audioChunks.length - 2) {
-				done = true;
-				break;
-			} */
 		}
 
 		if (count < source.audioChunks.length - 2) {
@@ -234,10 +230,11 @@ export const generateWaveformData = (source: Source) => {
 			//console.log(data);
 			source.audioWaveform = data;
 			timelineState.invalidateWaveform = true;
-			return;
+			resolve(true);
 		}
 	};
 	decodeLoop();
+	return promise;
 };
 
 const generatePeaksFromAudioData = (audioData: AudioData) => {

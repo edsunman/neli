@@ -29,11 +29,9 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
-				const newSource = await loadFile(e.data.file);
-				newSource.id = e.data.id;
+				const newSource = await loadFile(e.data.file, e.data.id);
 				sources.push(newSource);
-				console.log(newSource);
-				sendFrameForThumbnail(e.data.id, newSource);
+				sendFrameForThumbnail(newSource);
 			}
 			break;
 		case 'encode':
@@ -81,14 +79,16 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
-const sendFrameForThumbnail = async (sourceId: string, source: WorkerSource) => {
+const sendFrameForThumbnail = async (source: WorkerSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
 	decoder.setup(source.videoConfig, source.videoChunks);
-	const videoFrame = await decoder?.decodeFrame(1);
+	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
 	//@ts-expect-error scope issue?
-	self.postMessage({ command: 'thumbnail', sourceId, videoFrame }, [videoFrame]);
+	self.postMessage({ command: 'thumbnail', sourceId: source.id, gap: source.gap, videoFrame }, [
+		videoFrame
+	]);
 };
 
 const processSeekFrame = async () => {
@@ -341,10 +341,12 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array, fileName: string) 
 		if (!success) {
 			retries++;
 			if (retries < maxRetries) {
+				console.log(retries);
 				setTimeout(decodeLoop, 0);
 			} else {
 				encoding = false;
 				console.warn('encode failed');
+				self.postMessage({ command: 'encode-progress', percentComplete: -1 });
 			}
 			return;
 		}

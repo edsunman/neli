@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
-	import { createVideoSource } from '$lib/source/actions';
+	//import { createVideoSource } from '$lib/source/actions';
 
 	import TextIcon from '../icons/TextIcon.svelte';
 	import TestIcon from '../icons/TestIcon.svelte';
 
-	const onDrop = (e: DragEvent) => {
+	/* 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
 		const files = e.dataTransfer?.files;
 		if (!files) return;
@@ -14,7 +14,7 @@
 		console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 
 		createVideoSource(file);
-	};
+	}; */
 </script>
 
 <div class="pt-12 ml-[calc(100svw/20)] retative">
@@ -72,4 +72,4 @@
 	</div>
 </div>
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div ondrop={onDrop} ondragover={(e) => e.preventDefault()} class="w-full h-full"></div>
+<!-- <div ondrop={onDrop} ondragover={(e) => e.preventDefault()} class="w-full h-full"></div> -->

@@ -2,6 +2,9 @@
 	import { Progress, useId } from 'bits-ui';
 	import { appState } from '$lib/state.svelte';
 	import { encode } from '$lib/worker/actions.svelte';
+	import Button from '../ui/Button.svelte';
+
+	let { shrinkBox } = $props();
 
 	let inputValue = $state('');
 	let encodingStarted = $state(false);
@@ -9,6 +12,7 @@
 
 	const exportFile = async () => {
 		encodingStarted = true;
+		shrinkBox();
 		appState.lockPalette = true;
 		appState.encoderProgress.message = 'preparing audio...';
 		appState.encoderProgress.percentage = 0;
@@ -65,23 +69,13 @@
 
 <div class="mx-8 flex-none pt-5 pb-7 text-right">
 	{#if !encodingStarted}
-		<button
-			class="border-2 border-zinc-300 text-zinc-100 rounded-lg px-3 py-2 cursor-pointer justify-self-end"
-			onclick={() => exportFile()}>Export</button
-		>
-	{:else if appState.encoderProgress.percentage > 100}
-		<button
-			class="bg-rose-500 hover:bg-rose-600 focus:outline-rose-500 text-white rounded-lg px-3 py-2 cursor-pointer justify-self-end"
-		>
-			Cancel
-		</button>
+		<Button onclick={() => exportFile()} text={'Export'} />
 	{:else}
-		<button
-			class="bg-rose-500 hover:bg-rose-600 focus:outline-rose-500 text-white rounded-lg px-3 py-2 cursor-pointer justify-self-end"
+		<Button
 			onclick={() => (appState.showPalette = false)}
-		>
-			Close
-		</button>
+			text={'close'}
+			disabled={!(appState.encoderProgress.fail || appState.encoderProgress.percentage === 100)}
+		/>
 	{/if}
 </div>
 

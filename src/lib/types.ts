@@ -18,7 +18,6 @@ export type WorkerClip = {
 export type WorkerSource = {
 	id: string;
 	videoChunks: EncodedVideoChunk[];
-	audioChunks: EncodedAudioChunk[];
-	audioConfig: AudioEncoderConfig;
 	videoConfig: VideoEncoderConfig;
+	gap: number;
 };

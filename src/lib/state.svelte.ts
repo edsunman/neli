@@ -10,11 +10,12 @@ class AppState {
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
 	audioLevel = $state([0, 0]);
-	encoderProgress = $state({ message: 'starting', percentage: 0 });
+	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	disableHoverStates = $state(false);
 
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
+	importSuccessCallback: (source: Source, gap: number) => void = () => {};
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 

@@ -17,7 +17,14 @@ export const createClip = (
 	if (duration === 0) {
 		// no duration set so use defaults
 		duration = 500;
-		if (source.duration) duration = source.duration;
+		if (source.duration) {
+			if (source.frameRate && source.frameRate !== 30) {
+				const ratio = 30 / source.frameRate;
+				duration = Math.floor(source.duration * ratio);
+			} else {
+				duration = source.duration;
+			}
+		}
 	}
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
@@ -147,7 +154,6 @@ export const resizeSelctedClip = () => {
 			clip.duration = timelineState.currentFrame - clip.start;
 		}
 
-		const maxLength = clip.source.duration ? clip.source.duration - clip.sourceOffset : 1000;
 		const rightSibling = getRightSibling(clip);
 		const hardStop = rightSibling ? rightSibling.start : timelineState.duration;
 
@@ -162,9 +168,17 @@ export const resizeSelctedClip = () => {
 		}
 
 		// source length checks
-		if (clip.source.duration && clip.duration > maxLength) {
-			clip.duration = maxLength;
-			clip.invalid = true;
+		if (clip.source.duration) {
+			let maxLength = clip.source.duration - clip.sourceOffset;
+			if (clip.source.frameRate && clip.source.frameRate !== 30) {
+				const ratio = 30 / clip.source.frameRate;
+				maxLength = Math.floor(clip.source.duration * ratio - clip.sourceOffset);
+			}
+
+			if (clip.duration > maxLength) {
+				clip.duration = maxLength;
+				clip.invalid = true;
+			}
 		}
 	}
 
