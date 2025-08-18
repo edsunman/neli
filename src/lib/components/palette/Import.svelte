@@ -71,6 +71,13 @@
 
 		showDetails = true;
 
+		if (file.size > 1e9) {
+			warningMessage = 'file exceeds 1GB size limit';
+			loadingMessage = '';
+			disableButton = false;
+			return;
+		}
+
 		const info = await checkDroppedSource(file);
 		const trackInfo = info?.videoTracks[0];
 		if (trackInfo) {

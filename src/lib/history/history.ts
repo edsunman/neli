@@ -1,4 +1,4 @@
-import { getClip, setClipJoins } from '$lib/clip/actions';
+import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
@@ -117,8 +117,8 @@ export class HistoryManager {
 
 		for (const clip of updatedClips) {
 			updateWorkerClip(clip);
-			setClipJoins(clip);
 		}
+		setAllJoins();
 		timelineState.invalidate = true;
 	}
 
@@ -181,8 +181,8 @@ export class HistoryManager {
 
 		for (const clip of updatedClips) {
 			updateWorkerClip(clip);
-			setClipJoins(clip);
 		}
+		setAllJoins();
 		timelineState.invalidate = true;
 	}
 }

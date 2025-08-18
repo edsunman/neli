@@ -47,6 +47,11 @@ export const play = () => {
 
 		const oldFrame = timelineState.currentFrame;
 
+		if (oldFrame >= timelineState.duration - 1) {
+			// dont play past timeine end
+			pause();
+		}
+
 		// the - 1 here is an 'epsilon' to make playback smoother
 		while (accumulator >= MS_PER_FRAME - 1) {
 			timelineState.currentFrame++;

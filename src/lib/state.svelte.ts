@@ -4,8 +4,8 @@ import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio';
 
 class AppState {
-	mediaWorker: Worker | undefined;
-	waveformCanvas: HTMLCanvasElement | undefined;
+	mediaWorker?: Worker;
+	waveformCanvas?: HTMLCanvasElement;
 	sources = $state<Source[]>([]);
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
@@ -16,6 +16,7 @@ class AppState {
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};
+	dragAndDropSourceId = '';
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 

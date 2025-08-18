@@ -238,10 +238,7 @@ const drawClip = (
 	if (clip.joinLeft || clip.joinRight) maskWidth = clipWidth + 20;
 	if (clip.joinLeft && clip.joinRight) maskWidth = clipWidth + 40;
 
-	if (clipWidth < 6) {
-		context.fillRect(clipStart + 1, trackTop, 3, clipHeight);
-		return;
-	}
+	// TODO: each clip should not be a seperate draw call
 
 	// focus shapes
 	if (clip.track === timelineState.focusedTrack) {
@@ -253,6 +250,11 @@ const drawClip = (
 
 	// base shape
 	context.fillStyle = clipColor;
+
+	if (clipWidth < 6) {
+		context.fillRect(clipStart + 1, trackTop, 3, clipHeight);
+		return;
+	}
 
 	context.save();
 	context.beginPath();

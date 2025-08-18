@@ -1,9 +1,5 @@
 const DEBUG = false;
 
-/**
- * Responsible for demuxing and storing video chunks, then
- * decoding video chunks and returning video frames.
- */
 export class VDecoder {
 	#decoder;
 	#decoderConfig: VideoDecoderConfig | null = null;

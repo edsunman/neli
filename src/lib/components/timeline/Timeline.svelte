@@ -20,7 +20,9 @@
 		removeInvalidAllClips,
 		trimSiblingClips,
 		splitClip,
-		deleteClip
+		deleteClip,
+		createClip,
+		removeClip
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -192,10 +194,44 @@
 		removeInvalidAllClips();
 	};
 
+	const dragEnter = (e: MouseEvent) => {
+		e.preventDefault();
+		const sourceId = appState.dragAndDropSourceId;
+		if (!sourceId) return;
+		const start = canvasPixelToFrame(e.offsetX);
+		const newClip = createClip(sourceId, 0, start, 0, 0, true);
+		if (!newClip) return;
+		timelineState.selectedClip = newClip;
+		timelineState.dragStart = e.offsetX;
+	};
+
+	const dragOver = (e: MouseEvent) => {
+		e.preventDefault();
+		timelineState.dragOffset = e.offsetX - timelineState.dragStart;
+		moveSelectedClip(e.offsetY);
+		timelineState.invalidateWaveform = true;
+	};
+
+	const dragLeave = () => {
+		if (timelineState.selectedClip) {
+			removeClip(timelineState.selectedClip.id);
+			timelineState.invalidateWaveform = true;
+		}
+	};
+
+	const drop = () => {
+		const clip = timelineState.selectedClip;
+		if (clip) {
+			trimSiblingClips(clip);
+			updateWorkerClip(clip);
+			historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
+			historyManager.finishCommand();
+		}
+	};
+
 	const step = () => {
 		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveform(waveContext);
-			//if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 			timelineState.invalidateWaveform = false;
 			timelineState.invalidate = true;
 		}
@@ -203,7 +239,6 @@
 			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 			timelineState.invalidate = false;
 		}
-
 		requestAnimationFrame(step);
 	};
 	requestAnimationFrame(step);
@@ -226,6 +261,7 @@
 			timelineState.invalidate = true;
 		});
 
+		// Can't add passive listeners in svelte
 		canvasContainer?.addEventListener(
 			'wheel',
 			(e) => {
@@ -247,7 +283,10 @@
 		class="flex-1"
 		role="navigation"
 		onmousedown={mouseDown}
-		onmouseup={mouseUp}
+		ondragenter={dragEnter}
+		ondragover={dragOver}
+		ondragleave={dragLeave}
+		ondrop={drop}
 		bind:clientHeight={height}
 		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}

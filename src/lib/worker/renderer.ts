@@ -3,23 +3,23 @@ import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
 
 export class WebGPURenderer {
-	#canvas: OffscreenCanvas | undefined;
+	#canvas?: OffscreenCanvas;
 	#ctx: GPUCanvasContext | null = null;
 
-	#format: GPUTextureFormat | undefined;
-	#device: GPUDevice | undefined;
-	#sampler: GPUSampler | undefined;
-	#commandEncoder: GPUCommandEncoder | undefined;
-	#passEncoder: GPURenderPassEncoder | undefined;
+	#format?: GPUTextureFormat;
+	#device?: GPUDevice;
+	#sampler?: GPUSampler;
+	#commandEncoder?: GPUCommandEncoder;
+	#passEncoder?: GPURenderPassEncoder;
 
-	#font: MsdfFont | undefined;
-	#testFont: MsdfFont | undefined;
-	#textRenderer: MsdfTextRenderer | undefined;
-	#testRenderer: TestRenderer | undefined;
-	#videoRenderer: VideoRenderer | undefined;
+	#font?: MsdfFont;
+	#testFont?: MsdfFont;
+	#textRenderer?: MsdfTextRenderer;
+	#testRenderer?: TestRenderer;
+	#videoRenderer?: VideoRenderer;
 
 	#pendingFrames: VideoFrame[] = [];
-	bitmap: ImageBitmap | undefined;
+	bitmap?: ImageBitmap;
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
 	constructor(canvas: OffscreenCanvas) {

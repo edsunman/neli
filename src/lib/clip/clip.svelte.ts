@@ -26,11 +26,11 @@ export class Clip {
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {
 		this.id = Math.random().toString(16).slice(2);
 		this.track = source.type === 'text' ? 1 : 2;
-		if (track) this.track = track;
+		this.track = track;
 		this.source = source;
 		this.start = start;
+		this.savedStart = start;
 		this.sourceOffset = sourceOffset;
-
 		if (duration > 0) this.duration = duration;
 	}
 }

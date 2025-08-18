@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
 	//import { createVideoSource } from '$lib/source/actions';
 
@@ -41,11 +41,24 @@
 	<div class="text-zinc-500 text-sm w-full block border-separate border-spacing-y-1">
 		{#each appState.sources as source}
 			<button
+				draggable="true"
 				class={[
 					'group h-14 pl-20 select-none text-left relative',
 					'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
 				]}
-				onclick={() => createClip(source.id, 0, timelineState.currentFrame)}
+				onclick={() => {
+					createClip(source.id, 0, timelineState.currentFrame);
+					historyManager.finishCommand();
+				}}
+				ondragstart={(e) => {
+					//console.log(e);
+					appState.dragAndDropSourceId = source.id;
+					if (!e.dataTransfer) return;
+					//e.dataTransfer.setData(source.id, '');
+					//console.log(e.dataTransfer);
+					const el = document.createElement('div');
+					e.dataTransfer.setDragImage(el, 0, 0);
+				}}
 			>
 				<span
 					style:background-image={`url(${source.thumbnail})`}

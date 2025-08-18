@@ -18,7 +18,7 @@ export const loadFile = async (file: File, sourceId: number): Promise<WorkerSour
 
 	const videoChunks: EncodedVideoChunk[] = [];
 	let mp4File: ISOFile | null = createFile();
-	let videoConfig: VideoDecoderConfig | undefined;
+	let videoConfig: VideoDecoderConfig;
 	let readSampleCount = 0;
 	let maxSampleCount = 0;
 

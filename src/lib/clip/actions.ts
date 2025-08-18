@@ -6,10 +6,11 @@ import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 export const createClip = (
 	sourceId: string,
-	track: number,
+	track = 0,
 	start = 0,
 	duration = 0,
-	sourceOffset = 0
+	sourceOffset = 0,
+	temp = false
 ) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
@@ -27,12 +28,28 @@ export const createClip = (
 		}
 	}
 
+	if (start + duration > timelineState.duration) {
+		// clip outside timeline bounds
+		duration = timelineState.duration - start;
+	}
+
+	if (track < 1) {
+		if (source.type === 'text') track = 1;
+		if (source.type === 'test' || source.type === 'video') track = 2;
+		if (source.type === 'audio') track = 4;
+	}
+
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 
-	updateWorkerClip(clip);
-	historyManager.newCommand({ action: 'addClip', data: { clipId: clip.id } });
+	if (!temp) {
+		trimSiblingClips(clip);
+		updateWorkerClip(clip);
+		//historyManager.newCommand({ action: 'addClip', data: { clipId: clip.id } });
+		historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
+		timelineState.selectedClip = clip;
+	}
 
 	return clip;
 };
@@ -42,9 +59,21 @@ export const deleteClip = (id: string) => {
 		if (clip.id === id) {
 			clip.deleted = true;
 			timelineState.selectedClip = null;
-			setClipJoins(clip);
+			setTrackClipJoins(clip.track);
 			historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
 			updateWorkerClip(clip);
+		}
+	}
+};
+
+/** Unlike delete this will permanently remove clip and not write to history */
+export const removeClip = (id: string) => {
+	if (timelineState.selectedClip && timelineState.selectedClip.id === id) {
+		timelineState.selectedClip = null;
+	}
+	for (let i = timelineState.clips.length - 1; i >= 0; i--) {
+		if (timelineState.clips[i].id === id) {
+			timelineState.clips.splice(i, 1);
 		}
 	}
 };
@@ -67,14 +96,27 @@ export const moveSelectedClip = (mouseY: number) => {
 
 	// sibling clips snap
 	for (const siblingClip of timelineState.clips) {
-		if (clip.id === siblingClip.id || siblingClip.deleted /* || siblingClip.track !== clip.track */)
-			continue;
+		const clipEnd = clip.start + clip.duration;
+		const siblingClipEnd = siblingClip.start + siblingClip.duration;
 
-		if (isFrameInSnapRange(clip.start, siblingClip.start + siblingClip.duration, snapRange)) {
-			clip.start = siblingClip.start + siblingClip.duration;
+		if (clip.id === siblingClip.id || siblingClip.deleted) continue;
+		// check start to end
+		if (isFrameInSnapRange(clip.start, siblingClipEnd, snapRange)) {
+			clip.start = siblingClipEnd;
 		}
-		if (isFrameInSnapRange(clip.start + clip.duration, siblingClip.start, snapRange)) {
+		// check end to start
+		if (isFrameInSnapRange(clipEnd, siblingClip.start, snapRange)) {
 			clip.start = siblingClip.start - clip.duration;
+		}
+		if (clip.track !== siblingClip.track) {
+			// check end to end
+			if (isFrameInSnapRange(clipEnd, siblingClipEnd, snapRange)) {
+				clip.start = siblingClipEnd - clip.duration;
+			}
+			// check start to start
+			if (isFrameInSnapRange(clip.start, siblingClip.start, snapRange)) {
+				clip.start = siblingClip.start;
+			}
 		}
 	}
 
@@ -88,14 +130,19 @@ export const moveSelectedClip = (mouseY: number) => {
 
 	// move between tracks
 	if (clip.source.type === 'video' || clip.source.type === 'test') {
+		const currentTrack = clip.track;
 		if (mouseY > timelineState.trackTops[2] - 5) {
 			clip.track = 3;
 		} else {
 			clip.track = 2;
 		}
+		if (clip.track !== currentTrack) {
+			// moved between tracks this frame
+			setTrackClipJoins(currentTrack);
+		}
 	}
-
-	setClipJoins(clip);
+	setTrackClipJoins(clip.track);
+	//setClipJoins(clip);
 };
 
 export const resizeSelctedClip = () => {
@@ -182,7 +229,7 @@ export const resizeSelctedClip = () => {
 		}
 	}
 
-	setClipJoins(clip);
+	setTrackClipJoins(clip.track);
 };
 
 export const trimSiblingClips = (clip: Clip) => {
@@ -193,7 +240,7 @@ export const trimSiblingClips = (clip: Clip) => {
 		const clipEnd = clip.start + clip.duration;
 		const siblingEnd = siblingClip.start + siblingClip.duration;
 
-		if (clip.start < siblingClip.start && clipEnd > siblingEnd) {
+		if (clip.start <= siblingClip.start && clipEnd >= siblingEnd) {
 			// clip covers sibling so remove it
 			clipsToRemove.push(siblingClip);
 			continue;
@@ -202,7 +249,7 @@ export const trimSiblingClips = (clip: Clip) => {
 		if (clip.start > siblingClip.start && clipEnd < siblingEnd) {
 			// clip fits inside sibling so split it
 			splitClip(siblingClip.id, clip.start, clip.duration);
-			setClipJoins(clip);
+			setTrackClipJoins(clip.track);
 			continue;
 		}
 
@@ -211,7 +258,7 @@ export const trimSiblingClips = (clip: Clip) => {
 			const trimAmount = siblingEnd - clip.start;
 			const oldDuration = siblingClip.duration;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			setClipJoins(clip);
+			setTrackClipJoins(clip.track);
 			updateWorkerClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
@@ -232,7 +279,7 @@ export const trimSiblingClips = (clip: Clip) => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			setClipJoins(clip);
+			setTrackClipJoins(clip.track);
 			updateWorkerClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
@@ -294,7 +341,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	timelineState.clips.push(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
-	setClipJoins(newClip);
+	setTrackClipJoins(newClip.track);
 };
 
 export const removeHoverAllClips = () => {
@@ -360,39 +407,38 @@ const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: numbe
 	return false;
 };
 
-export const setClipJoins = (clip: Clip) => {
-	clip.joinLeft = false;
-	clip.joinRight = false;
-
-	const leftSibling = getLeftSibling(clip);
-	if (leftSibling) {
-		leftSibling.joinRight = false;
-		if (leftSibling.start + leftSibling.duration === clip.start && !clip.deleted) {
-			// joined!
-			clip.joinLeft = true;
-			leftSibling.joinRight = true;
-		}
+export const setTrackClipJoins = (track: number) => {
+	const startPoints = new Set();
+	const endPoints = new Set();
+	for (const clip of timelineState.clips) {
+		if (clip.track !== track || clip.deleted) continue;
+		clip.joinLeft = false;
+		clip.joinRight = false;
+		startPoints.add(clip.start);
+		endPoints.add(clip.start + clip.duration);
 	}
-
-	const rightSibling = getRightSibling(clip);
-	if (rightSibling) {
-		rightSibling.joinLeft = false;
-		if (rightSibling.start === clip.start + clip.duration && !clip.deleted) {
-			// joined!
-			clip.joinRight = true;
-			rightSibling.joinLeft = true;
-		}
+	for (const clip of timelineState.clips) {
+		if (clip.track !== track || clip.deleted) continue;
+		if (endPoints.has(clip.start)) clip.joinLeft = true;
+		if (startPoints.has(clip.start + clip.duration)) clip.joinRight = true;
 	}
 };
 
-const getLeftSibling = (clip: Clip) => {
+export const setAllJoins = () => {
+	for (let i = 1; i <= 4; i++) {
+		setTrackClipJoins(i);
+	}
+};
+
+const getLeftSibling = (clip: Clip, trackNumber = 0) => {
 	let sibling;
 	let previousDistance = Infinity;
+	const trackToCheck = trackNumber > 0 ? trackNumber : clip.track;
 	for (const siblingClip of timelineState.clips) {
 		if (
 			siblingClip.id === clip.id ||
 			siblingClip.deleted ||
-			siblingClip.track !== clip.track ||
+			siblingClip.track !== trackToCheck ||
 			siblingClip.start + siblingClip.duration > clip.start + clip.duration
 		)
 			continue;
@@ -405,14 +451,15 @@ const getLeftSibling = (clip: Clip) => {
 	return sibling;
 };
 
-const getRightSibling = (clip: Clip) => {
+const getRightSibling = (clip: Clip, trackNumber = 0) => {
 	let sibling;
 	let previousDistance = Infinity;
+	const trackToCheck = trackNumber > 0 ? trackNumber : clip.track;
 	for (const siblingClip of timelineState.clips) {
 		if (
 			siblingClip.id === clip.id ||
 			siblingClip.deleted ||
-			siblingClip.track !== clip.track ||
+			siblingClip.track !== trackToCheck ||
 			siblingClip.start < clip.start
 		)
 			continue;
