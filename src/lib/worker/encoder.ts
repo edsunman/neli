@@ -1,24 +1,31 @@
-import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import {
+	Output,
+	Mp4OutputFormat,
+	BufferTarget,
+	EncodedVideoPacketSource,
+	EncodedAudioPacketSource,
+	EncodedPacket
+} from 'mediabunny';
 
 /**
  * Responsible for encoding VideoFrames and creating Mp4 file
  */
 export class Encoder {
-	#muxer: Muxer<ArrayBufferTarget> | null = null;
+	#output: Output<Mp4OutputFormat, BufferTarget> | null = null;
 	#encoder: VideoEncoder | null = null;
 	#audioEncoder: AudioEncoder | null = null;
 	#frameCounter = 0;
 
 	async setup() {
 		this.#encoder = new VideoEncoder({
-			output: (chunk, meta) => this.#muxer?.addVideoChunk(chunk, meta),
+			output: async (chunk, meta) =>
+				await videoSource.add(EncodedPacket.fromEncodedChunk(chunk), meta),
 			error: (e) => console.error(e)
 		});
 
 		this.#audioEncoder = new AudioEncoder({
-			output: (chunk, meta) => {
-				this.#muxer?.addAudioChunk(chunk, meta);
-			},
+			output: async (chunk, meta) =>
+				await audioSource.add(EncodedPacket.fromEncodedChunk(chunk), meta),
 			error: (e) => console.error(e)
 		});
 
@@ -37,20 +44,24 @@ export class Encoder {
 		};
 		this.#audioEncoder.configure(encoderConfig);
 
-		this.#muxer = new Muxer({
-			target: new ArrayBufferTarget(),
-			audio: {
-				codec: 'aac',
-				numberOfChannels: 2,
-				sampleRate: 48000
-			},
-			video: {
-				codec: 'avc',
-				width: 1920,
-				height: 1080
-			},
-			fastStart: 'in-memory'
+		this.#output = new Output({
+			format: new Mp4OutputFormat({
+				fastStart: 'in-memory'
+				//minimumFragmentDuration: MIN_FRAGMENT_DURATION
+			}),
+			target: new BufferTarget()
 		});
+
+		const videoSource = new EncodedVideoPacketSource('avc');
+		this.#output.addVideoTrack(videoSource, {
+			rotation: 0,
+			frameRate: 30
+		});
+
+		const audioSource = new EncodedAudioPacketSource('aac');
+		this.#output.addAudioTrack(audioSource);
+
+		await this.#output.start();
 	}
 
 	encode(frame: VideoFrame) {
@@ -75,21 +86,23 @@ export class Encoder {
 	}
 
 	async finalize() {
-		if (!this.#muxer || !this.#encoder || !this.#audioEncoder) return;
+		if (!this.#output || !this.#encoder || !this.#audioEncoder) return;
 
 		await this.#encoder.flush();
 
 		this.#encoder.close();
 		this.#encoder = null;
 
-		this.#muxer.finalize();
+		await this.#output.finalize();
 
-		const buffer = this.#muxer.target.buffer;
+		const buffer = this.#output.target.buffer;
+
+		if (!buffer) return;
 		console.log(new Blob([buffer]));
 		const blob = new Blob([buffer]);
 
 		// clear buffer
-		this.#muxer = null;
+		this.#output = null;
 
 		// TODO: there must be a better way to do this
 		// transfer buffer to main thread?
