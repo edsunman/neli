@@ -18,6 +18,25 @@ export type WorkerClip = {
 export type WorkerSource = {
 	id: string;
 	videoChunks: EncodedVideoChunk[];
-	videoConfig: VideoEncoderConfig;
+	videoConfig: VideoDecoderConfig;
 	gap: number;
 };
+
+export type FileInfo =
+	| {
+			error: string;
+	  }
+	| {
+			type: 'video';
+			codec: string;
+			resolution: { width: number; height: number };
+			frameRate: number;
+			duration: number;
+	  }
+	| {
+			type: 'audio';
+			codec: string;
+			sampleRate: number;
+			channelCount: number;
+			duration: number;
+	  };

@@ -145,6 +145,9 @@ export const focusTrack = (trackNumber: number) => {
 	} else if (trackNumber === 3) {
 		timelineState.trackHeights = [20, 20, 35, 20];
 		timelineState.trackTops = [90, 120, 150, 275];
+	} else if (trackNumber === 4) {
+		timelineState.trackHeights = [20, 20, 20, 35];
+		timelineState.trackTops = [90, 120, 150, 180];
 	}
 	timelineState.invalidateWaveform = true;
 };

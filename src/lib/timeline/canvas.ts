@@ -3,10 +3,11 @@ import { timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 
 const GREEN = '#50cfaf';
-const GREEN_DARK = '#1c423b';
+const GREEN_DARK = '#1f4a42';
 const PURPLE = '#8b4fcf';
 const PURPLE_DARK = '#361f51';
 const BLUE = '#419fda';
+const BLUE_DARK = '#1e425b';
 
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
@@ -98,11 +99,16 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 		const startTimeInSeconds = clip.sourceOffset / fps;
 		const durationInSeconds = clip.duration / fps;
 
-		const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3555.5);
-		const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3555.5);
+		// 3333.33 is assuming we samples at a rate of 300 per second
+		const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3333.33);
+		const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3333.33);
+
+		console.log(`length: ${audioDataLength}, offset ${audioDataOffset}`);
 
 		const scaleFactor = audioDataLength / clipWidth;
 		const lineWidth = scaleFactor < 0.4 ? 3 : scaleFactor < 1 ? 2 : 1;
+
+		console.log(`scale factor: ${scaleFactor}, clip width: ${clipWidth}`);
 
 		const canvasHeight = 100;
 		const waveHeight = 50;
@@ -217,6 +223,7 @@ const drawClip = (
 		clipDarkColor = PURPLE_DARK;
 	} else if (clip.source.type === 'audio') {
 		clipColor = BLUE;
+		clipDarkColor = BLUE_DARK;
 	}
 
 	const gap = 3;

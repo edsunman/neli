@@ -371,7 +371,10 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 				clip.track === 2) ||
 			(offsetY > timelineState.trackTops[2] &&
 				offsetY < timelineState.trackTops[2] + timelineState.trackHeights[2] &&
-				clip.track === 3)
+				clip.track === 3) ||
+			(offsetY > timelineState.trackTops[3] &&
+				offsetY < timelineState.trackTops[3] + timelineState.trackHeights[3] &&
+				clip.track === 4)
 		) {
 			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 				foundClip = clip;

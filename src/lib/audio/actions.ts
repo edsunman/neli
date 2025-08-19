@@ -63,6 +63,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				for (let i = 0; i < 2; i++) {
 					const planarData = new Float32Array(audioData.numberOfFrames);
 					audioData.copyTo(planarData, {
+						format: 'f32-planar',
 						planeIndex: i,
 						frameOffset: 0,
 						frameCount: audioData.numberOfFrames
@@ -195,21 +196,28 @@ export const generateWaveformData = async (source: Source) => {
 	const promise = new Promise((res) => {
 		resolve = res;
 	});
-	if (!source.audioConfig) return;
+
+	if (!source.audioConfig || !source.duration || !source.frameRate) return;
+	// We are going to store 300 values per second to draw waveform
+	// The step is how many samples we need per value
+	const step = source.audioConfig.sampleRate / 300;
+
+	const durationInSeconds = source.duration / source.frameRate;
+	// Array needs to be big enough to hold 300 samples per second
+	const data = new Float32Array(durationInSeconds * 300);
+
 	const decoder = audioState.decoderPool.assignDecoder(source.id);
 	if (!decoder) return;
 	decoder.setup(source.audioConfig, source.audioChunks);
-
 	decoder.play(0);
 
-	// each audio data has 1024 samples
-	// we get 6 amplitude values for each audio data
-	// so we check the number of audio chunks and * by 6
-
-	const data = new Float32Array(source.audioChunks.length * 6);
-
 	let count = 0;
-	let arrayOffset = 0;
+	const state = {
+		currentIndex: 0,
+		samplesRemaining: 0,
+		previousMax: 0,
+		tempSamples: []
+	};
 	const decodeLoop = async () => {
 		decoder.run(0, true);
 
@@ -217,9 +225,16 @@ export const generateWaveformData = async (source: Source) => {
 			const audioData = decoder.audioDataQueue.shift();
 			if (!audioData) continue;
 
-			const f32 = generatePeaksFromAudioData(audioData);
-			data.set(f32, arrayOffset);
-			arrayOffset += f32.length;
+			const numberOfAudioDataSamples = audioData.numberOfFrames;
+			const rawData = new Float32Array(numberOfAudioDataSamples);
+
+			audioData.copyTo(rawData, {
+				format: 'f32-planar',
+				planeIndex: 0,
+				frameOffset: 0
+			});
+
+			processAudioChunk(rawData, step, state, data);
 			audioData.close();
 			count++;
 		}
@@ -227,7 +242,6 @@ export const generateWaveformData = async (source: Source) => {
 		if (count < source.audioChunks.length - 2) {
 			setTimeout(decodeLoop, 0);
 		} else {
-			//console.log(data);
 			source.audioWaveform = data;
 			timelineState.invalidateWaveform = true;
 			resolve(true);
@@ -237,37 +251,59 @@ export const generateWaveformData = async (source: Source) => {
 	return promise;
 };
 
-const generatePeaksFromAudioData = (audioData: AudioData) => {
-	// We need to pre-allocate a buffer to copy the samples into.
-	const numberOfSamples = audioData.numberOfFrames;
-	const rawData = new Float32Array(numberOfSamples);
+const processAudioChunk = (
+	rawData: Float32Array,
+	step: number,
+	state: {
+		currentIndex: number;
+		samplesRemaining: number;
+		previousMax: number;
+		tempSamples: number[];
+	},
+	data: Float32Array
+) => {
+	const currentData = [...state.tempSamples, ...rawData];
+	const totalSamples = currentData.length;
 
-	// Copy the raw samples from channel 0 into our buffer.
-	audioData.copyTo(rawData, {
-		planeIndex: 0,
-		frameOffset: 0,
-		frameCount: numberOfSamples
-	});
-
-	const peaks = [];
-	const step = 200; // You can adjust this to change the resolution.
-
-	// Iterate through the samples and find the peak for each step.
-	for (let i = 0; i < numberOfSamples; i += step) {
+	// Process all full steps in the current combined data
+	for (let i = 0; i <= totalSamples - step; i += step) {
 		let max = 0;
-		for (let j = 0; j < step && i + j < numberOfSamples; j++) {
-			const absValue = Math.abs(rawData[i + j]);
+		for (let j = 0; j < step; j++) {
+			const absValue = Math.abs(currentData[i + j]);
 			if (absValue > max) {
 				max = absValue;
 			}
 		}
-		peaks.push(max);
+		data[state.currentIndex] = max;
+		state.currentIndex++;
 	}
 
-	return new Float32Array(peaks);
+	// Determine how many samples are left over
+	const remainingStartIndex = Math.floor(totalSamples / step) * step;
+	const samplesRemaining = totalSamples - remainingStartIndex;
+
+	// Store the remaining samples and their max value for the next chunk
+	if (samplesRemaining > 0) {
+		let max = 0;
+		const remainingSamples = currentData.slice(remainingStartIndex);
+		for (const sample of remainingSamples) {
+			const absValue = Math.abs(sample);
+			if (absValue > max) {
+				max = absValue;
+			}
+		}
+		state.previousMax = max;
+		state.tempSamples = remainingSamples;
+		state.samplesRemaining = samplesRemaining;
+	} else {
+		// If there are no remaining samples, reset the state
+		state.previousMax = 0;
+		state.tempSamples = [];
+		state.samplesRemaining = 0;
+	}
 };
 
-// Generate float 32 array to send to worker
+/** Generate float 32 array to send to worker */
 export const renderAudioForExport = async () => {
 	const sampleRate = 48000;
 	const duration = 10;
@@ -280,7 +316,12 @@ export const renderAudioForExport = async () => {
 	);
 
 	for (const clip of timelineState.clips) {
-		if (clip.deleted || clip.start > 300 || clip.source.type !== 'video') continue;
+		if (
+			clip.deleted ||
+			clip.start > 300 ||
+			(clip.source.type !== 'video' && clip.source.type !== 'audio')
+		)
+			continue;
 
 		let clipDurationSeconds = clip.duration / 30;
 		const clipOverflow = clip.start + clip.duration - 300;
@@ -347,6 +388,7 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 				);
 
 				audioData.copyTo(destinationSlice, {
+					format: 'f32-planar',
 					planeIndex: c,
 					frameCount: audioData.numberOfFrames
 				});

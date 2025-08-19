@@ -30,6 +30,7 @@ self.addEventListener('message', async function (e) {
 		case 'load-file':
 			{
 				const newSource = await loadFile(e.data.file, e.data.id);
+				if (!newSource) return;
 				sources.push(newSource);
 				sendFrameForThumbnail(newSource);
 			}

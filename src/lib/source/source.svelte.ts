@@ -1,5 +1,4 @@
 import type { SourceType } from '$lib/types';
-import type { Movie } from 'mp4box';
 
 export class Source {
 	id: string;
@@ -8,7 +7,6 @@ export class Source {
 	duration?: number;
 	frameRate?: number;
 	file?: File;
-	fileInfo?: Movie;
 	thumbnail = $state('');
 	audioChunks: EncodedAudioChunk[] = [];
 	audioConfig?: AudioEncoderConfig;
@@ -17,13 +15,7 @@ export class Source {
 	width = 1920;
 	height = 1080;
 
-	constructor(
-		type: SourceType,
-		info?: Movie,
-		file?: File,
-		audioChunks?: EncodedAudioChunk[],
-		audioConfig?: AudioEncoderConfig
-	) {
+	constructor(type: SourceType, file?: File) {
 		this.id = Math.random().toString(16).slice(2);
 		this.type = type;
 
@@ -34,19 +26,9 @@ export class Source {
 			this.name = file.name;
 			this.file = file;
 		}
-		if (info) {
-			const trackInfo = info.videoTracks[0];
-			this.frameRate = trackInfo.nb_samples / (trackInfo.samples_duration / trackInfo.timescale);
-			const frameCount = trackInfo.nb_samples;
 
-			// limit to 2 mins
-			const maxSampleCount = this.frameRate * 120;
-			this.duration = frameCount > maxSampleCount ? maxSampleCount : frameCount;
-			this.fileInfo = info;
-		}
-		if (audioChunks && audioConfig) {
-			this.audioChunks = audioChunks;
-			this.audioConfig = audioConfig;
+		if (type === 'audio') {
+			this.frameRate = 30;
 		}
 	}
 }

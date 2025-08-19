@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import { checkDroppedSource, createVideoSource, getSourceFromId } from '$lib/source/actions';
-	import { onMount } from 'svelte';
+	import { checkDroppedSource, createAudioSource, createVideoSource } from '$lib/source/actions';
 	import type { Source } from '$lib/source/source.svelte';
 	import InfoIcon from '../icons/InfoIcon.svelte';
 	import SpinningIcon from '../icons/SpinningIcon.svelte';
 	import Button from '../ui/Button.svelte';
+	import type { FileInfo } from '$lib/types';
 
 	let dragHover = $state(false);
 	let showDetails = $state(false);
@@ -13,13 +13,10 @@
 	let loadingMessage = $state('loading file');
 	let warningMessage = $state('');
 	let disableButton = $state(true);
-	let fileDetails = $state({
+	let fileDetails = $state<{ name: string; type: string; info: FileInfo | null }>({
 		name: '',
 		type: '',
-		videoCodec: '',
-		resolution: { width: 0, height: 0 },
-		frameRate: 0,
-		duration: 0
+		info: null
 	});
 	let thumbnailReady = false;
 	let audioReady = false;
@@ -60,15 +57,21 @@
 
 	const onDrop = async (e: DragEvent) => {
 		e.preventDefault();
-		appState.lockPalette = true;
+		dragHover = false;
 
 		const files = e.dataTransfer?.files;
 		if (!files) return;
 		const file = files[0];
 
+		console.log(file.type);
+
+		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
+			return;
+
 		fileDetails.name = file.name;
 		fileDetails.type = file.type;
 
+		appState.lockPalette = true;
 		showDetails = true;
 
 		if (file.size > 1e9) {
@@ -79,25 +82,33 @@
 		}
 
 		const info = await checkDroppedSource(file);
-		const trackInfo = info?.videoTracks[0];
-		if (trackInfo) {
-			fileDetails.videoCodec = trackInfo.codec;
-			fileDetails.resolution.height = trackInfo.track_height;
-			fileDetails.resolution.width = trackInfo.track_width;
-			fileDetails.duration = trackInfo.samples_duration / trackInfo.timescale;
-			const frameRate = trackInfo.nb_samples / fileDetails.duration;
-			fileDetails.frameRate = Math.round(frameRate * 100) / 100;
+		if (!info) return;
 
-			if (fileDetails.duration > 120) {
-				warningMessage = 'File duration is currently limited to 2 minutes';
-			}
-
-			loadingMessage = 'processing video';
-
-			await createVideoSource(file, setThumbnailReady);
-
-			setAudioReady();
+		if ('error' in info) {
+			warningMessage = info.error ?? '';
+			loadingMessage = '';
+			disableButton = false;
+			return;
 		}
+
+		fileDetails.info = info;
+
+		if (info.duration > 120) {
+			warningMessage = 'File duration is currently limited to 2 minutes';
+		}
+
+		if (info.type === 'video') {
+			loadingMessage = 'processing video';
+			await createVideoSource(file, setThumbnailReady, info.duration, info.frameRate);
+		}
+
+		if (info.type === 'audio') {
+			loadingMessage = 'generating audio waveform';
+			thumbnailReady = true;
+			await createAudioSource(file, info.duration);
+		}
+
+		setAudioReady();
 	};
 </script>
 
@@ -133,40 +144,25 @@
 			</div>
 			<div class="w-20 flex-1 content-center"><p>{fileDetails.name}</p></div>
 		</div>
-		<div class="grid grid-cols-2 grid-rows-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
-			<div class="text-center">
-				<span class="text-sm text-zinc-400">frame rate:</span>
-				<span class="text-sm text-zinc-200">
-					{#if fileDetails.frameRate}
-						{fileDetails.frameRate}fps
-					{/if}
-				</span>
+		{#if fileDetails.info && !('error' in fileDetails.info)}
+			<div class="grid grid-cols-2 grid-rows-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
+				{#if fileDetails.info.type === 'video'}
+					{@render info('codec:', fileDetails.info.codec)}
+					{@render info('duration:', formatDuration(fileDetails.info.duration))}
+					{@render info(
+						'resolution:',
+						`${fileDetails.info.resolution.height} x ${fileDetails.info.resolution.width}`
+					)}
+					{@render info('frame rate:', `${Math.round(fileDetails.info.frameRate * 100) / 100}fps`)}
+				{/if}
+				{#if fileDetails.info.type === 'audio'}
+					{@render info('codec:', fileDetails.info.codec)}
+					{@render info('duration:', formatDuration(fileDetails.info.duration))}
+					{@render info('sample rate:', `${fileDetails.info.sampleRate / 1000} kHz`)}
+					{@render info('channels:', fileDetails.info.channelCount)}
+				{/if}
 			</div>
-			<div class="text-center">
-				<span class="text-sm text-zinc-400">duration:</span>
-				<span class="text-sm text-zinc-200">
-					{#if fileDetails.duration}
-						{formatDuration(fileDetails.duration)}
-					{/if}
-				</span>
-			</div>
-			<div class="text-center">
-				<span class="text-sm text-zinc-400">resolution:</span>
-				<span class="text-sm text-zinc-200">
-					{#if fileDetails.resolution.height}
-						{fileDetails.resolution.height} x {fileDetails.resolution.width}
-					{/if}
-				</span>
-			</div>
-			<div class="text-center">
-				<span class="text-sm text-zinc-400">codec: </span>
-				<span class="text-sm text-zinc-200">
-					{#if fileDetails.videoCodec}
-						{fileDetails.videoCodec}
-					{/if}
-				</span>
-			</div>
-		</div>
+		{/if}
 		{#if warningMessage}
 			<div
 				class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center"
@@ -195,6 +191,15 @@
 		/>
 	</div>
 {/if}
+
+{#snippet info(text: string, info: string | number)}
+	<div class="text-center">
+		<span class="text-sm text-zinc-400">{text}</span>
+		<span class="text-sm text-zinc-200">
+			{info}
+		</span>
+	</div>
+{/snippet}
 
 <svelte:window
 	onkeydown={(event) => {

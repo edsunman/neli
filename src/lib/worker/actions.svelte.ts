@@ -72,8 +72,7 @@ export const sendFileToWorker = (source: Source) => {
 	appState.mediaWorker?.postMessage({
 		command: 'load-file',
 		id: source.id,
-		file: source.file,
-		info: source.fileInfo
+		file: source.file
 	});
 };
 

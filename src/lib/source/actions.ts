@@ -1,42 +1,61 @@
 import { sendFileToWorker } from '$lib/worker/actions.svelte';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
-import { createFile, ISOFile, MP4BoxBuffer, type Movie } from 'mp4box';
 import { generateWaveformData } from '$lib/audio/actions';
+import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
+import type { FileInfo } from '$lib/types';
 
-export const checkDroppedSource = (file: File) => {
-	let resolver: (value: Movie) => void;
-	const promise = new Promise<Movie>((resolve) => {
-		resolver = resolve;
-	});
+export const checkDroppedSource = async (file: File): Promise<FileInfo> => {
 	console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 	console.log(file.type);
 	if (file.type === 'video/mp4') {
-		const reader = new FileReader();
+		const input = new Input({
+			formats: ALL_FORMATS,
+			source: new BlobSource(file)
+		});
 
-		let mp4file: ISOFile<unknown, unknown> | null = createFile();
-		mp4file.onReady = (info) => {
-			if (info.videoTracks.length < 1) {
-				console.warn('no video track');
-				mp4file = null;
-				return;
-			}
+		const videoTrack = await input.getPrimaryVideoTrack();
+		if (!videoTrack) return { error: 'No video track' };
 
-			// TODO: check codec is suported by VideoDecoder
-			mp4file = null;
-			resolver(info);
+		const codecSupported = await videoTrack.canDecode();
+		if (!codecSupported) return { error: 'Codec is not supported' };
+
+		const duration = await videoTrack.computeDuration();
+		const stats = await videoTrack.computePacketStats(100);
+		const frameRate = stats.averagePacketRate;
+
+		return {
+			type: 'video',
+			codec: videoTrack.codec ?? '',
+			resolution: { width: videoTrack.displayWidth, height: videoTrack.displayHeight },
+			frameRate,
+			duration
 		};
-		reader.onload = function (e) {
-			const arrayBuffer = e.target?.result as MP4BoxBuffer;
-			if (!arrayBuffer) return;
+	} else if (file.type === 'audio/mpeg' || file.type === 'audio/wav') {
+		const input = new Input({
+			formats: ALL_FORMATS,
+			source: new BlobSource(file)
+		});
 
-			arrayBuffer.fileStart = 0;
-			mp4file!.appendBuffer(arrayBuffer);
+		const audioTrack = await input.getPrimaryAudioTrack();
+		if (!audioTrack) return { error: 'No audio track' };
+
+		const codecSupported = await audioTrack.canDecode();
+		if (!codecSupported) {
+			return { error: 'Codec is not supported' };
+		}
+
+		const duration = await audioTrack.computeDuration();
+
+		return {
+			type: 'audio',
+			codec: audioTrack.codec ?? '',
+			sampleRate: audioTrack.sampleRate,
+			channelCount: audioTrack.numberOfChannels,
+			duration
 		};
-
-		reader.readAsArrayBuffer(file);
-		return promise;
 	}
+	return { error: 'File format is not supported' };
 };
 
 export const setSourceThumbnail = (sourceId: string, image: string, gap: number) => {
@@ -50,89 +69,80 @@ export const setSourceThumbnail = (sourceId: string, image: string, gap: number)
 
 export const createVideoSource = async (
 	file: File,
-	thumbnailCallback: (source: Source, gap: number) => void
+	thumbnailCallback: (source: Source, gap: number) => void,
+	durationSeconds: number,
+	frameRate: number
 ) => {
-	let resolve: (value: string) => void;
-	const promise = new Promise<string>((res) => {
-		resolve = res;
+	const maxFrameCount = frameRate * 120;
+	const newSource = new Source('video', file);
+	newSource.frameRate = frameRate;
+	const durationInFrames = Math.floor(durationSeconds * frameRate);
+	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+
+	const input = new Input({
+		formats: ALL_FORMATS,
+		source: new BlobSource(file)
 	});
 
-	const reader = new FileReader();
-	let mp4info: Movie;
+	const audioTrack = await input.getPrimaryAudioTrack();
+	const audioConfig = await audioTrack?.getDecoderConfig();
 
-	let audioConfig: AudioDecoderConfig;
+	if (audioTrack && audioConfig) {
+		// file has audio track
+		const sink = new EncodedPacketSink(audioTrack);
+		const audioChunks: EncodedAudioChunk[] = [];
+
+		let duration = 0;
+		for await (const packet of sink.packets()) {
+			duration += packet.duration;
+			audioChunks.push(packet.toEncodedAudioChunk());
+			if (duration > 120) break;
+		}
+
+		newSource.audioChunks = audioChunks;
+		newSource.audioConfig = audioConfig;
+	}
+
+	appState.sources.push(newSource);
+	appState.importSuccessCallback = thumbnailCallback;
+	sendFileToWorker(newSource);
+	await generateWaveformData(newSource);
+	return newSource.id;
+};
+
+export const createAudioSource = async (file: File, durationSeconds: number) => {
+	const maxFrameCount = 30 * 120;
+	const newSource = new Source('audio', file);
+	const durationInFrames = Math.floor(durationSeconds * 30);
+	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+
+	const input = new Input({
+		formats: ALL_FORMATS,
+		source: new BlobSource(file)
+	});
+
+	const audioTrack = await input.getPrimaryAudioTrack();
+	const audioConfig = await audioTrack?.getDecoderConfig();
+
+	if (!audioTrack || !audioConfig) return;
+
+	const sink = new EncodedPacketSink(audioTrack);
 	const audioChunks: EncodedAudioChunk[] = [];
-	let readSampleCount = 0;
-	let maxSampleCount = 0;
 
-	let mp4file: ISOFile<unknown, unknown> | null = createFile();
-	mp4file.onReady = (info) => {
-		console.log(info);
-		if (info.videoTracks.length < 1) {
-			console.warn('no video track');
-			return;
-		}
-		// TODO: check codec is suported by VideoDecoder
-		mp4info = info;
-		const trackInfo = info.audioTracks[0];
+	let duration = 0;
+	for await (const packet of sink.packets()) {
+		duration += packet.duration;
+		audioChunks.push(packet.toEncodedAudioChunk());
+		if (duration > 120) break;
+	}
 
-		if (trackInfo) {
-			audioConfig = {
-				codec: trackInfo.codec,
-				sampleRate: trackInfo.audio?.sample_rate ?? 0,
-				numberOfChannels: trackInfo.audio?.channel_count ?? 2,
-				description: getAudioDesciption(mp4file, info.audioTracks[0].id)
-			};
-			const frameRate = trackInfo.nb_samples / (trackInfo.duration / trackInfo.timescale);
-			maxSampleCount = frameRate * 120; // Limit to first 2 mins
-			mp4file!.setExtractionOptions(info.audioTracks[0].id);
-			mp4file!.start();
-		} else {
-			console.warn('no audio track');
-			mp4file!.stop();
-			mp4file = null;
-			const newSource = new Source('video', mp4info, file);
-			appState.sources.push(newSource);
-			appState.importSuccessCallback = thumbnailCallback;
-			sendFileToWorker(newSource);
-			resolve(newSource.id);
-		}
-	};
-	mp4file.onSamples = async (id, user, samples) => {
-		for (const sample of samples) {
-			if (readSampleCount > maxSampleCount) continue;
-			const chunk = new EncodedAudioChunk({
-				type: sample.is_sync ? 'key' : 'delta',
-				timestamp: (1e6 * sample.cts) / sample.timescale,
-				duration: (1e6 * sample.duration) / sample.timescale,
-				data: sample.data!
-			});
-			audioChunks.push(chunk);
-			readSampleCount++;
-		}
+	newSource.audioChunks = audioChunks;
+	newSource.audioConfig = audioConfig;
 
-		if (samples.length < 1000 || readSampleCount > maxSampleCount) {
-			mp4file!.stop();
-			mp4file = null;
-			const newSource = new Source('video', mp4info, file, audioChunks, audioConfig);
-			appState.sources.push(newSource);
-			appState.importSuccessCallback = thumbnailCallback;
-			sendFileToWorker(newSource);
-			await generateWaveformData(newSource);
-			resolve(newSource.id);
-		}
-	};
+	appState.sources.push(newSource);
 
-	reader.onload = function (e) {
-		const arrayBuffer = e.target?.result as MP4BoxBuffer;
-		if (!arrayBuffer) return;
-		arrayBuffer.fileStart = 0;
-		mp4file!.appendBuffer(arrayBuffer);
-	};
-
-	reader.readAsArrayBuffer(file);
-
-	return promise;
+	await generateWaveformData(newSource);
+	return newSource.id;
 };
 
 export const createTextSource = () => {
@@ -151,12 +161,4 @@ export const getSourceFromId = (id: string) => {
 		}
 	}
 	return foundSource;
-};
-
-const getAudioDesciption = (file: ISOFile | null, id: number) => {
-	if (!file) return;
-	const trak = file.getTrackById(id);
-	const entry = trak.mdia.minf.stbl.stsd.entries[0];
-	//@ts-expect-error esds does exist
-	return entry.esds.esd.descs[0].descs[0].data;
 };
