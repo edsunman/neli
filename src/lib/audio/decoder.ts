@@ -20,6 +20,7 @@ export class ADecoder {
 
 	id = 0;
 	lastUsedTime = 0;
+	sampleRate = 0;
 
 	constructor() {
 		this.#decoder = new AudioDecoder({ output: this.#onOutput, error: this.#onError });
@@ -29,6 +30,7 @@ export class ADecoder {
 		this.#decoderConfig = config;
 		this.#decoder.configure(this.#decoderConfig);
 		this.#chunks = chunks;
+		this.sampleRate = config.sampleRate;
 	}
 
 	play(frameNumber: number) {

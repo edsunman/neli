@@ -83,7 +83,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			const audioBuffer = audioState.audioContext.createBuffer(
 				2,
 				currentBatchFrames,
-				audioState.audioContext.sampleRate
+				decoder.sampleRate
 			);
 
 			const leftChannelData = audioBuffer.getChannelData(0);
@@ -327,10 +327,11 @@ export const renderAudioForExport = async () => {
 		const clipOverflow = clip.start + clip.duration - 300;
 		if (clipOverflow > 0) clipDurationSeconds -= clipOverflow / 30;
 
+		if (!clip.source.audioConfig) continue;
 		const audioBuffer = offlineAudioContext.createBuffer(
 			2,
-			clipDurationSeconds * sampleRate,
-			sampleRate
+			clipDurationSeconds * clip.source.audioConfig.sampleRate,
+			clip.source.audioConfig.sampleRate
 		);
 
 		await decodeSource(audioBuffer, clip);
