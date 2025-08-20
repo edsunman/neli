@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
-	import { Slider, ToggleGroup } from 'bits-ui';
+	import { appState, audioState, timelineState } from '$lib/state.svelte';
+	import { ToggleGroup } from 'bits-ui';
+
+	import SettingsInput from '../ui/SettingsInput.svelte';
+	import SettingsGroup from '../ui/SettingsGroup.svelte';
+	import Slider from '../ui/Slider.svelte';
+
 	import SpeakerIcon from '../icons/SpeakerIcon.svelte';
 	import SettingsIcon from '../icons/SettingsIcon.svelte';
 	import AudioIcon from '../icons/AudioIcon.svelte';
-	import SettingsInput from '../ui/SettingsInput.svelte';
-	import SettingsGroup from '../ui/SettingsGroup.svelte';
 	import TextIcon from '../icons/TextIcon.svelte';
 	import MoveIcon from '../icons/MoveIcon.svelte';
 
@@ -35,7 +38,7 @@
 			>
 				<SpeakerIcon class="w-6 h-6" />
 			</button>
-			<button
+			<!-- <button
 				onclick={() => (selected = 'project')}
 				class={[
 					selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
@@ -43,7 +46,7 @@
 				]}
 			>
 				<SettingsIcon class="w-6 h-6" />
-			</button>
+			</button> -->
 		</div>
 		{#if timelineState.selectedClip}
 			{@const source = timelineState.selectedClip.source}
@@ -137,7 +140,7 @@
 					<span>Volume</span>
 					<span>50%</span>
 				</div>
-				<Slider.Root
+				<!-- <Slider.Root
 					type="single"
 					value={0.5}
 					class="relative flex w-full touch-none select-none items-center"
@@ -151,7 +154,17 @@
 						index={0}
 						class={'bg-rose-600 ring-white focus-visible:ring-2  ring-offset-transparent focus-visible:ring-foreground focus-visible:outline-hidden block size-[15px] cursor-pointer rounded-full  '}
 					/>
-				</Slider.Root>
+				</Slider.Root> -->
+			</div>
+		{/if}
+		{#if selected === 'masterAudio'}
+			<div class="flex h-full w-full justify-end pr-3">
+				<Slider
+					bind:value={audioState.masterGain}
+					onValueChange={(g: number) => {
+						audioState.masterGainNode.gain.value = g;
+					}}
+				/>
 			</div>
 		{/if}
 	</div>
@@ -163,12 +176,12 @@
 		>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(190, 190, 190, 1) 70%);"
+				style="background:linear-gradient(0deg,rgba(34, 138, 106, 1) 0%, rgba(34, 138, 106, 1) 70%, rgba(80, 207, 175, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[0]) * 100}% 100% 100% 0%)`}
 			></div>
 			<div
 				class="w-1.5 h-full"
-				style="background:linear-gradient(0deg,rgba(81, 81, 81, 1) 0%, rgba(120, 120, 120, 1) 70%, rgba(190, 190, 190, 1) 70%);"
+				style="background:linear-gradient(0deg,rgba(34, 138, 106, 1) 0%, rgba(34, 138, 106, 1) 70%, rgba(80, 207, 175, 1) 70%);"
 				style:clip-path={`rect(${(1 - appState.audioLevel[1]) * 100}% 100% 100% 0%)`}
 			></div>
 		</div>

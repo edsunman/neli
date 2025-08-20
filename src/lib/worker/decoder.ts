@@ -70,8 +70,9 @@ export class VDecoder {
 		});
 	}
 
-	play(frameNumber: number) {
+	async play(frameNumber: number) {
 		if (this.#running) return;
+		await this.#decoder.flush();
 		this.#running = true;
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 		const { targetFrameIndex, keyFrameIndex } = this.#getKeyFrameIndex(frameTimestamp);
@@ -186,6 +187,7 @@ export class VDecoder {
 	}
 
 	#onFrame = (frame: VideoFrame) => {
+		if (DEBUG) console.log('Frame output:', frame.timestamp);
 		if (this.#running) {
 			if (this.#startToQueueFrames) {
 				this.#frameQueue.push(frame);

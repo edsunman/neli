@@ -22,8 +22,8 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 
 				const gainNode = audioState.audioContext.createGain();
 				// TODO: create master gain
-				gainNode.connect(audioState.splitterNode);
-				gainNode.connect(audioState.audioContext.destination);
+				gainNode.connect(audioState.masterGainNode);
+				//gainNode.connect(audioState.audioContext.destination);
 				audioState.gainNodes.set(clip.id, gainNode);
 
 				audioState.offsets.set(clip.id, audioState.audioContext.currentTime);
@@ -315,6 +315,10 @@ export const renderAudioForExport = async () => {
 		sampleRate
 	);
 
+	const masterGainNode = offlineAudioContext.createGain();
+	masterGainNode.connect(offlineAudioContext.destination);
+	masterGainNode.gain.value = audioState.masterGain;
+
 	for (const clip of timelineState.clips) {
 		if (
 			clip.deleted ||
@@ -338,7 +342,7 @@ export const renderAudioForExport = async () => {
 
 		const source = offlineAudioContext.createBufferSource();
 		source.buffer = audioBuffer;
-		source.connect(offlineAudioContext.destination);
+		source.connect(masterGainNode);
 
 		source.start(clip.start / 30);
 	}

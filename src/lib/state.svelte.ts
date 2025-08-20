@@ -1,7 +1,7 @@
 import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
-import { AudioState } from './audio/audio';
+import { AudioState } from './audio/audio.svelte';
 
 class AppState {
 	mediaWorker?: Worker;

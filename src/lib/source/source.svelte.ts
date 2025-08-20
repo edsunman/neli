@@ -23,7 +23,9 @@ export class Source {
 		if (type === 'test') this.name = 'Test card';
 
 		if (file) {
-			this.name = file.name;
+			const lastDotIndex = file.name.lastIndexOf('.');
+			const nameNoExt = lastDotIndex === -1 ? file.name : file.name.slice(0, lastDotIndex);
+			this.name = nameNoExt;
 			this.file = file;
 		}
 
