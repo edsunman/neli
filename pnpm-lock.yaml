@@ -50,12 +50,6 @@ importers:
       mediabunny:
         specifier: ^1.8.0
         version: 1.8.0
-      mp4-muxer:
-        specifier: ^5.2.1
-        version: 5.2.1
-      mp4box:
-        specifier: ^0.6.5
-        version: 0.6.5
       prettier:
         specifier: ^3.4.2
         version: 3.5.3
@@ -603,9 +597,6 @@ packages:
 
   '@types/node@24.2.1':
     resolution: {integrity: sha512-DRh5K+ka5eJic8CjH7td8QpYEV6Zo10gfRkjHCO3weqZHWDtAaSTFtl4+VMqOJ4N5jcuhZ9/l+yy8rVgw7BQeQ==}
-
-  '@types/wicg-file-system-access@2020.9.8':
-    resolution: {integrity: sha512-ggMz8nOygG7d/stpH40WVaNvBwuyYLnrg5Mbyf6bmsj/8+gb6Ei4ZZ9/4PNpcPNTT8th9Q8sM8wYmWGjMWLX/A==}
 
   '@typescript-eslint/eslint-plugin@8.32.1':
     resolution: {integrity: sha512-6u6Plg9nP/J1GRpe/vcjjabo6Uc5YQPAMxsgQyGC/I0RuukiG1wIe3+Vtg3IrSCVJDmqK3j8adrtzXSENRtFgg==}
@@ -1193,13 +1184,6 @@ packages:
     resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
     engines: {node: '>=10'}
     hasBin: true
-
-  mp4-muxer@5.2.1:
-    resolution: {integrity: sha512-O9eNqyzUivPJvNinPzBtEnPo7epPeYrryiCB+/+3/ktIXgTIeIB7o8tC+5i+8Zi3JthKGDws9jx7ceIY3PKhXw==}
-
-  mp4box@0.6.5:
-    resolution: {integrity: sha512-smgG2wwO/O6NnQ7KNGQnTPngawFGhrbJaLlQP7QD9bWY136nN+w6pxsxmSvdJJsSNqlwZZ2W5uoWN/wd2kiQXA==}
-    engines: {node: '>=20.8.1'}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -1935,8 +1919,6 @@ snapshots:
     dependencies:
       undici-types: 7.10.0
 
-  '@types/wicg-file-system-access@2020.9.8': {}
-
   '@typescript-eslint/eslint-plugin@8.32.1(@typescript-eslint/parser@8.32.1(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.1
@@ -2540,13 +2522,6 @@ snapshots:
       minipass: 7.1.2
 
   mkdirp@3.0.1: {}
-
-  mp4-muxer@5.2.1:
-    dependencies:
-      '@types/dom-webcodecs': 0.1.15
-      '@types/wicg-file-system-access': 2020.9.8
-
-  mp4box@0.6.5: {}
 
   mri@1.2.0: {}
 

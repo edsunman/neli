@@ -28,8 +28,6 @@
 		"eslint-plugin-svelte": "^3.0.0",
 		"globals": "^16.0.0",
 		"mediabunny": "^1.8.0",
-		"mp4-muxer": "^5.2.1",
-		"mp4box": "^0.6.5",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"svelte": "^5.0.0",
