@@ -51,7 +51,8 @@
 					value={startFrame}
 					oninput={(e) => {
 						const target = e.target as HTMLInputElement;
-						startFrame = Number(target.value);
+						const num = Number(target.value);
+						startFrame = isNaN(num) ? 0 : num;
 					}}
 				/>
 			</div>
@@ -64,7 +65,8 @@
 					value={endFrame}
 					oninput={(e) => {
 						const target = e.target as HTMLInputElement;
-						endFrame = Number(target.value);
+						const num = Number(target.value);
+						endFrame = isNaN(num) ? 0 : num;
 					}}
 				/>
 			</div>

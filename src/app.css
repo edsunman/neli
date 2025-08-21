@@ -2,9 +2,10 @@
 @theme {
 	--font-sans: 'Sen', ui-sans-serif, system-ui, sans-serif;
 	--color-clip-green-500: #50cfaf;
-	--color-clip-green-600: #3a8a75;
+	--color-clip-green-600: #00896e;
 	--color-clip-purple-500: #8b4fcf;
 	--color-clip-purple-600: #6524ad;
 	--color-clip-blue-500: #419fda;
+	--color-clip-blue-600: #116ba4;
 	--color-hover: #26262c;
 }

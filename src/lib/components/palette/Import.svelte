@@ -6,6 +6,7 @@
 	import SpinningIcon from '../icons/SpinningIcon.svelte';
 	import Button from '../ui/Button.svelte';
 	import type { FileInfo } from '$lib/types';
+	import AudioIcon from '../icons/AudioIcon.svelte';
 
 	let dragHover = $state(false);
 	let showDetails = $state(false);
@@ -140,7 +141,18 @@
 						class="absolute rounded-lg w-full h-full bg-cover bg-center opacity-100 starting:opacity-0 transition-opacity duration-500"
 					></div>
 				{/if}
-				<div class="border-2 border-zinc-700 rounded-lg w-full h-full"></div>
+				<div
+					class={[
+						fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'
+							? 'bg-clip-blue-500'
+							: 'border-2 border-zinc-700 ',
+						'rounded-lg w-full h-full flex items-center justify-center'
+					]}
+				>
+					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
+						<AudioIcon class="size-12 text-clip-blue-600" />
+					{/if}
+				</div>
 			</div>
 			<div class="w-20 flex-1 content-center"><p>{fileDetails.name}</p></div>
 		</div>

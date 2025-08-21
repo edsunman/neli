@@ -5,6 +5,8 @@
 
 	import TextIcon from '../icons/TextIcon.svelte';
 	import TestIcon from '../icons/TestIcon.svelte';
+	import AudioIcon from '../icons/AudioIcon.svelte';
+	import FilmIcon from '../icons/FilmIcon.svelte';
 
 	/* 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
@@ -51,11 +53,8 @@
 					historyManager.finishCommand();
 				}}
 				ondragstart={(e) => {
-					//console.log(e);
 					appState.dragAndDropSourceId = source.id;
 					if (!e.dataTransfer) return;
-					//e.dataTransfer.setData(source.id, '');
-					//console.log(e.dataTransfer);
 					const el = document.createElement('div');
 					e.dataTransfer.setDragImage(el, 0, 0);
 				}}
@@ -65,14 +64,17 @@
 					class={[
 						source.type === 'text' ? 'bg-clip-purple-500' : '',
 						source.type === 'test' ? 'bg-clip-green-500' : '',
+						source.type === 'audio' ? 'bg-clip-blue-500' : '',
 						'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
-						'rounded-lg opacity-70 group-hover:opacity-100 transition-opacity bg-cover bg-center'
+						'rounded-lg opacity-60 group-hover:opacity-100 transition-opacity bg-cover bg-center'
 					]}
 				>
 					{#if source.type === 'text'}
-						<TextIcon class="size-5 text-clip-purple-600" />
+						<TextIcon class="size-6 text-clip-purple-600" />
 					{:else if source.type === 'test'}
-						<TestIcon class="size-5 text-clip-green-600" />
+						<FilmIcon class="size-6 text-clip-green-600" />
+					{:else if source.type === 'audio'}
+						<AudioIcon class="size-6 text-clip-blue-600" />
 					{/if}
 				</span>
 
