@@ -23,6 +23,7 @@
 		appState.encoderProgress.percentage = 0;
 		const fileName = inputValue ? inputValue : 'video';
 		encode(fileName, startFrame, endFrame);
+		console.log(startFrame, endFrame);
 	};
 </script>
 
@@ -46,14 +47,26 @@
 					<span class="text-zinc-400">start</span>
 				</div>
 				<!-- svelte-ignore a11y_autofocus -->
-				<Input value={startFrame} />
+				<Input
+					value={startFrame}
+					oninput={(e) => {
+						const target = e.target as HTMLInputElement;
+						startFrame = Number(target.value);
+					}}
+				/>
 			</div>
 			<div class="flex w-full flex-col gap-2 mt-6">
 				<div class="flex items-center justify-between text-sm font-medium text-white">
 					<span class="text-zinc-400">end</span>
 				</div>
 				<!-- svelte-ignore a11y_autofocus -->
-				<Input value={endFrame} />
+				<Input
+					value={endFrame}
+					oninput={(e) => {
+						const target = e.target as HTMLInputElement;
+						endFrame = Number(target.value);
+					}}
+				/>
 			</div>
 		</div>
 	{:else}

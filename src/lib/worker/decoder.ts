@@ -144,7 +144,7 @@ export class VDecoder {
 		this.#frameQueue = [];
 		this.#chunkBuffer = [];
 		this.#startToQueueFrames = false;
-		//await this.#decoder.flush();
+		await this.#decoder.flush();
 		//console.log(`Decoder ${this.id} flushed`);
 	}
 

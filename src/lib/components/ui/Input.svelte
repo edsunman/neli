@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
+	import type { FormEventHandler } from 'svelte/elements';
 
 	type Props = {
 		value: any;
 		fallback?: number | string;
 		type?: string;
+		oninput?: FormEventHandler<HTMLInputElement>;
 	};
-	let { value = $bindable() }: Props = $props();
+	let { value = $bindable(), oninput }: Props = $props();
 </script>
 
 <div
@@ -33,5 +35,6 @@
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
 		}}
+		{oninput}
 	/>
 </div>

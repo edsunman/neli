@@ -42,10 +42,10 @@ export class DecoderPool {
 		return decoder;
 	}
 
-	pauseAll() {
+	async pauseAll() {
 		for (const [, decoder] of this.decoders) {
 			if (decoder.running) {
-				decoder.pause();
+				await decoder.pause();
 			}
 		}
 	}

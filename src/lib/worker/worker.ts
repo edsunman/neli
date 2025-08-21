@@ -281,7 +281,11 @@ const encodeAndCreateFile = async (
 ) => {
 	encoding = true;
 
+	await decoderPool.pauseAll();
+
 	encoder.setup();
+
+	console.log(`starting at ${startFrame}`);
 
 	const numberOfChannels = 2;
 	const durationInFrames = endFrame - startFrame;
@@ -343,11 +347,12 @@ const encodeAndCreateFile = async (
 	let percentComplete = 0;
 	let lastPercent = 0;
 	const decodeLoop = async () => {
-		const success = await buildAndDrawFrame(i, true);
+		console.log(i + startFrame);
+		const success = await buildAndDrawFrame(i + startFrame, true);
 		if (!success) {
 			retries++;
 			if (retries < maxRetries) {
-				console.log(retries);
+				//console.log(retries);
 				setTimeout(decodeLoop, 0);
 			} else {
 				encoding = false;
@@ -379,7 +384,7 @@ const encodeAndCreateFile = async (
 		if (i < durationInFrames) {
 			setTimeout(decodeLoop, 0);
 		} else {
-			//	decoder.pause();
+			await decoderPool.pauseAll();
 			encoding = false;
 			const url = await encoder.finalize();
 			self.postMessage({ command: 'download-link', fileName: `${fileName}.mp4`, link: url });

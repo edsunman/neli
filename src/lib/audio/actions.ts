@@ -344,26 +344,43 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 		)
 			continue;
 
-		let clipDurationSeconds = clip.duration / 30;
-		const clipOverflow = clip.start + clip.duration - endFrame;
-		if (clipOverflow > 0) clipDurationSeconds -= clipOverflow / 30;
-
-		// TODO: clip start time
+		let sourceStartFrame = 0;
+		let sourceDuration = 0;
+		let startOverflow = 0;
+		let endOverflow = 0;
+		let scheduleStartFrame = 0;
+		// source start
+		if (clip.start < startFrame) {
+			startOverflow = startFrame - clip.start;
+			sourceStartFrame = startOverflow + clip.sourceOffset;
+		}
+		sourceStartFrame = startOverflow + clip.sourceOffset;
+		// duration
+		if (clip.start + clip.duration > endFrame) {
+			endOverflow = clip.start + clip.duration - endFrame;
+		}
+		sourceDuration = clip.duration - startOverflow - endOverflow;
+		const durationSeconds = sourceDuration / 30;
+		// schedule start time
+		if (clip.start > startFrame) {
+			scheduleStartFrame = clip.start - startFrame;
+		}
+		const scheduleStartSeconds = scheduleStartFrame / 30;
 
 		if (!clip.source.audioConfig) continue;
 		const audioBuffer = offlineAudioContext.createBuffer(
 			2,
-			clipDurationSeconds * clip.source.audioConfig.sampleRate,
+			durationSeconds * clip.source.audioConfig.sampleRate,
 			clip.source.audioConfig.sampleRate
 		);
 
-		await decodeSource(audioBuffer, clip);
+		await decodeSource(audioBuffer, clip, sourceStartFrame);
 
 		const source = offlineAudioContext.createBufferSource();
 		source.buffer = audioBuffer;
 		source.connect(masterGainNode);
 
-		source.start(clip.start / 30);
+		source.start(scheduleStartSeconds);
 	}
 	console.log(offlineAudioContext);
 	const renderedBuffer = await offlineAudioContext.startRendering();
@@ -380,7 +397,11 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 	return combinedPlanarBuffer;
 };
 
-const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
+/** Decode a source into the audioBuffer starting at startFrame
+ * NOTE: there may be a better way to do this... at the moment if multiple
+ * clips use the same source it will be decoded mutltple times
+ */
+const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: number) => {
 	let resolver: (value: boolean | PromiseLike<boolean>) => void;
 	const promise = new Promise<boolean>((resolve) => {
 		resolver = resolve;
@@ -388,14 +409,18 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 
 	const decoder = setupNewDecoder(clip);
 	if (!decoder) return;
-	decoder.play(clip.sourceOffset);
+	decoder.play(startFrame);
 
 	let currentWriteOffset = 0;
 	let done = false;
+	let retries = 0;
+	const maxRetries = 20;
 	const decodeLoop = async () => {
 		decoder.run(0, true);
 
-		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
+		for (let i = 1; i <= decoder.audioDataQueue.length; i++) {
+			retries = 0;
+
 			const audioData = decoder.audioDataQueue.shift();
 			if (!audioData) continue;
 
@@ -414,21 +439,34 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 				});
 			}
 			currentWriteOffset += audioData.numberOfFrames;
-			console.log(
+			/* console.log(
 				`current write offset: ${currentWriteOffset}, trying to copy: ${audioData.numberOfFrames}, total length: ${audioBuffer.length}`
-			);
+			); */
+			const numberOfFrames = audioData.numberOfFrames;
 			audioData.close();
-			if (currentWriteOffset + 1024 > audioBuffer.length - 1024) {
+
+			if (currentWriteOffset + numberOfFrames >= audioBuffer.length) {
+				// buffer full
 				done = true;
 				break;
 			}
 		}
 
-		if (!done) {
-			setTimeout(decodeLoop, 0);
-		} else {
+		if (decoder.audioDataQueue.length < 1) {
+			console.log(`retries: ${retries}`);
+			retries++;
+			if (retries >= maxRetries) {
+				// we sent in a buffer that was too big
+				console.warn('audio decode loop hit max retries');
+				done = true;
+			}
+		}
+
+		if (done) {
 			decoder.pause();
 			resolver(true);
+		} else {
+			setTimeout(decodeLoop, 0);
 		}
 	};
 	decodeLoop();
