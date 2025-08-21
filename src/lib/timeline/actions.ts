@@ -151,3 +151,13 @@ export const focusTrack = (trackNumber: number) => {
 	}
 	timelineState.invalidateWaveform = true;
 };
+
+export const getUsedTimelineDuration = () => {
+	let lastFrame = 0;
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		const lastClipFrame = clip.start + clip.duration;
+		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;
+	}
+	return lastFrame;
+};

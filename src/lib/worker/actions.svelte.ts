@@ -117,14 +117,16 @@ export const pauseWorker = () => {
 	});
 };
 
-export const encode = async (fileName: string) => {
-	const audioBuffer = await renderAudioForExport();
+export const encode = async (fileName: string, startFrame: number, endFrame: number) => {
+	const audioBuffer = await renderAudioForExport(startFrame, endFrame);
 	appState.encoderProgress.message = 'encoding video...';
 	appState.mediaWorker?.postMessage(
 		{
 			command: 'encode',
 			fileName,
-			audioBuffer
+			audioBuffer,
+			startFrame,
+			endFrame
 		},
 		[audioBuffer.buffer]
 	);

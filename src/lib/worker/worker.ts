@@ -37,7 +37,12 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'encode':
 			{
-				encodeAndCreateFile(e.data.audioBuffer, e.data.fileName);
+				encodeAndCreateFile(
+					e.data.audioBuffer,
+					e.data.fileName,
+					e.data.startFrame,
+					e.data.endFrame
+				);
 			}
 			break;
 		case 'play':
@@ -268,20 +273,26 @@ const setupNewDecoder = (clip: WorkerClip) => {
 	return decoder;
 };
 
-const encodeAndCreateFile = async (audioBuffer: Float32Array, fileName: string) => {
+const encodeAndCreateFile = async (
+	audioBuffer: Float32Array,
+	fileName: string,
+	startFrame: number,
+	endFrame: number
+) => {
 	encoding = true;
 
 	encoder.setup();
 
 	const numberOfChannels = 2;
-	const totalInputFrames = 48000 * 10;
+	const durationInFrames = endFrame - startFrame;
+	const durationInSeconds = durationInFrames / 30;
+	const totalInputFrames = 48000 * durationInSeconds;
 
-	const CHUNK_SIZE_FRAMES = 1024; // Number of frames per AudioData chunk
+	const chunkFrameSize = 1024; // Number of frames per AudioData chunk
 
+	// Split buffer into seperate arrays for each channel
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
-		// Each channel's data starts at an offset equal to 'c' times the total frames per channel
 		const startOffset = c * totalInputFrames;
-		// Create a Float32Array VIEW of the specific channel's data within the main ArrayBuffer
 		return new Float32Array(
 			audioBuffer.buffer,
 			startOffset * Float32Array.BYTES_PER_ELEMENT,
@@ -290,51 +301,45 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array, fileName: string) 
 	});
 
 	let encodeTimestamp = 0;
-	// Loop through the individual planar channels for chunking
-	// We'll chunk based on the length of the first channel
-	for (let i = 0; i < totalInputFrames; i += CHUNK_SIZE_FRAMES) {
-		const currentChunkFrames = Math.min(CHUNK_SIZE_FRAMES, totalInputFrames - i);
 
+	// Loop through planer channels, extract for AudioData, then send to encoder
+	for (let i = 0; i < totalInputFrames; i += chunkFrameSize) {
+		const currentChunkFrames = Math.min(chunkFrameSize, totalInputFrames - i);
 		if (currentChunkFrames <= 0) {
 			continue; // Skip empty last chunk if total frames are exact multiple
 		}
 
 		// Create a combined planar buffer for the current AudioData chunk
-		const combinedChunkDataForAudioData = new Float32Array(currentChunkFrames * numberOfChannels);
+		const combinedChunk = new Float32Array(currentChunkFrames * numberOfChannels);
 		let offsetInCombinedChunk = 0;
 
 		for (let c = 0; c < numberOfChannels; c++) {
-			// Get the slice of the current channel's data for this chunk
 			const channelSlice = individualPlanarChannels[c].subarray(i, i + currentChunkFrames);
-
-			// Copy this channel's slice into the combined chunk data
-			combinedChunkDataForAudioData.set(channelSlice, offsetInCombinedChunk);
-			offsetInCombinedChunk += currentChunkFrames; // Advance offset by frames for the next channel
+			combinedChunk.set(channelSlice, offsetInCombinedChunk);
+			offsetInCombinedChunk += currentChunkFrames;
 		}
 
-		// Create AudioData object
 		const audioFrame = new AudioData({
-			format: 'f32-planar', // Or 'f32' if your data is already planar, or 's16' for Int16
+			format: 'f32-planar',
 			sampleRate: 48000,
 			numberOfChannels: numberOfChannels,
 			numberOfFrames: currentChunkFrames,
-			timestamp: encodeTimestamp, // Timestamp in microseconds
-			data: combinedChunkDataForAudioData.buffer // Pass the underlying ArrayBuffer
+			timestamp: encodeTimestamp,
+			data: combinedChunk.buffer
 		});
 
 		encoder.encodeAudio(audioFrame);
-		encodeTimestamp += audioFrame.duration; // Advance timestamp by this frame's duration
-		audioFrame.close(); // Important: Release the AudioData buffer
+		encodeTimestamp += audioFrame.duration;
+		audioFrame.close();
 	}
 
 	await encoder.finalizeAudio();
 
-	setupFrame(0);
+	setupFrame(startFrame);
 
 	let i = 0;
 	let retries = 0;
 	const maxRetries = 300;
-	const totalFrames = 300;
 	let percentComplete = 0;
 	let lastPercent = 0;
 	const decodeLoop = async () => {
@@ -364,14 +369,14 @@ const encodeAndCreateFile = async (audioBuffer: Float32Array, fileName: string) 
 		newFrame.close();
 		i++;
 
-		percentComplete = Math.floor((i / totalFrames) * 100);
+		percentComplete = Math.floor((i / durationInFrames) * 100);
 
 		if (percentComplete > lastPercent) {
 			lastPercent = percentComplete;
 			self.postMessage({ command: 'encode-progress', percentComplete });
 		}
 
-		if (i < totalFrames) {
+		if (i < durationInFrames) {
 			setTimeout(decodeLoop, 0);
 		} else {
 			//	decoder.pause();

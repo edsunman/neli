@@ -3,11 +3,16 @@
 	import { appState } from '$lib/state.svelte';
 	import { encode } from '$lib/worker/actions.svelte';
 	import Button from '../ui/Button.svelte';
+	import Input from '../ui/Input.svelte';
+	import { getUsedTimelineDuration } from '$lib/timeline/actions';
 
 	let { shrinkBox } = $props();
 
 	let inputValue = $state('');
 	let encodingStarted = $state(false);
+	let startFrame = $state(0);
+	let endFrame = $state(getUsedTimelineDuration());
+
 	const labelId = useId();
 
 	const exportFile = async () => {
@@ -17,7 +22,7 @@
 		appState.encoderProgress.message = 'preparing audio...';
 		appState.encoderProgress.percentage = 0;
 		const fileName = inputValue ? inputValue : 'video';
-		encode(fileName);
+		encode(fileName, startFrame, endFrame);
 	};
 </script>
 
@@ -28,23 +33,28 @@
 
 <div class="mx-8 flex-1 content-center flex-wrap">
 	{#if !encodingStarted}
-		<div class="flex w-full flex-col gap-4">
+		<div class="flex w-full flex-col gap-2">
 			<div class="flex items-center justify-between text-sm font-medium text-white">
 				<span class="text-zinc-400">file name</span>
 			</div>
 			<!-- svelte-ignore a11y_autofocus -->
-			<input
-				autofocus
-				bind:value={inputValue}
-				type="text"
-				class="bg-hover px-3 py-2 rounded-lg text-zinc-100 outline-0"
-				onfocus={() => {
-					appState.disableKeyboardShortcuts = true;
-				}}
-				onblur={() => {
-					appState.disableKeyboardShortcuts = false;
-				}}
-			/>
+			<Input bind:value={inputValue} />
+		</div>
+		<div class="flex gap-6">
+			<div class="flex w-full flex-col gap-2 mt-6">
+				<div class="flex items-center justify-between text-sm font-medium text-white">
+					<span class="text-zinc-400">start</span>
+				</div>
+				<!-- svelte-ignore a11y_autofocus -->
+				<Input value={startFrame} />
+			</div>
+			<div class="flex w-full flex-col gap-2 mt-6">
+				<div class="flex items-center justify-between text-sm font-medium text-white">
+					<span class="text-zinc-400">end</span>
+				</div>
+				<!-- svelte-ignore a11y_autofocus -->
+				<Input value={endFrame} />
+			</div>
 		</div>
 	{:else}
 		<div class="flex w-full flex-col gap-4">

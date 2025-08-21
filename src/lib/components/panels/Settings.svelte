@@ -135,12 +135,19 @@
 			</SettingsGroup>
 		{/if}
 		{#if selected === 'audio' && timelineState.selectedClip}
-			<div class="flex flex-col gap-3 mt-4">
-				<div class="flex items-center justify-between text-sm font-medium">
+			{@const clip = timelineState.selectedClip}
+
+			<SettingsGroup label={'gain'}>
+				<SettingsInput bind:value={clip.params[4]} fallback={1} />
+			</SettingsGroup>
+			<SettingsGroup label={'pan'}>
+				<SettingsInput bind:value={clip.params[5]} fallback={0} />
+			</SettingsGroup>
+			<!-- <div class="flex items-center justify-between text-sm font-medium">
 					<span>Volume</span>
 					<span>50%</span>
-				</div>
-				<!-- <Slider.Root
+				</div> -->
+			<!-- <Slider.Root
 					type="single"
 					value={0.5}
 					class="relative flex w-full touch-none select-none items-center"
@@ -155,7 +162,6 @@
 						class={'bg-rose-600 ring-white focus-visible:ring-2  ring-offset-transparent focus-visible:ring-foreground focus-visible:outline-hidden block size-[15px] cursor-pointer rounded-full  '}
 					/>
 				</Slider.Root> -->
-			</div>
 		{/if}
 		{#if selected === 'masterAudio'}
 			<div class="flex h-full w-full justify-end pr-3">

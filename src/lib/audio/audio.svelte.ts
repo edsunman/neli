@@ -12,6 +12,7 @@ export class AudioState {
 	dummyF32Array = new Float32Array(1024);
 	playingClips: string[] = [];
 	gainNodes = new Map<string, GainNode | null>();
+	panNodes = new Map<string, StereoPannerNode | null>();
 	offsets = new Map<string, number>();
 	decoderPool = new DecoderPool();
 

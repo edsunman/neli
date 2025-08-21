@@ -20,10 +20,14 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				audioState.decoderPool.playDecoder(clip.id, clipFrame);
 				audioState.playingClips.push(clip.id);
 
+				const panNode = audioState.audioContext.createStereoPanner();
+				panNode.pan.value = clip.params[5];
+				panNode.connect(audioState.masterGainNode);
+				audioState.panNodes.set(clip.id, panNode);
+
 				const gainNode = audioState.audioContext.createGain();
-				// TODO: create master gain
-				gainNode.connect(audioState.masterGainNode);
-				//gainNode.connect(audioState.audioContext.destination);
+				gainNode.gain.value = clip.params[4];
+				gainNode.connect(panNode);
 				audioState.gainNodes.set(clip.id, gainNode);
 
 				audioState.offsets.set(clip.id, audioState.audioContext.currentTime);
@@ -38,13 +42,16 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 
 	// stop decoders
 	for (let i = audioState.playingClips.length - 1; i >= 0; i--) {
-		if (!currentClips.find((c) => c.id === audioState.playingClips[i])) {
+		const clip = audioState.playingClips[i];
+		if (!currentClips.find((c) => c.id === clip)) {
 			// clip no longer playing so stop
-			audioState.decoderPool.pauseDecoder(audioState.playingClips[i]);
+			audioState.decoderPool.pauseDecoder(clip);
 
-			audioState.gainNodes.get(audioState.playingClips[i])?.disconnect();
-			audioState.gainNodes.delete(audioState.playingClips[i]);
-			audioState.offsets.delete(audioState.playingClips[i]);
+			audioState.panNodes.get(clip)?.disconnect();
+			audioState.panNodes.delete(clip);
+			audioState.gainNodes.get(clip)?.disconnect();
+			audioState.gainNodes.delete(clip);
+			audioState.offsets.delete(clip);
 
 			audioState.playingClips.splice(i, 1);
 		}
@@ -119,6 +126,10 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 
 export const pauseAudio = () => {
 	audioState.decoderPool.pauseAll();
+	audioState.panNodes.forEach((node) => {
+		if (node) node.disconnect();
+	});
+	audioState.panNodes.clear();
 	audioState.gainNodes.forEach((node) => {
 		if (node) node.disconnect();
 	});
@@ -155,6 +166,10 @@ const updateMeter = () => {
 
 	// Convert peak amplitude to dB (eg -6 dbPeak === -6 dB)
 	let dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
+
+	// TODO: show clipping on meter
+	//if (dbPeak > 1) console.log('clip');
+
 	// Normalise between 0 and 1
 	let normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (0 - MIN_METER_DB);
 	normalisedDbForVisual = Math.max(0, Math.min(1, normalisedDbForVisual));
@@ -304,32 +319,36 @@ const processAudioChunk = (
 };
 
 /** Generate float 32 array to send to worker */
-export const renderAudioForExport = async () => {
+export const renderAudioForExport = async (startFrame: number, endFrame: number) => {
 	const sampleRate = 48000;
-	const duration = 10;
+	const durationInFrames = endFrame - startFrame;
+	const durationInSeconds = durationInFrames / 30;
 	const numberOfChannels = 2;
 
 	const offlineAudioContext = new OfflineAudioContext(
 		numberOfChannels,
-		sampleRate * duration,
+		sampleRate * durationInSeconds,
 		sampleRate
 	);
 
 	const masterGainNode = offlineAudioContext.createGain();
 	masterGainNode.connect(offlineAudioContext.destination);
 	masterGainNode.gain.value = audioState.masterGain;
-
+	console.log(timelineState.clips);
 	for (const clip of timelineState.clips) {
 		if (
 			clip.deleted ||
-			clip.start > 300 ||
+			clip.start + clip.duration < startFrame ||
+			clip.start > endFrame ||
 			(clip.source.type !== 'video' && clip.source.type !== 'audio')
 		)
 			continue;
 
 		let clipDurationSeconds = clip.duration / 30;
-		const clipOverflow = clip.start + clip.duration - 300;
+		const clipOverflow = clip.start + clip.duration - endFrame;
 		if (clipOverflow > 0) clipDurationSeconds -= clipOverflow / 30;
+
+		// TODO: clip start time
 
 		if (!clip.source.audioConfig) continue;
 		const audioBuffer = offlineAudioContext.createBuffer(
@@ -346,23 +365,19 @@ export const renderAudioForExport = async () => {
 
 		source.start(clip.start / 30);
 	}
-
-	// Start rendering and await the result
+	console.log(offlineAudioContext);
 	const renderedBuffer = await offlineAudioContext.startRendering();
+	console.log(renderedBuffer);
+	const combinedPlanarBuffer = new Float32Array(sampleRate * durationInSeconds * numberOfChannels);
 
-	const combinedPlanarBufferForTransfer = new Float32Array(
-		sampleRate * duration * numberOfChannels
-	);
+	// The audio goes into the buffer one channel after another, not interleaved
 	let offset = 0;
-
-	// This 'concatenation' for transfer means: [Channel0Data | Channel1Data | Channel2Data ...]
-	// The worker will know how to split this back based on numberOfChannels and frames.
 	for (let c = 0; c < numberOfChannels; c++) {
-		combinedPlanarBufferForTransfer.set(renderedBuffer.getChannelData(c), offset);
-		offset += sampleRate * duration; // Advance by full channel length
+		combinedPlanarBuffer.set(renderedBuffer.getChannelData(c), offset);
+		offset += sampleRate * durationInSeconds; // Advance by full channel length
 	}
 
-	return combinedPlanarBufferForTransfer;
+	return combinedPlanarBuffer;
 };
 
 const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
@@ -399,9 +414,9 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip) => {
 				});
 			}
 			currentWriteOffset += audioData.numberOfFrames;
-			/* console.log(
+			console.log(
 				`current write offset: ${currentWriteOffset}, trying to copy: ${audioData.numberOfFrames}, total length: ${audioBuffer.length}`
-			); */
+			);
 			audioData.close();
 			if (currentWriteOffset + 1024 > audioBuffer.length - 1024) {
 				done = true;
