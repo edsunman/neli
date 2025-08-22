@@ -376,9 +376,15 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 
 		await decodeSource(audioBuffer, clip, sourceStartFrame);
 
+		const gainNode = offlineAudioContext.createGain();
+		gainNode.gain.value = clip.params[4];
+		gainNode.connect(masterGainNode);
+		const panNode = offlineAudioContext.createStereoPanner();
+		panNode.pan.value = clip.params[5];
+		panNode.connect(gainNode);
 		const source = offlineAudioContext.createBufferSource();
 		source.buffer = audioBuffer;
-		source.connect(masterGainNode);
+		source.connect(panNode);
 
 		source.start(scheduleStartSeconds);
 	}

@@ -71,13 +71,16 @@ export const createVideoSource = async (
 	file: File,
 	thumbnailCallback: (source: Source, gap: number) => void,
 	durationSeconds: number,
-	frameRate: number
+	frameRate: number,
+	resolution: { height: number; width: number }
 ) => {
 	const maxFrameCount = frameRate * 120;
 	const newSource = new Source('video', file);
 	newSource.frameRate = frameRate;
 	const durationInFrames = Math.floor(durationSeconds * frameRate);
 	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+	newSource.height = resolution.height;
+	newSource.width = resolution.width;
 
 	const input = new Input({
 		formats: ALL_FORMATS,

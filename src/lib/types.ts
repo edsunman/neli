@@ -8,6 +8,8 @@ export type WorkerClip = {
 	start: number;
 	duration: number;
 	sourceOffset: number;
+	sourceHeight: number;
+	sourceWidth: number;
 	track: number;
 	params: number[];
 	text: string;

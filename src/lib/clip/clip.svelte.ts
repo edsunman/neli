@@ -15,7 +15,7 @@ export class Clip {
 	joinLeft = false;
 	joinRight = false;
 
-	// size x, size y, pos x, pos y, gain, pan
+	// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan
 	params = $state([1, 1, 0, 0, 1, 0]);
 	text = $state('hello');
 
@@ -26,12 +26,11 @@ export class Clip {
 
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {
 		this.id = Math.random().toString(16).slice(2);
-		this.track = source.type === 'text' ? 1 : 2;
 		this.track = track;
 		this.source = source;
 		this.start = start;
 		this.savedStart = start;
 		this.sourceOffset = sourceOffset;
-		if (duration > 0) this.duration = duration;
+		this.duration = duration;
 	}
 }

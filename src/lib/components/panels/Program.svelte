@@ -54,8 +54,8 @@
 		{@const clip = timelineState.selectedClip}
 		{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
 		{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}
-		{@const offsetX = (clip.params[2] / 2) * clip.source.width * (scale / 100)}
-		{@const offsetY = (clip.params[3] / 2) * clip.source.height * (scale / 100)}
+		{@const offsetX = (clip.params[2] / 2) * 1920 * (scale / 100)}
+		{@const offsetY = (clip.params[3] / 2) * 1080 * (scale / 100)}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 		<div

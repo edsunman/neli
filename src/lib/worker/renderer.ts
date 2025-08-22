@@ -46,7 +46,7 @@ export class WebGPURenderer {
 			alphaMode: 'opaque'
 		});
 
-		this.#sampler = this.#device.createSampler({});
+		this.#sampler = this.#device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
 
 		this.#testRenderer = new TestRenderer(this.#device, this.#format);
 		this.#videoRenderer = new VideoRenderer(this.#device, this.#format, this.#sampler);
@@ -154,10 +154,10 @@ export class WebGPURenderer {
 		this.#textRenderer.render(this.#passEncoder, [text]);
 	}
 
-	videoPass(frame: VideoFrame, params: number[]) {
+	videoPass(frame: VideoFrame, params: number[], height: number, width: number) {
 		if (!this.#passEncoder) return;
 
-		this.#uniformArray.set([0, 0, params[0], params[1], params[2], params[3]], 0);
+		this.#uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.#videoRenderer?.draw(this.#passEncoder, frame, this.#uniformArray);
 
 		this.#pendingFrames.push(frame);

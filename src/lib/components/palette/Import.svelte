@@ -100,7 +100,13 @@
 
 		if (info.type === 'video') {
 			loadingMessage = 'processing video';
-			await createVideoSource(file, setThumbnailReady, info.duration, info.frameRate);
+			await createVideoSource(
+				file,
+				setThumbnailReady,
+				info.duration,
+				info.frameRate,
+				info.resolution
+			);
 		}
 
 		if (info.type === 'audio') {
@@ -163,7 +169,7 @@
 					{@render info('duration:', formatDuration(fileDetails.info.duration))}
 					{@render info(
 						'resolution:',
-						`${fileDetails.info.resolution.height} x ${fileDetails.info.resolution.width}`
+						`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
 					)}
 					{@render info('frame rate:', `${Math.round(fileDetails.info.frameRate * 100) / 100}fps`)}
 				{/if}

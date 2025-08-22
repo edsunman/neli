@@ -3,7 +3,6 @@
 
 	let smallBox = $state(false);
 	const shrinkBox = () => {
-		console.log('shrink');
 		smallBox = true;
 	};
 
@@ -21,6 +20,7 @@
 		if (appState.lockPalette) return;
 		appState.showPalette = false;
 		appState.palettePage = 'search';
+		appState.disableKeyboardShortcuts = false;
 	}}
 >
 	<div
@@ -50,6 +50,7 @@
 				if (appState.lockPalette) return;
 				appState.showPalette = false;
 				appState.palettePage = 'search';
+				appState.disableKeyboardShortcuts = false;
 				break;
 		}
 	}}

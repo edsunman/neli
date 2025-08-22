@@ -40,6 +40,19 @@ export const createClip = (
 	}
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
+
+	if (source.type === 'video') {
+		// scale to fit canvas
+		const scaleX = 1920 / source.width;
+		const scaleY = 1080 / source.height;
+
+		// The final scaling factor is the smaller of the two
+		let scaleFactor = Math.min(scaleX, scaleY);
+		scaleFactor = Math.round(scaleFactor * 1000) / 1000;
+		clip.params[0] = scaleFactor;
+		clip.params[1] = scaleFactor;
+	}
+
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
 

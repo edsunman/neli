@@ -248,7 +248,9 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
-			renderer.videoPass(frame, clip.params);
+			const height = clip.params[0] * (clip.sourceWidth / 1920);
+			const width = clip.params[1] * (clip.sourceHeight / 1080);
+			renderer.videoPass(frame, clip.params, height, width);
 		}
 		if (clip.type === 'text') {
 			if (!clip.text) clip.text = '_';
