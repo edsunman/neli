@@ -8,14 +8,18 @@
 	let canvas = $state<HTMLCanvasElement>();
 	let width = $state(0);
 	let height = $state(0);
-	let scale = $derived((width / 1920) * 70);
+	let scale = $derived.by(() => {
+		const widthScale = (width / 1920) * 90;
+		const heightScale = (height / 1080) * 90;
+		return heightScale < widthScale ? heightScale : widthScale;
+	});
 
 	let dragging = false;
 	let draggedOffset = { x: 0, y: 0 };
 	let mouseDownPosition = { x: 0, y: 0 };
 	let savedClipPosition = { x: 0, y: 0 };
 
-	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
+	mouseMove = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'program' || !dragging) return;
 		if (e.buttons < 1 || !timelineState.selectedClip) return;
 		e.preventDefault();

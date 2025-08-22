@@ -1,4 +1,3 @@
-//import type { ADecoder } from './decoder';
 import { DecoderPool } from './pool';
 
 export class AudioState {

@@ -347,7 +347,6 @@ const encodeAndCreateFile = async (
 	let percentComplete = 0;
 	let lastPercent = 0;
 	const decodeLoop = async () => {
-		console.log(i + startFrame);
 		const success = await buildAndDrawFrame(i + startFrame, true);
 		if (!success) {
 			retries++;

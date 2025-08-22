@@ -29,6 +29,7 @@
 	import { onMount, tick } from 'svelte';
 	import Controls from './Controls.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -43,6 +44,13 @@
 	let resizing = false;
 	let scrolling = false;
 	let fontsLoaded = false;
+
+	$effect(() => {
+		// redraw on window resize
+		innerHeight.current, innerWidth.current;
+		if (waveContext) drawWaveform(waveContext);
+		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+	});
 
 	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
@@ -249,9 +257,7 @@
 
 		context = canvas.getContext('2d', { alpha: false });
 		if (!context) return;
-
-		context.fillStyle = '#18181b';
-		context.fillRect(0, 0, timelineState.width, height);
+		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 
 		waveCanvas = new OffscreenCanvas(2000, 100);
 		waveContext = waveCanvas.getContext('2d');

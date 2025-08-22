@@ -5,7 +5,7 @@
 	type Props = {
 		value: any;
 		fallback?: number | string;
-		type?: string;
+		type?: 'text' | 'number';
 	};
 	let { value = $bindable(), fallback = 0, type = 'number' }: Props = $props();
 </script>
@@ -25,7 +25,7 @@
 	<input
 		{type}
 		class={[
-			'relative w-full text-right px-1 py-0.5 z-2 text-zinc-400 focus:text-zinc-100 outline-0',
+			'relative w-full text-right px-1 py-1 z-2 text-zinc-400 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {
@@ -33,7 +33,7 @@
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
-			if (!value) {
+			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
 				updateWorkerClip(timelineState.selectedClip);
 			}

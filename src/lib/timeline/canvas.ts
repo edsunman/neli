@@ -103,12 +103,8 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 		const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3333.33);
 		const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3333.33);
 
-		console.log(`length: ${audioDataLength}, offset ${audioDataOffset}`);
-
 		const scaleFactor = audioDataLength / clipWidth;
 		const lineWidth = scaleFactor < 0.4 ? 3 : scaleFactor < 1 ? 2 : 1;
-
-		console.log(`scale factor: ${scaleFactor}, clip width: ${clipWidth}`);
 
 		const canvasHeight = 100;
 		const waveHeight = 50;

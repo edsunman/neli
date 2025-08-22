@@ -30,7 +30,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="h-dvh grid grid-cols-[25%_50%_25%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] bg-zinc-900"
+	class="h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] bg-zinc-900"
 	{onmousemove}
 >
 	<div><Sources /></div>
