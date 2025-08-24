@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-//import mkcert from 'vite-plugin-mkcert';
+import mkcert from 'vite-plugin-mkcert';
 import { defineConfig /* , type ViteDevServer  */ } from 'vite';
 
 /* const myPlugin = () => ({
@@ -16,6 +16,6 @@ import { defineConfig /* , type ViteDevServer  */ } from 'vite';
 }); */
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit() /*  myPlugin() , mkcert() */],
+	plugins: [tailwindcss(), sveltekit(), /*  myPlugin() , */ mkcert()],
 	define: { __VERSION__: JSON.stringify(process.env.npm_package_version) }
 });

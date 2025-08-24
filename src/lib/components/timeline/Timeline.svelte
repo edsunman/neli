@@ -27,9 +27,10 @@
 	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
-	import Controls from './Controls.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { innerHeight, innerWidth } from 'svelte/reactivity/window';
+
+	import Controls from './Controls.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -47,6 +48,7 @@
 
 	$effect(() => {
 		// redraw on window resize
+		console.log('resize draw');
 		innerHeight.current, innerWidth.current;
 		if (waveContext) drawWaveform(waveContext);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
@@ -237,6 +239,24 @@
 		}
 	};
 
+	const setCanvasWidth = async () => {
+		if (!context || !canvas) return;
+		const dpr = window.devicePixelRatio;
+		if (dpr > 1) {
+			canvas.height = height * dpr;
+			canvas.width = timelineState.width * dpr;
+			canvas.style.height = `${height}px`;
+			canvas.style.width = `${timelineState.width}px`;
+			context.setTransform(2, 0, 0, 2, 0, 0);
+		} else {
+			canvas.height = height;
+			canvas.width = timelineState.width;
+		}
+
+		await tick();
+		drawCanvas(context, timelineState.width, height, waveCanvas);
+	};
+
 	const step = () => {
 		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveform(waveContext);
@@ -255,12 +275,12 @@
 		await tick();
 		if (!canvas) return;
 
-		context = canvas.getContext('2d', { alpha: false });
-		if (!context) return;
-		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
-
 		waveCanvas = new OffscreenCanvas(2000, 100);
 		waveContext = waveCanvas.getContext('2d');
+
+		context = canvas.getContext('2d', { alpha: false });
+
+		setCanvasWidth();
 
 		document.fonts.ready.then(() => {
 			fontsLoaded = true;
@@ -297,7 +317,7 @@
 		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}
 	>
-		<canvas {height} width={timelineState.width} bind:this={canvas}></canvas>
+		<canvas bind:this={canvas}></canvas>
 	</div>
 </div>
 <svelte:window
