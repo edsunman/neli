@@ -9,6 +9,20 @@ const PURPLE_DARK = '#361f51';
 const BLUE = '#419fda';
 const BLUE_DARK = '#1e425b';
 
+const PLAYHEAD_PATH = new Path2D(
+	'M 3.966 0.2 h 6.3285 c 1.992 0 3.6075 1.615 3.6075 3.6075 v 9.4965 c 0 1.6935 \
+	-0.4075 3.3625 -1.1885 4.865 l -2.3825 4.5865 c -1.3465 2.592 -5.055 2.5925 -6.402 \
+	0 l -2.381 -4.5815 c -0.781 -1.503 -1.189 -3.1725 -1.189 -4.8665 V 3.8075 c 0 -1.992  \
+	1.615 -3.6075 3.6075 -3.6075 Z'
+);
+
+const PLAYHEAD_INSET_PATH = new Path2D(
+	'M 5.3445 3.3485 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 3.6345 c 0 1.129 \
+	-0.2715 2.2415 -0.792 3.2435 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 \
+	0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.115 -0.7925 -3.2445 v -3.6365 c 0 \
+	-1.1245 0.9115 -2.036 2.036 -2.036 Z'
+);
+
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
 	width: number,
@@ -68,13 +82,11 @@ export const drawCanvas = (
 	context.fillStyle = 'white';
 	context.fillRect(playheadPosition, 20, 2, height - 80);
 
-	const radius = 3;
-	context.beginPath();
-	context.arc(playheadPosition - 4, 23, radius, 2.2, -1.4);
-	context.arc(playheadPosition + 10 - 4, 23, radius, 4.6, 1.0);
-	context.arc(playheadPosition + 5 - 4, 34, 1, 0.6, 2.6);
-	context.arc(playheadPosition - 4, 23, radius, 2.2, -1.4);
-	context.fill();
+	context.translate(playheadPosition - 6, 12);
+	context.fill(PLAYHEAD_PATH);
+	context.fillStyle = '#18181b';
+	context.fill(PLAYHEAD_INSET_PATH);
+	context.translate(-playheadPosition + 6, -12);
 };
 
 export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
