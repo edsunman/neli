@@ -12,6 +12,7 @@
 	let timelineMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let timelineMouseUp = $state<(e: MouseEvent) => void>();
 	let programMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
+	let programMouseUp = $state<(e: MouseEvent) => void>();
 
 	const onmousemove = (e: MouseEvent) => {
 		if (timelineMouseMove) timelineMouseMove(e, e.clientX, e.clientY);
@@ -20,6 +21,7 @@
 
 	window.onmouseup = (e: MouseEvent) => {
 		if (timelineMouseUp) timelineMouseUp(e);
+		if (programMouseUp) programMouseUp(e);
 	};
 
 	onMount(async () => {
@@ -34,7 +36,7 @@
 	{onmousemove}
 >
 	<div><Sources /></div>
-	<div><Program bind:mouseMove={programMouseMove} /></div>
+	<div><Program bind:mouseMove={programMouseMove} bind:mouseUp={programMouseUp} /></div>
 	<div><Controls /></div>
 	<div class="col-span-3">
 		<Timeline bind:mouseMove={timelineMouseMove} bind:mouseUp={timelineMouseUp} />
