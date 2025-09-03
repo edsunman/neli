@@ -143,25 +143,6 @@
 			<SettingsGroup label={'pan'}>
 				<SettingsInput bind:value={clip.params[5]} fallback={0} />
 			</SettingsGroup>
-			<!-- <div class="flex items-center justify-between text-sm font-medium">
-					<span>Volume</span>
-					<span>50%</span>
-				</div> -->
-			<!-- <Slider.Root
-					type="single"
-					value={0.5}
-					class="relative flex w-full touch-none select-none items-center"
-				>
-					<span
-						class="bg-zinc-700 relative h-1 w-full grow cursor-pointer overflow-hidden rounded-full"
-					>
-						<Slider.Range class="bg-rose-600 absolute h-full" />
-					</span>
-					<Slider.Thumb
-						index={0}
-						class={'bg-rose-600 ring-white focus-visible:ring-2  ring-offset-transparent focus-visible:ring-foreground focus-visible:outline-hidden block size-[15px] cursor-pointer rounded-full  '}
-					/>
-				</Slider.Root> -->
 		{/if}
 		{#if selected === 'masterAudio'}
 			<div class="flex h-full w-full justify-end pr-3">

@@ -25,6 +25,12 @@
 	};
 
 	onMount(async () => {
+		if (!localStorage.getItem('alreadyVisited')) {
+			appState.showPalette = true;
+			appState.palettePage = 'about';
+			localStorage.setItem('alreadyVisited', 'true');
+		}
+
 		createTextSource();
 		createTestSource();
 	});

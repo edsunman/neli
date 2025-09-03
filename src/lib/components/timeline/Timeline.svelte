@@ -48,7 +48,6 @@
 
 	$effect(() => {
 		// redraw on window resize
-		console.log('resize draw');
 		innerHeight.current, innerWidth.current;
 		if (waveContext) drawWaveform(waveContext);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);

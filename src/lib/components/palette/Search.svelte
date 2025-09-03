@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import {
 		centerViewOnPlayhead,
 		pause,
@@ -16,12 +16,18 @@
 	import ExportIcon from '../icons/ExportIcon.svelte';
 	import SettingsIcon from '../icons/SettingsIcon.svelte';
 	import SeekIcon from '../icons/SeekIcon.svelte';
+	import PlayIcon from '../icons/PlayIcon.svelte';
+	import ForwardIcon from '../icons/ForwardIcon.svelte';
+	import BackIcon from '../icons/BackIcon.svelte';
+	import UndoIcon from '../icons/UndoIcon.svelte';
+	import RedoIcon from '../icons/RedoIcon.svelte';
 
 	let inputValue = $state<string>();
-	let selectedIndex = -1;
+	let selectedIndex = 0;
 	let showSeekOptions = $state(false);
 	let targetFrame = $state(0);
 	let targetFrameFormatted = $state('');
+	let scrollDiv = $state<HTMLDivElement>();
 
 	const categories = $state.raw([
 		{
@@ -29,15 +35,15 @@
 			name: 'App',
 			commands: [
 				{
-					id: 1,
+					id: 101,
 					text: 'import',
-					selected: false,
+					selected: true,
 					icon: ImportIcon,
 					shortcuts: ['I'],
 					action: () => (appState.palettePage = 'import')
 				},
 				{
-					id: 2,
+					id: 102,
 					text: 'export',
 					selected: false,
 					icon: ExportIcon,
@@ -45,7 +51,7 @@
 					action: () => (appState.palettePage = 'export')
 				},
 				/* {
-					id: 3,
+					id: 103,
 					text: 'settings',
 					selected: false,
 					icon: SettingsIcon,
@@ -53,12 +59,34 @@
 					action: () => console.log(2)
 				}, */
 				{
-					id: 4,
+					id: 104,
 					text: 'about',
 					selected: false,
 					icon: InfoIcon,
 					shortcuts: [],
 					action: () => (appState.palettePage = 'about')
+				},
+				{
+					id: 105,
+					text: 'undo',
+					selected: false,
+					icon: UndoIcon,
+					shortcuts: ['ctrl', 'Z'],
+					action: () => {
+						historyManager.undo();
+						appState.showPalette = false;
+					}
+				},
+				{
+					id: 106,
+					text: 'redo',
+					selected: false,
+					icon: RedoIcon,
+					shortcuts: ['ctrl', 'alt', 'Z'],
+					action: () => {
+						historyManager.redo();
+						appState.showPalette = false;
+					}
 				}
 			]
 		},
@@ -67,11 +95,11 @@
 			name: 'Timeline',
 			commands: [
 				{
-					id: 7,
+					id: 201,
 					text: 'play / pause',
 					selected: false,
-					icon: ZoomOutIcon,
-					shortcuts: ['Space'],
+					icon: PlayIcon,
+					shortcuts: ['space'],
 					action: () => {
 						if (timelineState.playing) {
 							pause();
@@ -82,7 +110,7 @@
 					}
 				},
 				{
-					id: 5,
+					id: 202,
 					text: 'zoom in',
 					selected: false,
 					icon: ZoomInIcon,
@@ -93,13 +121,35 @@
 					}
 				},
 				{
-					id: 6,
+					id: 203,
 					text: 'zoom out',
 					selected: false,
 					icon: ZoomOutIcon,
 					shortcuts: ['-'],
 					action: () => {
 						zoomOut();
+						appState.showPalette = false;
+					}
+				},
+				{
+					id: 204,
+					text: 'one frame forward',
+					selected: false,
+					icon: ForwardIcon,
+					shortcuts: ['right arrow'],
+					action: () => {
+						setCurrentFrame(timelineState.currentFrame + 1);
+						appState.showPalette = false;
+					}
+				},
+				{
+					id: 205,
+					text: 'one frame back',
+					selected: false,
+					icon: BackIcon,
+					shortcuts: ['left arrow'],
+					action: () => {
+						setCurrentFrame(timelineState.currentFrame - 1);
 						appState.showPalette = false;
 					}
 				}
@@ -147,7 +197,7 @@
 			filteredCount += category.commands.length;
 		});
 		if (inputValue.length < 1) {
-			selectDataById(-1);
+			selectDataByIndex(0);
 		} else if (filteredCount > 0) selectDataByIndex(0);
 	};
 
@@ -156,19 +206,37 @@
 		filtered.forEach((category) => {
 			filteredCount += category.commands.length;
 		});
-		if (index < 0 || filteredCount < index + 1) return;
+		if (index < 0) {
+			index = filteredCount - 1;
+		}
+		if (filteredCount < index + 1) {
+			index = 0;
+		}
 		let i = 0;
+		let commandId = 0;
 		filtered.forEach((category) => {
 			category.commands.forEach((command) => {
 				if (command.selected) command.selected = false;
 				if (index === i) {
 					command.selected = true;
 					selectedIndex = index;
+					commandId = command.id;
 				}
 				i++;
 			});
 		});
 		filtered = [...filtered];
+		// keyboard scroll
+		const element = document.getElementById(`command-${commandId}`);
+		if (!element || !scrollDiv) return;
+		const rect = element.getBoundingClientRect();
+		const scrollRect = scrollDiv.getBoundingClientRect();
+		if (rect.bottom > scrollRect.bottom) {
+			element.scrollIntoView(false);
+		}
+		if (rect.top < scrollRect.top) {
+			element.scrollIntoView();
+		}
 	};
 
 	const selectDataById = (id: number) => {
@@ -220,15 +288,16 @@
 		<input
 			bind:value={inputValue}
 			oninput={onInputChange}
-			class="placeholder-zinc-500 w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
+			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 			type="text"
-			placeholder="Search commands"
+			placeholder="Search commands, type number to seek"
 			autofocus
 		/>
 	</form>
 </div>
 
 <div
+	bind:this={scrollDiv}
 	class="px-8 flex-1 overflow-y-scroll"
 	style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
 >
@@ -241,6 +310,7 @@
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
+						id={`command-${command.id}`}
 						onmousemove={() => {
 							if (!command.selected) selectDataById(command.id);
 						}}
@@ -248,16 +318,17 @@
 							command.action();
 						}}
 						class={[
-							'cursor-pointer w-full p-2 rounded-lg text-left flex items-center group',
+							'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
 							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
 						]}
 					>
 						<command.icon class="size-5 inline mr-3" />
 						<p class="flex-1">{@html formatString(command.text)}</p>
-						{#each command.shortcuts as key}
+						{#each command.shortcuts as key, i}
+							{#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if}
 							<div
 								class={[
-									'ml-2 text-sm  px-1.5 py-0.5 rounded-sm ',
+									'text-sm  px-1.5 py-0.5 rounded-sm ',
 									command.selected ? 'bg-zinc-700' : ' bg-zinc-800'
 								]}
 							>
