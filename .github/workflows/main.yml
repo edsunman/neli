@@ -1,4 +1,4 @@
-name: Deploy
+name: Release
 
 on:
   push:
@@ -6,16 +6,22 @@ on:
       - main
 
 jobs:
-  deploy:
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    name: Deploy
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
         with:
-          version: 10
-      - name: Deploy
-        uses: cloudflare/wrangler-action@v3.14.1
-        with:
-          wranglerVersion: '4.33.2'
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          node-version: 20
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Create Release Pull Request
+        uses: changesets/action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
