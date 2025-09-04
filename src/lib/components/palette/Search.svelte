@@ -21,7 +21,9 @@
 	import BackIcon from '../icons/BackIcon.svelte';
 	import UndoIcon from '../icons/UndoIcon.svelte';
 	import RedoIcon from '../icons/RedoIcon.svelte';
+	import { onMount } from 'svelte';
 
+	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
 	let selectedIndex = 0;
 	let showSeekOptions = $state(false);
@@ -266,6 +268,10 @@
 			return '<span class="underline">' + str + '</span>';
 		});
 	};
+
+	onMount(() => {
+		searchInput?.focus();
+	});
 </script>
 
 <div class="mx-8 flex-none">
@@ -286,12 +292,12 @@
 		}}
 	>
 		<input
+			bind:this={searchInput}
 			bind:value={inputValue}
 			oninput={onInputChange}
 			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 			type="text"
 			placeholder="Search commands, type number to seek"
-			autofocus
 		/>
 	</form>
 </div>
