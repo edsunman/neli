@@ -1,5 +1,11 @@
 # neli
 
+## 0.1.1
+
+### Patch Changes
+
+- b6db4a4: Input z-index fix
+
 ## 0.1.0
 
 ### Minor Changes
