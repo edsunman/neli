@@ -14,7 +14,7 @@
 	class={[
 		'rounded-sm relative overflow-hidden w-12',
 		// before
-		'before:transition-all before:duration-100',
+		'before:transition-all before:duration-200',
 		"before:bg-hover before:content-[''] before:z-1 before:w-full before:h-full before:absolute before:left-0",
 		'focus-within:before:duration-200 before:rounded-sm focus-within:before:-top-[3px] before:top-0',
 		// after

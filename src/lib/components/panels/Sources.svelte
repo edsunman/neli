@@ -4,9 +4,10 @@
 	//import { createVideoSource } from '$lib/source/actions';
 
 	import TextIcon from '../icons/TextIcon.svelte';
-	import TestIcon from '../icons/TestIcon.svelte';
 	import AudioIcon from '../icons/AudioIcon.svelte';
 	import FilmIcon from '../icons/FilmIcon.svelte';
+	import PaletteIcon from '../icons/PaletteIcon.svelte';
+	import FolderIcon from '../icons/FolderIcon.svelte';
 
 	/* 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
@@ -23,22 +24,15 @@
 	<div class="absolute -left-13">
 		<div class=" flex flex-col bg-zinc-950 rounded">
 			<!-- svelte-ignore a11y_consider_explicit_label -->
+			<button
+				class="p-2 text-zinc-600 hover:text-zinc-400"
+				onclick={() => (appState.showPalette = true)}
+			>
+				<PaletteIcon class="w-6 h-6" />
+			</button>
+			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<button class="p-2 text-zinc-200">
-				<svg
-					role="img"
-					xmlns="http://www.w3.org/2000/svg"
-					width="25px"
-					height="25px"
-					viewBox="0 0 24 24"
-					aria-labelledby="folderIconTitle"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					fill="none"
-				>
-					<path d="M3 5h6l1 2h11v12H3z" />
-				</svg>
+				<FolderIcon class="w-6 h-6" />
 			</button>
 		</div>
 	</div>
@@ -82,9 +76,6 @@
 
 				{source.name}
 			</button>
-			<!-- 	<span class="text-white">{source.name}</span>
-	<button class="text-white" onclick={() => createClip(source.id)}>add</button>
-	<br /> -->
 		{/each}
 	</div>
 </div>
