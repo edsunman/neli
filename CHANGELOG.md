@@ -1,5 +1,11 @@
 # neli
 
+## 0.1.2
+
+### Patch Changes
+
+- 4332c17: Update to git workflow
+
 ## 0.1.1
 
 ### Patch Changes
