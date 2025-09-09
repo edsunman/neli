@@ -77,7 +77,7 @@ export const drawCanvas = (
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, 30, 2, height - 80);
+	context.fillRect(playheadPosition, 30, 2, 300);
 
 	context.translate(playheadPosition - 6, 15);
 	context.fill(PLAYHEAD_PATH);

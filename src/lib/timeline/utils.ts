@@ -47,3 +47,51 @@ export const framesToTimecode = (frames: number) => {
 		String(FF).padStart(2, '0')
 	);
 };
+
+export const stringToFramesAndSynopsis = (
+	timeString: string
+): { frames: number; synopsis: string } => {
+	const framesPerSecond = 30;
+	const lowerCaseString = timeString.toLowerCase();
+
+	let frames = 0;
+	let synopsis = '';
+
+	if (lowerCaseString.includes(':') || lowerCaseString.includes('.')) {
+		const separator = lowerCaseString.includes(':') ? ':' : '.';
+		const parts = lowerCaseString.split(separator).map((part) => parseInt(part, 10));
+		const validParts = parts.map((part) => (isNaN(part) ? 0 : part));
+
+		if (validParts.length === 2) {
+			const minutes = validParts[0];
+			const seconds = validParts[1];
+			frames = (minutes * 60 + seconds) * framesPerSecond;
+			synopsis = `seek to ${minutes} minute${minutes !== 1 ? 's' : ''} and ${seconds} second${seconds !== 1 ? 's' : ''}`;
+		} else if (validParts.length >= 3) {
+			const minutes = validParts[0];
+			const seconds = validParts[1];
+			const extraFrames = validParts[2];
+			frames = (minutes * 60 + seconds) * framesPerSecond + extraFrames;
+			synopsis = `seek to ${minutes} minute${minutes !== 1 ? 's' : ''}, ${seconds} second${seconds !== 1 ? 's' : ''}, and ${extraFrames} frame${extraFrames !== 1 ? 's' : ''}`;
+		} else {
+			return { frames: 0, synopsis: 'seek to 0 frames' };
+		}
+	} else {
+		const numericPart = parseFloat(lowerCaseString);
+		const unitPart = lowerCaseString.replace(numericPart.toString(), '').trim();
+		const value = isNaN(numericPart) ? 0 : numericPart;
+
+		if (unitPart === 'm') {
+			frames = value * 60 * framesPerSecond;
+			synopsis = `seek to ${value} minute${value !== 1 ? 's' : ''}`;
+		} else if (unitPart === 'f') {
+			frames = value;
+			synopsis = `seek to frame ${value}`;
+		} else {
+			frames = value * framesPerSecond;
+			synopsis = `seek to ${value} second${value !== 1 ? 's' : ''}`;
+		}
+	}
+
+	return { frames, synopsis };
+};

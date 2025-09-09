@@ -25,7 +25,11 @@
 	};
 
 	onMount(async () => {
-		if (!localStorage.getItem('alreadyVisited')) {
+		if (
+			!localStorage.getItem('alreadyVisited') ||
+			(navigator && !navigator.gpu) ||
+			!('VideoEncoder' in window && 'VideoDecoder' in window)
+		) {
 			appState.showPalette = true;
 			appState.palettePage = 'about';
 			localStorage.setItem('alreadyVisited', 'true');

@@ -8,20 +8,21 @@
 		zoomIn,
 		zoomOut
 	} from '$lib/timeline/actions';
+	import { onMount } from 'svelte';
+	import { stringToFramesAndSynopsis } from '$lib/timeline/utils';
 
 	import InfoIcon from '../icons/InfoIcon.svelte';
 	import ZoomInIcon from '../icons/ZoomInIcon.svelte';
 	import ZoomOutIcon from '../icons/ZoomOutIcon.svelte';
 	import ImportIcon from '../icons/ImportIcon.svelte';
 	import ExportIcon from '../icons/ExportIcon.svelte';
-	import SettingsIcon from '../icons/SettingsIcon.svelte';
+	import HelpIcon from '../icons/HelpIcon.svelte';
 	import SeekIcon from '../icons/SeekIcon.svelte';
 	import PlayIcon from '../icons/PlayIcon.svelte';
 	import ForwardIcon from '../icons/ForwardIcon.svelte';
 	import BackIcon from '../icons/BackIcon.svelte';
 	import UndoIcon from '../icons/UndoIcon.svelte';
 	import RedoIcon from '../icons/RedoIcon.svelte';
-	import { onMount } from 'svelte';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -70,6 +71,17 @@
 				},
 				{
 					id: 105,
+					text: 'help',
+					selected: false,
+					icon: HelpIcon,
+					shortcuts: [],
+					action: () => {
+						window.open('https://neli.video/docs', '_blank');
+						appState.showPalette = false;
+					}
+				},
+				{
+					id: 106,
 					text: 'undo',
 					selected: false,
 					icon: UndoIcon,
@@ -80,7 +92,7 @@
 					}
 				},
 				{
-					id: 106,
+					id: 107,
 					text: 'redo',
 					selected: false,
 					icon: RedoIcon,
@@ -169,21 +181,10 @@
 		});
 	});
 
-	// take string like 1s, 3m or 40f and return a frame number
-	const parseInputNumbers = (inputNumbers: string) => {
-		const lastChar = inputNumbers.slice(inputNumbers.length - 1);
-		const onlyNumbers = Number(inputNumbers.replace(/[^0-9]/g, ''));
-		if (lastChar === 'f') {
-			targetFrame = onlyNumbers;
-			targetFrameFormatted = `frame ${onlyNumbers}`;
-		} else if (lastChar === 'm') {
-			targetFrame = onlyNumbers * 30 * 60;
-			targetFrameFormatted = `${onlyNumbers} minutes`;
-		} else {
-			targetFrame = onlyNumbers * 30;
-			targetFrameFormatted = `${onlyNumbers} seconds`;
-		}
-		return;
+	const parseInputNumbers = (inputString: string) => {
+		const { frames, synopsis } = stringToFramesAndSynopsis(inputString);
+		targetFrame = frames;
+		targetFrameFormatted = synopsis;
 	};
 
 	const onInputChange = () => {
@@ -297,7 +298,7 @@
 			oninput={onInputChange}
 			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 			type="text"
-			placeholder="Search commands, type number to seek"
+			placeholder="Search or type number to seek"
 		/>
 	</form>
 </div>
@@ -356,7 +357,7 @@
 		>
 			<SeekIcon class="size-5 inline mr-2" />
 			<!-- {@html formatString(command.text)} -->
-			<p>Seek to {targetFrameFormatted}</p>
+			<p>{targetFrameFormatted}</p>
 		</button>
 	{/if}
 </div>

@@ -49,6 +49,7 @@
 	$effect(() => {
 		// redraw on window resize
 		innerHeight.current, innerWidth.current;
+		setCanvasWidth();
 		if (waveContext) drawWaveform(waveContext);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 	});
@@ -110,6 +111,7 @@
 		if (appState.disableKeyboardShortcuts) return;
 		appState.mouseMoveOwner = 'timeline';
 		appState.disableHoverStates = true;
+		if (e.button > 0) return;
 		if (e.offsetY < 80) {
 			scrubbing = true;
 			setCurrentFrameFromOffset(e.offsetX);
@@ -241,12 +243,12 @@
 	const setCanvasWidth = async () => {
 		if (!context || !canvas) return;
 		const dpr = window.devicePixelRatio;
-		if (dpr > 1) {
+		if (dpr !== 1) {
 			canvas.height = height * dpr;
 			canvas.width = timelineState.width * dpr;
 			canvas.style.height = `${height}px`;
 			canvas.style.width = `${timelineState.width}px`;
-			context.setTransform(2, 0, 0, 2, 0, 0);
+			context.setTransform(dpr, 0, 0, dpr, 0, 0);
 		} else {
 			canvas.height = height;
 			canvas.width = timelineState.width;
@@ -312,6 +314,7 @@
 		ondragover={dragOver}
 		ondragleave={dragLeave}
 		ondrop={drop}
+		oncontextmenu={(e) => e.preventDefault()}
 		bind:clientHeight={height}
 		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}

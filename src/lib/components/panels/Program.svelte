@@ -3,11 +3,13 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
 	import type { Clip } from '$lib/clip/clip.svelte';
+	import Page from '../../../routes/+page.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
+
 	let width = $state(0);
 	let height = $state(0);
 	let scale = $derived.by(() => {
@@ -18,6 +20,8 @@
 
 	let dragging = false;
 	let resizing = false;
+	let cornerHover = false;
+	let cornerHoverStyle = 'nwse-resize';
 	let draggedOffset = { x: 0, y: 0 };
 	let mouseDownPosition = { x: 0, y: 0 };
 	let savedClipPosition = { x: 0, y: 0 };
@@ -26,6 +30,12 @@
 	let savedClipCenter = { x: 0, y: 0 };
 
 	mouseMove = (e: MouseEvent) => {
+		if (cornerHover) {
+			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
+		} else {
+			if (canvasContainer) canvasContainer.style.cursor = 'default';
+		}
+
 		if (appState.mouseMoveOwner !== 'program' || (!dragging && !resizing)) return;
 		if (e.buttons < 1 || !timelineState.selectedClip) return;
 		e.preventDefault();
@@ -50,6 +60,7 @@
 			timelineState.selectedClip.params[0] = Math.round(savedClipScale.x * newScale * 100) / 100;
 			timelineState.selectedClip.params[1] = Math.round(savedClipScale.y * newScale * 100) / 100;
 			updateWorkerClip(timelineState.selectedClip);
+			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		}
 	};
 
@@ -167,27 +178,30 @@
 				appState.mouseMoveOwner = 'program';
 				appState.disableHoverStates = true;
 			}}
+			oncontextmenu={(e) => e.preventDefault()}
 		>
-			<div
-				onmousedown={(e) =>
-					cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-				class="h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -top-[7px] -left-[7px] bg-zinc-900"
-			></div>
-			<div
-				onmousedown={(e) =>
-					cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-				class="h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -left-[7px] bg-zinc-900"
-			></div>
-			<div
-				onmousedown={(e) =>
-					cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-				class="h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -top-[7px] -right-[7px] bg-zinc-900"
-			></div>
-			<div
-				onmousedown={(e) =>
-					cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-				class="h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900"
-			></div>
+			{@render cornerBox(0)}
+			{@render cornerBox(1)}
+			{@render cornerBox(2)}
+			{@render cornerBox(3)}
+			{#snippet cornerBox(corner: number)}
+				<div
+					onmouseenter={() => {
+						cornerHover = true;
+						cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
+					}}
+					onmouseleave={() => {
+						cornerHover = false;
+					}}
+					onmousedown={(e) =>
+						cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
+					class={[
+						corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
+						corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
+						'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
+					]}
+				></div>
+			{/snippet}
 		</div>
 	{/if}
 </div>

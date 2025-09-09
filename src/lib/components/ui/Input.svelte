@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import type { FormEventHandler } from 'svelte/elements';
+	import type { HTMLInputAttributes } from 'svelte/elements';
 
-	type Props = {
+	interface Props extends HTMLInputAttributes {
 		value: any;
 		fallback?: number | string;
 		type?: string;
-		oninput?: FormEventHandler<HTMLInputElement>;
-	};
-	let { value = $bindable(), oninput }: Props = $props();
+	}
+
+	let { value = $bindable(), ...others }: Props = $props();
 </script>
 
 <div
 	class={[
-		'rounded-lg relative overflow-hidden after:bg-linear-to-t',
+		'rounded-lg relative overflow-hidden after:bg-linear-to-t z-0',
 		// before
 		'before:transition-all before:duration-200',
 		"before:bg-hover before:content-[''] before:z-1 before:w-full before:h-full before:absolute before:left-0",
@@ -35,6 +35,6 @@
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
 		}}
-		{oninput}
+		{...others}
 	/>
 </div>
