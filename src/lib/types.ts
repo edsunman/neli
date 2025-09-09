@@ -1,5 +1,3 @@
-//import type { VDecoder } from './worker/decoder';
-
 export type SourceType = 'text' | 'video' | 'audio' | 'test';
 
 export type WorkerClip = {

@@ -12,7 +12,7 @@
 
 <div
 	class={[
-		'rounded-sm relative overflow-hidden w-12',
+		'rounded-sm relative overflow-hidden w-12 z-0',
 		// before
 		'before:transition-all before:duration-200',
 		"before:bg-hover before:content-[''] before:z-1 before:w-full before:h-full before:absolute before:left-0",
