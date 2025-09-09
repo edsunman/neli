@@ -154,7 +154,7 @@
 	>
 		<canvas bind:this={canvas} width={1920} height={1080}></canvas>
 	</div>
-	{#if timelineState.selectedClip && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
+	{#if timelineState.selectedClip && timelineState.selectedClip.source.type !== 'audio' && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 		{@const clip = timelineState.selectedClip}
 		{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
 		{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}

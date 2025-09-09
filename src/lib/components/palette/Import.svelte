@@ -70,6 +70,7 @@
 	};
 
 	const processFile = async (file: File) => {
+		appState.fileToImport = null;
 		console.log(file.type);
 
 		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
@@ -142,7 +143,7 @@
 		<div
 			class={[
 				dragHover ? 'border-zinc-400' : 'border-zinc-600',
-				'cursor-pointer hover:border-zinc-400 rounded-xl border-2 text-zinc-200 flex-1',
+				'hover:border-zinc-400 rounded-xl border-2 text-zinc-200 flex-1',
 				'grow mt-8 mx-12 mb-12 border-dashed items-center justify-center flex'
 			]}
 			ondrop={onDrop}

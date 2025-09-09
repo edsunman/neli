@@ -2,7 +2,6 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
-	//import { createVideoSource } from '$lib/source/actions';
 
 	import TextIcon from '../icons/TextIcon.svelte';
 	import AudioIcon from '../icons/AudioIcon.svelte';
@@ -10,6 +9,7 @@
 	import PaletteIcon from '../icons/PaletteIcon.svelte';
 	import FolderIcon from '../icons/FolderIcon.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
+	import AddIcon from '../icons/AddIcon.svelte';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -106,9 +106,10 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				class={[
-					dragHover ? 'border-zinc-300' : 'border-zinc-800',
-					'cursor-pointer hover:border-zinc-400 rounded-lg border-2 text-zinc-200 flex-1',
-					'border-dashed items-center justify-center flex h-14 mt-2'
+					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
+					'rounded-lg border-2  flex-1',
+					'border-dashed items-center justify-center flex h-14 mt-2',
+					'hover:border-zinc-500 hover:text-zinc-400'
 				]}
 				ondrop={onDrop}
 				ondragenter={() => (dragHover = true)}
@@ -118,7 +119,9 @@
 					if (!fileInput) return;
 					fileInput.click();
 				}}
-			></div>
+			>
+				<AddIcon class="w-6 h-6 pointer-events-none" />
+			</div>
 			<input
 				onchange={(e) => {
 					if (!e.currentTarget.files) return;
