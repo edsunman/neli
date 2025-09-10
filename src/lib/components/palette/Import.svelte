@@ -7,7 +7,9 @@
 	import Button from '../ui/Button.svelte';
 	import type { FileInfo } from '$lib/types';
 	import AudioIcon from '../icons/AudioIcon.svelte';
+	import { onMount } from 'svelte';
 
+	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
 	let showDetails = $state(false);
 	let thumbnail = $state('');
@@ -64,6 +66,11 @@
 		if (!files) return;
 		const file = files[0];
 
+		processFile(file);
+	};
+
+	const processFile = async (file: File) => {
+		appState.fileToImport = null;
 		console.log(file.type);
 
 		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
@@ -117,6 +124,12 @@
 
 		setAudioReady();
 	};
+
+	onMount(() => {
+		if (appState.fileToImport) {
+			processFile(appState.fileToImport);
+		}
+	});
 </script>
 
 <div class="mx-8 flex-none py-5">
@@ -126,18 +139,34 @@
 <div class="mx-8 flex-1 grow flex flex-col">
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	{#if !showDetails}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
 			class={[
-				dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-600 text-zinc-400',
-				'rounded-xl border-2  flex-1 grow mt-8 mx-12 mb-12 border-dashed items-center justify-center flex'
+				dragHover ? 'border-zinc-400' : 'border-zinc-600',
+				'hover:border-zinc-400 rounded-xl border-2 text-zinc-200 flex-1',
+				'grow mt-8 mx-12 mb-12 border-dashed items-center justify-center flex'
 			]}
 			ondrop={onDrop}
 			ondragover={(e) => e.preventDefault()}
 			ondragenter={() => (dragHover = true)}
 			ondragleave={() => (dragHover = false)}
+			onclick={() => {
+				if (!fileInput) return;
+				fileInput.click();
+			}}
 		>
 			drop files to import
 		</div>
+		<input
+			onchange={(e) => {
+				if (!e.currentTarget.files) return;
+				const file = e.currentTarget.files[0];
+				processFile(file);
+			}}
+			bind:this={fileInput}
+			type="file"
+			class="hidden"
+		/>
 	{:else}
 		<div class="text-zinc-200 flex mt-2">
 			<div class="w-30 h-20 mx-10 relative">

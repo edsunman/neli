@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
-	//import { createVideoSource } from '$lib/source/actions';
+	import { Tooltip } from 'bits-ui';
 
 	import TextIcon from '../icons/TextIcon.svelte';
 	import AudioIcon from '../icons/AudioIcon.svelte';
@@ -9,17 +9,28 @@
 	import PaletteIcon from '../icons/PaletteIcon.svelte';
 	import FolderIcon from '../icons/FolderIcon.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	import { Tooltip } from 'bits-ui';
+	import AddIcon from '../icons/AddIcon.svelte';
 
-	/* 	const onDrop = (e: DragEvent) => {
+	let dragHover = $state(false);
+	let fileInput = $state<HTMLInputElement>();
+
+	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
+		dragHover = false;
+
 		const files = e.dataTransfer?.files;
 		if (!files) return;
-		const file = files[0];
-		console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 
-		createVideoSource(file);
-	}; */
+		fileSelected(files[0]);
+	};
+
+	const fileSelected = (file: File) => {
+		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
+			return;
+		appState.fileToImport = file;
+		appState.palettePage = 'import';
+		appState.showPalette = true;
+	};
 </script>
 
 <Tooltip.Provider delayDuration={1000}>
@@ -91,6 +102,36 @@
 					{source.name}
 				</button>
 			{/each}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div
+				class={[
+					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
+					'rounded-lg border-2  flex-1',
+					'border-dashed items-center justify-center flex h-14 mt-2',
+					'hover:border-zinc-500 hover:text-zinc-400'
+				]}
+				ondrop={onDrop}
+				ondragenter={() => (dragHover = true)}
+				ondragleave={() => (dragHover = false)}
+				ondragover={(e) => e.preventDefault()}
+				onclick={() => {
+					if (!fileInput) return;
+					fileInput.click();
+				}}
+			>
+				<AddIcon class="w-6 h-6 pointer-events-none" />
+			</div>
+			<input
+				onchange={(e) => {
+					if (!e.currentTarget.files) return;
+					const file = e.currentTarget.files[0];
+					fileSelected(file);
+				}}
+				bind:this={fileInput}
+				type="file"
+				class="hidden"
+			/>
 		</div>
 	</div>
 </Tooltip.Provider>

@@ -17,6 +17,7 @@ class AppState {
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};
 	dragAndDropSourceId = '';
+	fileToImport: File | null = null;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 

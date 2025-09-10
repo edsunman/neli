@@ -17,7 +17,7 @@ export class Clip {
 
 	// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan
 	params = $state([1, 1, 0, 0, 1, 0]);
-	text = $state('hello');
+	text = $state('text');
 
 	deleted = false;
 	invalid = false;
