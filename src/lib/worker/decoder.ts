@@ -10,6 +10,7 @@ export class VDecoder {
 	#chunks: EncodedVideoChunk[] = [];
 	/** chunks waiting to be decoded */
 	#chunkBuffer: EncodedVideoChunk[] = [];
+	/** decoded frames waiting to be returned */
 	#frameQueue: VideoFrame[] = [];
 
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
@@ -41,10 +42,6 @@ export class VDecoder {
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
 		await this.#decoder.flush();
-
-		// NOTE: do we need to reset and re-configure every time? Maybe? Maybe not?
-		//this.#decoder.reset();
-		//this.#decoder.configure(this.#decoderConfig!);
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
@@ -159,7 +156,7 @@ export class VDecoder {
 			this.#feedingPaused = true;
 			if (DEBUG)
 				console.log(
-					'Decoder backpressure: Pausing feeding. #frameQueue:',
+					'Pausing feeding. #frameQueue:',
 					this.#frameQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
@@ -187,7 +184,11 @@ export class VDecoder {
 	}
 
 	#onFrame = (frame: VideoFrame) => {
-		if (DEBUG) console.log('Frame output:', frame.timestamp);
+		if (DEBUG) {
+			console.log('Frame output:', frame.timestamp);
+			console.log('Queue size:', this.#decoder.decodeQueueSize);
+			console.log('Frame Queue Size:', this.#frameQueue.length);
+		}
 		if (this.#running) {
 			if (this.#startToQueueFrames) {
 				this.#frameQueue.push(frame);
@@ -202,16 +203,26 @@ export class VDecoder {
 		} else {
 			frame.close();
 		}
-		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
+
+		if (!this.#feedingPaused) return;
+
+		if (this.#decoder.decodeQueueSize < 3) {
+			if (DEBUG) console.log('Resuming feeding.');
 			this.#feedingPaused = false;
-			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
+			this.#feedDecoder();
+		}
+		if (this.#frameQueue.length > 10) {
+			if (DEBUG) console.log('Force feeding.');
+			this.#feedingPaused = false;
 			this.#feedDecoder();
 		}
 	};
 
 	#onError = (e: DOMException) => {
 		// TODO: encoder may be reclaimed and we should check for that
-		// or at least hide error in console
+		// and assingn a new decoder to clip
+		//this.#decoder.reset();
+		//this.#decoder.configure(this.#decoderConfig!);
 		console.log(e);
 	};
 
