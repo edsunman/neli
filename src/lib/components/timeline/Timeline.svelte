@@ -112,7 +112,7 @@
 		appState.mouseMoveOwner = 'timeline';
 		appState.disableHoverStates = true;
 		if (e.button > 0) return;
-		if (e.offsetY < 80) {
+		if (e.offsetY < timelineState.padding * 0.8) {
 			scrubbing = true;
 			setCurrentFrameFromOffset(e.offsetX);
 		}
@@ -253,6 +253,8 @@
 			canvas.height = height;
 			canvas.width = timelineState.width;
 		}
+
+		if (height < 320) timelineState.padding = 60;
 
 		await tick();
 		drawCanvas(context, timelineState.width, height, waveCanvas);

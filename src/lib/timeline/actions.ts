@@ -135,19 +135,19 @@ export const focusTrack = (trackNumber: number) => {
 	timelineState.focusedTrack = trackNumber;
 	if (trackNumber === 0) {
 		timelineState.trackHeights = [35, 35, 35, 35];
-		timelineState.trackTops = [100, 150, 200, 250];
+		timelineState.trackTops = [0, 50, 100, 150];
 	} else if (trackNumber === 1) {
 		timelineState.trackHeights = [35, 20, 20, 20];
-		timelineState.trackTops = [90, 215, 245, 275];
+		timelineState.trackTops = [0, 115, 140, 165];
 	} else if (trackNumber === 2) {
 		timelineState.trackHeights = [20, 35, 20, 20];
-		timelineState.trackTops = [90, 120, 245, 275];
+		timelineState.trackTops = [0, 25, 140, 165];
 	} else if (trackNumber === 3) {
 		timelineState.trackHeights = [20, 20, 35, 20];
-		timelineState.trackTops = [90, 120, 150, 275];
+		timelineState.trackTops = [0, 25, 50, 165];
 	} else if (trackNumber === 4) {
 		timelineState.trackHeights = [20, 20, 20, 35];
-		timelineState.trackTops = [90, 120, 150, 180];
+		timelineState.trackTops = [0, 25, 50, 75];
 	}
 	timelineState.invalidateWaveform = true;
 };
