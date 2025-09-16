@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { pause, play } from '$lib/timeline/actions';
 	import { framesToTimecode } from '$lib/timeline/utils';
@@ -9,14 +9,40 @@
 	import SeekIcon from '../icons/SeekIcon.svelte';
 	import CopyIcon from '../icons/CopyIcon.svelte';
 	import MouseIcon from '../icons/MouseIcon.svelte';
+	import ContextMenu from '../ui/ContextMenu.svelte';
 
 	let showFrames = $state(false);
-	let showContextMenu = $state(false);
-	const contextMenuPosition = $state({ x: 0, y: 0 });
 
 	let formattedTime = $derived.by(() => {
 		return framesToTimecode(timelineState.currentFrame);
 	});
+
+	let contextMenu: ContextMenu;
+
+	const buttons = $state([
+		{
+			text: 'show frames',
+			icon: SeekIcon,
+			onclick: () => {
+				showFrames = !showFrames;
+				buttons[0].text = showFrames ? 'show timecode' : 'show frames';
+			},
+			shortcuts: ['shift', MouseIcon]
+		},
+		{
+			text: 'copy timecode',
+			icon: CopyIcon,
+			onclick: async () => {
+				const type = 'text/plain';
+				const clipboardItemData = {
+					[type]: framesToTimecode(timelineState.currentFrame)
+				};
+				const clipboardItem = new ClipboardItem(clipboardItemData);
+				await navigator.clipboard.write([clipboardItem]);
+			},
+			shortcuts: []
+		}
+	]);
 </script>
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
@@ -28,14 +54,15 @@
 		]}
 		oncontextmenu={(e) => {
 			e.preventDefault();
-			showContextMenu = true;
-			contextMenuPosition.x = e.clientX;
-			contextMenuPosition.y = e.clientY;
-			console.log(e);
+			contextMenu.openContextMenu(e);
+			//showContextMenu = true;
+			//contextMenuPosition.x = e.clientX;
+			//contextMenuPosition.y = e.clientY;
 		}}
 		onclick={(e) => {
 			if (e.shiftKey) {
 				showFrames = !showFrames;
+				buttons[0].text = showFrames ? 'show timecode' : 'show frames';
 			} else {
 				if (timelineState.playing) {
 					pause();
@@ -68,9 +95,11 @@
 	</button>
 </div>
 
-{#if showContextMenu}
+<ContextMenu bind:this={contextMenu} {buttons} />
+
+<!-- {#if showContextMenu}
 	<Portal>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		
 		<div
 			class="h-dvh w-dvw absolute top-0 left-0 z-10"
 			onmousedown={() => {
@@ -80,13 +109,13 @@
 			<div
 				style:top={`${contextMenuPosition.y + 5}px`}
 				style:left={`${contextMenuPosition.x + 5}px`}
-				class="absolute bg-zinc-200 p-1.5 rounded-lg text-sm flex flex-col"
+				class="absolute bg-zinc-200 p-1 rounded-lg text-sm flex flex-col"
 				onmousedown={(e) => {
 					e.stopPropagation();
 				}}
 			>
 				<button
-					class="px-1.5 py-2 rounded-lg text-left hover:bg-zinc-350 group flex items-center"
+					class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center"
 					onclick={async () => {
 						showFrames = !showFrames;
 						showContextMenu = false;
@@ -114,11 +143,9 @@
 					}}
 				>
 					<CopyIcon class="size-4 inline mr-2" />copy timecode
-					<!-- 	<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370 ml-auto">
-						F
-					</span> -->
+					
 				</button>
 			</div>
 		</div>
 	</Portal>
-{/if}
+{/if} -->
