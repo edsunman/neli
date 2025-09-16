@@ -49,18 +49,20 @@
 						}}
 					>
 						<span><button.icon class="size-4 inline mr-2" />{button.text}</span>
-						<span class="ml-10">
-							{#each button.shortcuts as Shortcut, i}
-								<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
-									{#if typeof Shortcut === 'string'}
-										{Shortcut}
-									{:else}
-										<Shortcut class="size-4 inline relative -top-[1px]" />
-									{/if}
-								</span>
-								{i + 1 < button.shortcuts.length ? '+ ' : ''}
-							{/each}
-						</span>
+						{#if button.shortcuts.length > 0}
+							<span class="ml-10">
+								{#each button.shortcuts as Shortcut, i}
+									<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
+										{#if typeof Shortcut === 'string'}
+											{Shortcut}
+										{:else}
+											<Shortcut class="size-4 inline relative -top-[1px]" />
+										{/if}
+									</span>
+									{i + 1 < button.shortcuts.length ? '+ ' : ''}
+								{/each}
+							</span>
+						{/if}
 					</button>
 				{/each}
 			</div>
