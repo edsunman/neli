@@ -3,8 +3,8 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
 	import type { Clip } from '$lib/clip/clip.svelte';
+
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
-	import MoveIcon from '../icons/MoveIcon.svelte';
 	import UndoIcon from '../icons/UndoIcon.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();

@@ -2,7 +2,6 @@
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { pause, play } from '$lib/timeline/actions';
 	import { framesToTimecode } from '$lib/timeline/utils';
-	import { Portal } from 'bits-ui';
 
 	import PauseIcon from '../icons/PauseIcon.svelte';
 	import PlayIcon from '../icons/PlayIcon.svelte';
@@ -18,7 +17,6 @@
 	});
 
 	let contextMenu: ContextMenu;
-
 	const buttons = $state([
 		{
 			text: 'show frames',
@@ -55,9 +53,6 @@
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			contextMenu.openContextMenu(e);
-			//showContextMenu = true;
-			//contextMenuPosition.x = e.clientX;
-			//contextMenuPosition.y = e.clientY;
 		}}
 		onclick={(e) => {
 			if (e.shiftKey) {
@@ -96,56 +91,3 @@
 </div>
 
 <ContextMenu bind:this={contextMenu} {buttons} />
-
-<!-- {#if showContextMenu}
-	<Portal>
-		
-		<div
-			class="h-dvh w-dvw absolute top-0 left-0 z-10"
-			onmousedown={() => {
-				showContextMenu = false;
-			}}
-		>
-			<div
-				style:top={`${contextMenuPosition.y + 5}px`}
-				style:left={`${contextMenuPosition.x + 5}px`}
-				class="absolute bg-zinc-200 p-1 rounded-lg text-sm flex flex-col"
-				onmousedown={(e) => {
-					e.stopPropagation();
-				}}
-			>
-				<button
-					class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center"
-					onclick={async () => {
-						showFrames = !showFrames;
-						showContextMenu = false;
-					}}
-				>
-					<SeekIcon class="size-4 inline mr-2" />show {showFrames ? 'timecode' : 'frames'}
-					<span class="ml-7 px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
-						shift
-					</span>
-					+
-					<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
-						<MouseIcon class="size-4 inline" />
-					</span>
-				</button>
-				<button
-					class="px-1.5 py-2 rounded-lg text-left hover:bg-zinc-350 flex items-center"
-					onclick={async () => {
-						const type = 'text/plain';
-						const clipboardItemData = {
-							[type]: framesToTimecode(timelineState.currentFrame)
-						};
-						const clipboardItem = new ClipboardItem(clipboardItemData);
-						await navigator.clipboard.write([clipboardItem]);
-						showContextMenu = false;
-					}}
-				>
-					<CopyIcon class="size-4 inline mr-2" />copy timecode
-					
-				</button>
-			</div>
-		</div>
-	</Portal>
-{/if} -->

@@ -9,7 +9,8 @@
 		setZoom,
 		pause,
 		play,
-		focusTrack
+		focusTrack,
+		focusClip
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -31,6 +32,8 @@
 	import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
 	import Controls from './Controls.svelte';
+	import ContextMenu from '../ui/ContextMenu.svelte';
+	import MouseIcon from '../icons/MouseIcon.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -45,6 +48,7 @@
 	let resizing = false;
 	let scrolling = false;
 	let fontsLoaded = false;
+	let contextMenu: ContextMenu;
 
 	$effect(() => {
 		// redraw on window resize
@@ -53,6 +57,21 @@
 		if (waveContext) drawWaveform(waveContext);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 	});
+
+	const buttons = $state([
+		{
+			text: 'split clip',
+			icon: null,
+			onclick: () => {},
+			shortcuts: ['shift', MouseIcon]
+		},
+		{
+			text: 'focus clip',
+			icon: null,
+			onclick: () => focusClip(),
+			shortcuts: ['shift', 'F']
+		}
+	]);
 
 	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
@@ -316,7 +335,18 @@
 		ondragover={dragOver}
 		ondragleave={dragLeave}
 		ondrop={drop}
-		oncontextmenu={(e) => e.preventDefault()}
+		oncontextmenu={(e) => {
+			e.preventDefault();
+			timelineState.hoverClipId = '';
+			const hoveredFrame = canvasPixelToFrame(e.offsetX);
+			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
+			if (!clip) return;
+
+			timelineState.selectedClip = clip;
+			timelineState.invalidate = true;
+
+			contextMenu.openContextMenu(e);
+		}}
 		bind:clientHeight={height}
 		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}
@@ -368,10 +398,14 @@
 				break;
 			case 'KeyF': {
 				if (timelineState.selectedClip) {
-					if (timelineState.selectedClip.track === timelineState.focusedTrack) {
-						focusTrack(0);
+					if (event.shiftKey) {
+						focusClip();
 					} else {
-						focusTrack(timelineState.selectedClip.track);
+						if (timelineState.selectedClip.track === timelineState.focusedTrack) {
+							focusTrack(0);
+						} else {
+							focusTrack(timelineState.selectedClip.track);
+						}
 					}
 				} else {
 					focusTrack(0);
@@ -380,3 +414,5 @@
 		}
 	}}
 />
+
+<ContextMenu bind:this={contextMenu} {buttons} />

@@ -5,7 +5,7 @@
 	type Props = {
 		buttons: {
 			text: string;
-			icon: Component;
+			icon: Component | null;
 			onclick: () => void;
 			shortcuts: (string | Component)[];
 		}[];
@@ -48,15 +48,20 @@
 							showContextMenu = false;
 						}}
 					>
-						<span><button.icon class="size-4 inline mr-2" />{button.text}</span>
+						<span>
+							{#if button.icon}
+								<button.icon class="size-4 inline mr-2" />
+							{/if}
+							{button.text}
+						</span>
 						{#if button.shortcuts.length > 0}
-							<span class="ml-10">
+							<span class="ml-10 text-xs">
 								{#each button.shortcuts as Shortcut, i}
 									<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
 										{#if typeof Shortcut === 'string'}
 											{Shortcut}
 										{:else}
-											<Shortcut class="size-4 inline relative -top-[1px]" />
+											<Shortcut class="size-3 inline relative -top-[1px]" />
 										{/if}
 									</span>
 									{i + 1 < button.shortcuts.length ? '+ ' : ''}

@@ -95,7 +95,8 @@ export const checkViewBounds = () => {
 };
 
 export const zoomIn = () => {
-	if (timelineState.zoom < 220) timelineState.zoom = timelineState.zoom * 2;
+	timelineState.zoom = timelineState.zoom * 2;
+	if (timelineState.zoom > 220) timelineState.zoom = 220;
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
@@ -103,11 +104,11 @@ export const zoomIn = () => {
 };
 
 export const zoomOut = () => {
-	if (timelineState.zoom > 0.9) {
-		const center = timelineState.offset + 0.5 / timelineState.zoom;
-		timelineState.zoom = timelineState.zoom / 2;
-		timelineState.offset = center - 0.5 / timelineState.zoom;
-	}
+	const center = timelineState.offset + 0.5 / timelineState.zoom;
+	timelineState.zoom = timelineState.zoom / 2;
+	timelineState.offset = center - 0.5 / timelineState.zoom;
+	if (timelineState.zoom < 0.9) timelineState.zoom = 0.9;
+
 	checkViewBounds();
 	deselectClipIfTooSmall();
 	timelineState.invalidate = true;
@@ -150,6 +151,22 @@ export const focusTrack = (trackNumber: number) => {
 		timelineState.trackTops = [0, 25, 50, 75];
 	}
 	timelineState.invalidateWaveform = true;
+};
+
+export const focusClip = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+
+	const clipPercentOfTimeline = clip.duration / timelineState.duration;
+	timelineState.zoom = 0.95 / clipPercentOfTimeline;
+
+	const middleFrame = clip.start + clip.duration / 2;
+	const middleFramePercent = middleFrame / timelineState.duration;
+	const percentOfTimelineVisible = 1 / timelineState.zoom;
+	timelineState.offset = middleFramePercent - percentOfTimelineVisible / 2;
+	//checkViewBounds();
+
+	focusTrack(clip.track);
 };
 
 export const getUsedTimelineDuration = () => {

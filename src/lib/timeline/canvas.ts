@@ -49,7 +49,11 @@ export const drawCanvas = (
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
-		context.drawImage(waveCanvas, 0, timelineState.trackTops[timelineState.focusedTrack - 1] + 25);
+		context.drawImage(
+			waveCanvas,
+			0,
+			timelineState.trackTops[timelineState.focusedTrack - 1] + 25 + timelineState.padding
+		);
 
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
