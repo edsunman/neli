@@ -10,8 +10,9 @@ export class VDecoder {
 	#chunks: EncodedVideoChunk[] = [];
 	/** chunks waiting to be decoded */
 	#chunkBuffer: EncodedVideoChunk[] = [];
+	/** decoded frames waiting to be returned */
 	#frameQueue: VideoFrame[] = [];
-
+	#lastFrame?: VideoFrame;
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
 	/** used when seeking */
@@ -40,11 +41,8 @@ export class VDecoder {
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
-		await this.#decoder.flush();
 
-		// NOTE: do we need to reset and re-configure every time? Maybe? Maybe not?
-		//this.#decoder.reset();
-		//this.#decoder.configure(this.#decoderConfig!);
+		await this.#decoder.flush();
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
@@ -52,6 +50,14 @@ export class VDecoder {
 			this.#getKeyFrameIndex(frameTimestamp);
 
 		this.#targetFrameTimestamp = this.#chunks[targetFrameIndex].timestamp;
+
+		if (this.#lastFrame) {
+			if (this.#lastFrame.timestamp === this.#targetFrameTimestamp) {
+				return Promise.resolve(this.#lastFrame);
+			} else {
+				this.#lastFrame.close();
+			}
+		}
 
 		if (maxTimestamp && maxTimestamp + 33333 < frameTimestamp) {
 			// out of bounds
@@ -107,8 +113,6 @@ export class VDecoder {
 			staleFrame?.close();
 		}
 
-		const chosenFrame = this.#frameQueue[0];
-
 		if (this.#chunkBuffer.length < 5) {
 			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
 
@@ -120,7 +124,12 @@ export class VDecoder {
 			this.#feedDecoder();
 		}
 
+		const chosenFrame = this.#frameQueue.shift();
+
 		if (chosenFrame && chosenFrame.format) {
+			if (this.#lastFrame) this.#lastFrame.close();
+			this.#lastFrame = chosenFrame;
+
 			if (DEBUG)
 				console.log(
 					'Returning frame. Frame time delta = %dms (%d vs %d)',
@@ -128,7 +137,11 @@ export class VDecoder {
 					frameTime,
 					chosenFrame.timestamp
 				);
+
 			return chosenFrame;
+		}
+		if (this.#lastFrame) {
+			return this.#lastFrame;
 		}
 	}
 
@@ -159,7 +172,7 @@ export class VDecoder {
 			this.#feedingPaused = true;
 			if (DEBUG)
 				console.log(
-					'Decoder backpressure: Pausing feeding. #frameQueue:',
+					'Pausing feeding. #frameQueue:',
 					this.#frameQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
@@ -187,7 +200,11 @@ export class VDecoder {
 	}
 
 	#onFrame = (frame: VideoFrame) => {
-		if (DEBUG) console.log('Frame output:', frame.timestamp);
+		if (DEBUG) {
+			console.log('Frame output:', frame.timestamp);
+			console.log('Queue size:', this.#decoder.decodeQueueSize);
+			console.log('Frame Queue Size:', this.#frameQueue.length);
+		}
 		if (this.#running) {
 			if (this.#startToQueueFrames) {
 				this.#frameQueue.push(frame);
@@ -199,19 +216,30 @@ export class VDecoder {
 			}
 		} else if (frame.timestamp === this.#targetFrameTimestamp) {
 			this.#frameIsReady(frame);
+			this.#lastFrame = frame;
 		} else {
 			frame.close();
 		}
-		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
+
+		if (!this.#feedingPaused) return;
+
+		if (this.#decoder.decodeQueueSize < 3) {
+			if (DEBUG) console.log('Resuming feeding.');
 			this.#feedingPaused = false;
-			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
+			this.#feedDecoder();
+		}
+		if (this.#frameQueue.length > 10) {
+			if (DEBUG) console.log('Force feeding.');
+			this.#feedingPaused = false;
 			this.#feedDecoder();
 		}
 	};
 
 	#onError = (e: DOMException) => {
 		// TODO: encoder may be reclaimed and we should check for that
-		// or at least hide error in console
+		// and assign a new decoder to clip
+		//this.#decoder.reset();
+		//this.#decoder.configure(this.#decoderConfig!);
 		console.log(e);
 	};
 

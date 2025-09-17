@@ -3,7 +3,9 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
 	import type { Clip } from '$lib/clip/clip.svelte';
-	import Page from '../../../routes/+page.svelte';
+
+	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
+	import UndoIcon from '../icons/UndoIcon.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -77,18 +79,9 @@
 				action: 'clipParam',
 				data: {
 					clipId: clip.id,
-					paramIndex: 2,
-					oldValue: savedClipPosition.x,
-					newValue: clip.params[2]
-				}
-			});
-			historyManager.pushAction({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: 3,
-					oldValue: savedClipPosition.y,
-					newValue: clip.params[3]
+					paramIndex: [2, 3],
+					oldValue: [savedClipPosition.x, savedClipPosition.y],
+					newValue: [clip.params[2], clip.params[3]]
 				}
 			});
 			historyManager.finishCommand();
@@ -101,18 +94,9 @@
 				action: 'clipParam',
 				data: {
 					clipId: clip.id,
-					paramIndex: 0,
-					oldValue: savedClipScale.x,
-					newValue: clip.params[0]
-				}
-			});
-			historyManager.pushAction({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: 1,
-					oldValue: savedClipScale.y,
-					newValue: clip.params[1]
+					paramIndex: [0, 1],
+					oldValue: [savedClipScale.x, savedClipScale.y],
+					newValue: [clip.params[0], clip.params[1]]
 				}
 			});
 			historyManager.finishCommand();
@@ -134,6 +118,33 @@
 		);
 	};
 
+	let contextMenu: ContextMenu;
+	const buttons = $state([
+		{
+			text: 'reset transform',
+			icon: UndoIcon,
+			onclick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				historyManager.pushAction({
+					action: 'clipParam',
+					data: {
+						clipId: clip.id,
+						paramIndex: [0, 1, 2, 3],
+						oldValue: [clip.params[0], clip.params[1], clip.params[2], clip.params[3]],
+						newValue: [1, 1, 0, 0]
+					}
+				});
+				clip.params[0] = 1;
+				clip.params[1] = 1;
+				clip.params[2] = 0;
+				clip.params[3] = 0;
+				updateWorkerClip(timelineState.selectedClip);
+			},
+			shortcuts: []
+		}
+	]);
+
 	onMount(async () => {
 		if (!canvas) return;
 		setupWorker(canvas);
@@ -152,7 +163,14 @@
 		style:left={`${width / 2 - 960}px`}
 		style:transform={`scale(${scale}%)`}
 	>
-		<canvas bind:this={canvas} width={1920} height={1080}></canvas>
+		<canvas
+			bind:this={canvas}
+			width={1920}
+			height={1080}
+			oncontextmenu={(e) => {
+				e.preventDefault();
+			}}
+		></canvas>
 	</div>
 	{#if timelineState.selectedClip && timelineState.selectedClip.source.type !== 'audio' && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 		{@const clip = timelineState.selectedClip}
@@ -171,6 +189,7 @@
 			style:height={`${boxSizeY}px`}
 			class="border-2 border-white absolute top-0 left-0"
 			onmousedown={(e) => {
+				if (e.button > 0) return;
 				e.preventDefault();
 				dragging = true;
 				savedClipPosition = { x: clip.params[2], y: clip.params[3] };
@@ -178,7 +197,10 @@
 				appState.mouseMoveOwner = 'program';
 				appState.disableHoverStates = true;
 			}}
-			oncontextmenu={(e) => e.preventDefault()}
+			oncontextmenu={(e) => {
+				e.preventDefault();
+				contextMenu.openContextMenu(e);
+			}}
 		>
 			{@render cornerBox(0)}
 			{@render cornerBox(1)}
@@ -205,3 +227,5 @@
 		</div>
 	{/if}
 </div>
+
+<ContextMenu bind:this={contextMenu} {buttons} />

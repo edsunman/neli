@@ -45,7 +45,7 @@
 	class="h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] bg-zinc-900"
 	{onmousemove}
 >
-	<div><Sources /></div>
+	<div class="overflow-hidden"><Sources /></div>
 	<div><Program bind:mouseMove={programMouseMove} bind:mouseUp={programMouseUp} /></div>
 	<div><Controls /></div>
 	<div class="col-span-3">

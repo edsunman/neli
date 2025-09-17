@@ -28,7 +28,7 @@ type Command =
 	  }
 	| {
 			action: 'clipParam';
-			data: { clipId: string; paramIndex: number; oldValue: number; newValue: number };
+			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
 	  };
 
 export class HistoryManager {
@@ -108,7 +108,9 @@ export class HistoryManager {
 				case 'clipParam': {
 					const clip = getClip(command.data.clipId);
 					if (!clip) break;
-					clip.params[command.data.paramIndex] = command.data.oldValue;
+					for (let i = 0; i < command.data.paramIndex.length; i++) {
+						clip.params[command.data.paramIndex[i]] = command.data.oldValue[i];
+					}
 					updatedClips.add(clip);
 					break;
 				}
@@ -119,7 +121,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
-		timelineState.invalidate = true;
+		timelineState.invalidateWaveform = true;
 	}
 
 	redo() {
@@ -172,7 +174,10 @@ export class HistoryManager {
 				case 'clipParam': {
 					const clip = getClip(command.data.clipId);
 					if (!clip) break;
-					clip.params[command.data.paramIndex] = command.data.newValue;
+					for (let i = 0; i < command.data.paramIndex.length; i++) {
+						clip.params[command.data.paramIndex[i]] = command.data.newValue[i];
+					}
+					//clip.params[command.data.paramIndex] = command.data.newValue;
 					updatedClips.add(clip);
 					break;
 				}
@@ -183,6 +188,6 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
-		timelineState.invalidate = true;
+		timelineState.invalidateWaveform = true;
 	}
 }

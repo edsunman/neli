@@ -155,7 +155,7 @@
 				fileInput.click();
 			}}
 		>
-			drop files to import
+			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav)</small></p>
 		</div>
 		<input
 			onchange={(e) => {
@@ -233,7 +233,7 @@
 				appState.showPalette = false;
 				appState.palettePage = 'search';
 			}}
-			text={'Close'}
+			text={'Done'}
 			disabled={disableButton}
 		/>
 	</div>

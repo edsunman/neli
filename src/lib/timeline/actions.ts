@@ -72,7 +72,7 @@ export const play = () => {
 
 export const pause = () => {
 	timelineState.playing = false;
-	pauseWorker();
+	pauseWorker(timelineState.currentFrame);
 	pauseAudio();
 };
 
@@ -95,7 +95,8 @@ export const checkViewBounds = () => {
 };
 
 export const zoomIn = () => {
-	if (timelineState.zoom < 220) timelineState.zoom = timelineState.zoom * 2;
+	timelineState.zoom = timelineState.zoom * 2;
+	if (timelineState.zoom > 220) timelineState.zoom = 220;
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
@@ -103,11 +104,11 @@ export const zoomIn = () => {
 };
 
 export const zoomOut = () => {
-	if (timelineState.zoom > 0.9) {
-		const center = timelineState.offset + 0.5 / timelineState.zoom;
-		timelineState.zoom = timelineState.zoom / 2;
-		timelineState.offset = center - 0.5 / timelineState.zoom;
-	}
+	const center = timelineState.offset + 0.5 / timelineState.zoom;
+	timelineState.zoom = timelineState.zoom / 2;
+	timelineState.offset = center - 0.5 / timelineState.zoom;
+	if (timelineState.zoom < 0.9) timelineState.zoom = 0.9;
+
 	checkViewBounds();
 	deselectClipIfTooSmall();
 	timelineState.invalidate = true;
@@ -135,21 +136,37 @@ export const focusTrack = (trackNumber: number) => {
 	timelineState.focusedTrack = trackNumber;
 	if (trackNumber === 0) {
 		timelineState.trackHeights = [35, 35, 35, 35];
-		timelineState.trackTops = [100, 150, 200, 250];
+		timelineState.trackTops = [0, 50, 100, 150];
 	} else if (trackNumber === 1) {
 		timelineState.trackHeights = [35, 20, 20, 20];
-		timelineState.trackTops = [90, 215, 245, 275];
+		timelineState.trackTops = [0, 115, 140, 165];
 	} else if (trackNumber === 2) {
 		timelineState.trackHeights = [20, 35, 20, 20];
-		timelineState.trackTops = [90, 120, 245, 275];
+		timelineState.trackTops = [0, 25, 140, 165];
 	} else if (trackNumber === 3) {
 		timelineState.trackHeights = [20, 20, 35, 20];
-		timelineState.trackTops = [90, 120, 150, 275];
+		timelineState.trackTops = [0, 25, 50, 165];
 	} else if (trackNumber === 4) {
 		timelineState.trackHeights = [20, 20, 20, 35];
-		timelineState.trackTops = [90, 120, 150, 180];
+		timelineState.trackTops = [0, 25, 50, 75];
 	}
 	timelineState.invalidateWaveform = true;
+};
+
+export const focusClip = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+
+	const clipPercentOfTimeline = clip.duration / timelineState.duration;
+	timelineState.zoom = 0.95 / clipPercentOfTimeline;
+
+	const middleFrame = clip.start + clip.duration / 2;
+	const middleFramePercent = middleFrame / timelineState.duration;
+	const percentOfTimelineVisible = 1 / timelineState.zoom;
+	timelineState.offset = middleFramePercent - percentOfTimelineVisible / 2;
+	//checkViewBounds();
+
+	focusTrack(clip.track);
 };
 
 export const getUsedTimelineDuration = () => {

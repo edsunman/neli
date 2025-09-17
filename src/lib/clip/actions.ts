@@ -144,7 +144,7 @@ export const moveSelectedClip = (mouseY: number) => {
 	// move between tracks
 	if (clip.source.type === 'video' || clip.source.type === 'test') {
 		const currentTrack = clip.track;
-		if (mouseY > timelineState.trackTops[2] - 5) {
+		if (mouseY > timelineState.trackTops[2] + timelineState.padding - 5) {
 			clip.track = 3;
 		} else {
 			clip.track = 2;
@@ -370,29 +370,26 @@ export const removeInvalidAllClips = () => {
 };
 
 export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => {
+	// NOTE: this runs every frame on mouse move so may be bad news
+	// with large numbers of clips. Hashmap may be better?
 	let foundClip;
 	const minimumSize = canvasPixelToFrame(35, false);
 	for (const clip of timelineState.clips) {
 		if (clip.deleted || clip.duration < minimumSize) continue;
 		clip.hovered = false;
-		if (
-			(offsetY > timelineState.trackTops[0] &&
-				offsetY < timelineState.trackTops[0] + timelineState.trackHeights[0] &&
-				clip.track === 1) ||
-			(offsetY > timelineState.trackTops[1] &&
-				offsetY < timelineState.trackTops[1] + timelineState.trackHeights[1] &&
-				clip.track === 2) ||
-			(offsetY > timelineState.trackTops[2] &&
-				offsetY < timelineState.trackTops[2] + timelineState.trackHeights[2] &&
-				clip.track === 3) ||
-			(offsetY > timelineState.trackTops[3] &&
-				offsetY < timelineState.trackTops[3] + timelineState.trackHeights[3] &&
-				clip.track === 4)
-		) {
-			if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
-				foundClip = clip;
-				clip.hovered = true;
-				timelineState.hoverClipId = clip.id;
+		for (let i = 0; i < timelineState.trackTops.length; i++) {
+			if (
+				offsetY > timelineState.trackTops[i] + timelineState.padding &&
+				offsetY <
+					timelineState.trackTops[i] + timelineState.trackHeights[i] + timelineState.padding &&
+				clip.track === i + 1
+			) {
+				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
+					foundClip = clip;
+					clip.hovered = true;
+					timelineState.hoverClipId = clip.id;
+				}
+				break;
 			}
 		}
 	}

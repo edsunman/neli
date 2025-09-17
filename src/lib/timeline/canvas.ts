@@ -12,14 +12,7 @@ const BLUE_DARK = '#1e425b';
 const PLAYHEAD_PATH = new Path2D(
 	'M 10.259 0.2125 h -6.3285 C 1.9385 0.2125 0.3235 1.828 0.3235 3.82 v 6.4675 c 0 1.694 0.408 3.3635 1.189 4.8665 l 2.381 4.5815 c 1.347 2.592 5.0555 2.592 6.402 0 l 2.3825 -4.5865 c 0.7805 -1.503 1.1885 -3.1715 1.1885 -4.865 V 3.82 c 0 -1.992 -1.615 -3.6075 -3.6075 -3.6075 Z M 10.917 6.0255 c 0 1.129 -0.2715 2.215 -0.792 3.217 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.0885 -0.7925 -3.2175 v -0.6305 c 0 -1.1245 0.9115 -2.036 2.036 -2.036 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 0.628 Z'
 );
-/* 
-const PLAYHEAD_INSET_PATH = new Path2D(
-	'M 5.3445 3.3485 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 3.6345 c 0 1.129 \
-	-0.2715 2.2415 -0.792 3.2435 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 \
-	0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.115 -0.7925 -3.2445 v -3.6365 c 0 \
-	-1.1245 0.9115 -2.036 2.036 -2.036 Z'
-);
- */
+
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
 	width: number,
@@ -31,22 +24,6 @@ export const drawCanvas = (
 
 	drawRuler(context);
 
-	// scrollbar
-	if (timelineState.zoom > 0.9) {
-		const padding = 0.05 / timelineState.zoom;
-		const paddingInPixels = padding * width;
-		context.fillStyle = '#3c3c44';
-		context.beginPath();
-		context.roundRect(
-			(timelineState.offset + padding) * width,
-			height - 40,
-			width / timelineState.zoom - paddingInPixels * 2,
-			10,
-			8
-		);
-		context.fill();
-	}
-
 	// tracks
 	const offsetInPixels = timelineState.width * timelineState.zoom * timelineState.offset;
 	context.fillStyle = '#111114';
@@ -54,7 +31,7 @@ export const drawCanvas = (
 		context.beginPath();
 		context.roundRect(
 			Math.floor(-offsetInPixels),
-			timelineState.trackTops[i],
+			timelineState.trackTops[i] + timelineState.padding,
 			Math.floor(timelineState.width * timelineState.zoom),
 			timelineState.trackHeights[i],
 			8
@@ -72,18 +49,39 @@ export const drawCanvas = (
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
-		context.drawImage(waveCanvas, 0, timelineState.trackTops[timelineState.focusedTrack - 1] + 25);
+		context.drawImage(
+			waveCanvas,
+			0,
+			timelineState.trackTops[timelineState.focusedTrack - 1] + 25 + timelineState.padding
+		);
 
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
+	const playheadTop = Math.floor((timelineState.padding - 50) / 3.33);
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, 30, 2, 300);
+	context.fillRect(playheadPosition, playheadTop + 15, 2, 300);
 
-	context.translate(playheadPosition - 6, 15);
+	context.translate(playheadPosition - 6, playheadTop);
 	context.fill(PLAYHEAD_PATH);
 	//context.fillStyle = '#18181b';
 	//context.fill(PLAYHEAD_INSET_PATH);
-	context.translate(-playheadPosition + 6, -15);
+	context.translate(-playheadPosition + 6, -playheadTop);
+
+	// scrollbar
+	if (timelineState.zoom > 0.9 && timelineState.padding > 65) {
+		const padding = 0.05 / timelineState.zoom;
+		const paddingInPixels = padding * width;
+		context.fillStyle = '#3c3c44';
+		context.beginPath();
+		context.roundRect(
+			(timelineState.offset + padding) * width,
+			height - 40,
+			width / timelineState.zoom - paddingInPixels * 2,
+			10,
+			8
+		);
+		context.fill();
+	}
 };
 
 export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
@@ -151,7 +149,7 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 };
 
 const drawRuler = (context: CanvasRenderingContext2D) => {
-	const rulerPosition = 20;
+	const rulerPosition = (timelineState.padding - 50) / 2.5;
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
 	const minuteInPixels = (timelineState.width / durationInMinutes) * timelineState.zoom;
@@ -232,7 +230,7 @@ const drawClip = (
 	}
 
 	const gap = 3;
-	const trackTop = timelineState.trackTops[clip.track - 1];
+	const trackTop = timelineState.trackTops[clip.track - 1] + timelineState.padding;
 	const clipHeight = timelineState.trackHeights[clip.track - 1];
 
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
