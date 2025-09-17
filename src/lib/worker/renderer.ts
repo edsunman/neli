@@ -18,7 +18,6 @@ export class WebGPURenderer {
 	#testRenderer?: TestRenderer;
 	#videoRenderer?: VideoRenderer;
 
-	#pendingFrames: VideoFrame[] = [];
 	bitmap?: ImageBitmap;
 	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 
@@ -80,14 +79,8 @@ export class WebGPURenderer {
 		this.#passEncoder.end();
 		this.#device.queue.submit([this.#commandEncoder.finish()]);
 
-		// TODO: do we only need to do when encoding?
 		if (createBitmap) {
 			this.bitmap = await createImageBitmap(this.#canvas);
-		}
-
-		for (let i = 1; i < this.#pendingFrames.length; i++) {
-			const frame = this.#pendingFrames.shift();
-			frame?.close();
 		}
 
 		return this.#device.queue.onSubmittedWorkDone();
@@ -159,7 +152,5 @@ export class WebGPURenderer {
 
 		this.#uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.#videoRenderer?.draw(this.#passEncoder, frame, this.#uniformArray);
-
-		this.#pendingFrames.push(frame);
 	}
 }

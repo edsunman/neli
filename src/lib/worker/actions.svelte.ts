@@ -113,9 +113,10 @@ export const playWorker = (frame: number) => {
 	});
 };
 
-export const pauseWorker = () => {
+export const pauseWorker = (frame: number) => {
 	appState.mediaWorker?.postMessage({
-		command: 'pause'
+		command: 'pause',
+		frame
 	});
 };
 

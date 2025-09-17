@@ -12,7 +12,7 @@ export class VDecoder {
 	#chunkBuffer: EncodedVideoChunk[] = [];
 	/** decoded frames waiting to be returned */
 	#frameQueue: VideoFrame[] = [];
-
+	#lastFrame?: VideoFrame;
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
 	/** used when seeking */
@@ -41,6 +41,7 @@ export class VDecoder {
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
+
 		await this.#decoder.flush();
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -49,6 +50,14 @@ export class VDecoder {
 			this.#getKeyFrameIndex(frameTimestamp);
 
 		this.#targetFrameTimestamp = this.#chunks[targetFrameIndex].timestamp;
+
+		if (this.#lastFrame) {
+			if (this.#lastFrame.timestamp === this.#targetFrameTimestamp) {
+				return Promise.resolve(this.#lastFrame);
+			} else {
+				this.#lastFrame.close();
+			}
+		}
 
 		if (maxTimestamp && maxTimestamp + 33333 < frameTimestamp) {
 			// out of bounds
@@ -104,8 +113,6 @@ export class VDecoder {
 			staleFrame?.close();
 		}
 
-		const chosenFrame = this.#frameQueue[0];
-
 		if (this.#chunkBuffer.length < 5) {
 			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
 
@@ -117,7 +124,12 @@ export class VDecoder {
 			this.#feedDecoder();
 		}
 
+		const chosenFrame = this.#frameQueue.shift();
+
 		if (chosenFrame && chosenFrame.format) {
+			if (this.#lastFrame) this.#lastFrame.close();
+			this.#lastFrame = chosenFrame;
+
 			if (DEBUG)
 				console.log(
 					'Returning frame. Frame time delta = %dms (%d vs %d)',
@@ -125,7 +137,11 @@ export class VDecoder {
 					frameTime,
 					chosenFrame.timestamp
 				);
+
 			return chosenFrame;
+		}
+		if (this.#lastFrame) {
+			return this.#lastFrame;
 		}
 	}
 
@@ -200,6 +216,7 @@ export class VDecoder {
 			}
 		} else if (frame.timestamp === this.#targetFrameTimestamp) {
 			this.#frameIsReady(frame);
+			this.#lastFrame = frame;
 		} else {
 			frame.close();
 		}
@@ -220,7 +237,7 @@ export class VDecoder {
 
 	#onError = (e: DOMException) => {
 		// TODO: encoder may be reclaimed and we should check for that
-		// and assingn a new decoder to clip
+		// and assign a new decoder to clip
 		//this.#decoder.reset();
 		//this.#decoder.configure(this.#decoderConfig!);
 		console.log(e);

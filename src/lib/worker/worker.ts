@@ -47,6 +47,7 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'play':
 			{
+				if (seeking) break;
 				playing = true;
 				seeking = false;
 				startPlayLoop(e.data.frame);
@@ -56,13 +57,14 @@ self.addEventListener('message', async function (e) {
 			{
 				playing = false;
 				decoderPool.pauseAll();
+				latestSeekFrame = e.data.frame;
+				if (seeking) break;
+				processSeekFrame();
 			}
 			break;
 		case 'seek': {
 			latestSeekFrame = e.data.frame;
-			if (seeking) {
-				break;
-			}
+			if (seeking) break;
 			processSeekFrame();
 			break;
 		}

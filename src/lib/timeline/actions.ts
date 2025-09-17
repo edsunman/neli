@@ -72,7 +72,7 @@ export const play = () => {
 
 export const pause = () => {
 	timelineState.playing = false;
-	pauseWorker();
+	pauseWorker(timelineState.currentFrame);
 	pauseAudio();
 };
 

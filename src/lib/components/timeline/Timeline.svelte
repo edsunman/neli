@@ -49,6 +49,7 @@
 	let scrolling = false;
 	let fontsLoaded = false;
 	let contextMenu: ContextMenu;
+	let clickedFrame = 0;
 
 	$effect(() => {
 		// redraw on window resize
@@ -62,7 +63,12 @@
 		{
 			text: 'split clip',
 			icon: null,
-			onclick: () => {},
+			onclick: () => {
+				if (timelineState.selectedClip) {
+					splitClip(timelineState.selectedClip.id, clickedFrame);
+					timelineState.invalidateWaveform = true;
+				}
+			},
 			shortcuts: ['shift', MouseIcon]
 		},
 		{
@@ -342,6 +348,7 @@
 			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 			if (!clip) return;
 
+			clickedFrame = hoveredFrame;
 			timelineState.selectedClip = clip;
 			timelineState.invalidate = true;
 

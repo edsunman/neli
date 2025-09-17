@@ -121,7 +121,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
-		timelineState.invalidate = true;
+		timelineState.invalidateWaveform = true;
 	}
 
 	redo() {
@@ -188,6 +188,6 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
-		timelineState.invalidate = true;
+		timelineState.invalidateWaveform = true;
 	}
 }
