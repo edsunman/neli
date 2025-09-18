@@ -55,7 +55,7 @@
 		// redraw on window resize
 		innerHeight.current, innerWidth.current;
 		setCanvasWidth();
-		if (waveContext) drawWaveform(waveContext);
+		if (waveContext) drawWaveform(waveContext, timelineState.width);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
 	});
 
@@ -153,7 +153,7 @@
 			if (timelineState.playing) pause();
 			if (e.shiftKey) {
 				splitClip(timelineState.hoverClipId, canvasPixelToFrame(e.offsetX));
-				timelineState.invalidate = true;
+				timelineState.invalidateWaveform = true;
 				return;
 			}
 
@@ -266,7 +266,7 @@
 	};
 
 	const setCanvasWidth = async () => {
-		if (!context || !canvas) return;
+		if (!context || !canvas || !waveCanvas) return;
 		const dpr = window.devicePixelRatio;
 		if (dpr !== 1) {
 			canvas.height = height * dpr;
@@ -279,6 +279,7 @@
 			canvas.width = timelineState.width;
 		}
 
+		waveCanvas.width = timelineState.width;
 		if (height < 320) timelineState.padding = 60;
 
 		await tick();
@@ -287,7 +288,7 @@
 
 	const step = () => {
 		if (timelineState.invalidateWaveform) {
-			if (waveContext) drawWaveform(waveContext);
+			if (waveContext) drawWaveform(waveContext, timelineState.width);
 			timelineState.invalidateWaveform = false;
 			timelineState.invalidate = true;
 		}
@@ -302,8 +303,7 @@
 	onMount(async () => {
 		await tick();
 		if (!canvas) return;
-
-		waveCanvas = new OffscreenCanvas(2000, 100);
+		waveCanvas = new OffscreenCanvas(timelineState.width, 100);
 		waveContext = waveCanvas.getContext('2d');
 
 		context = canvas.getContext('2d', { alpha: false });
@@ -401,7 +401,7 @@
 				const selectedClip = timelineState.selectedClip;
 				if (!selectedClip) break;
 				deleteClip(selectedClip.id);
-				timelineState.invalidate = true;
+				timelineState.invalidateWaveform = true;
 				break;
 			case 'KeyF': {
 				if (timelineState.selectedClip) {

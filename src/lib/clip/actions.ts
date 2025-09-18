@@ -43,12 +43,6 @@ export const createClip = (
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
 	if (source.type === 'video') {
-		/* 	// scale to fit canvas
-		const scaleX = 1920 / source.width;
-		const scaleY = 1080 / source.height;
-
-		// The final scaling factor is the smaller of the two
-		let scaleFactor = Math.min(scaleX, scaleY); */
 		const scaleFactor = getClipInitialScaleFactor(clip);
 		clip.params[0] = scaleFactor;
 		clip.params[1] = scaleFactor;

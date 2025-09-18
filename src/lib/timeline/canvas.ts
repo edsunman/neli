@@ -84,26 +84,20 @@ export const drawCanvas = (
 	}
 };
 
-export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
+export const drawWaveform = (context: OffscreenCanvasRenderingContext2D, width: number) => {
 	if (timelineState.focusedTrack === 0) return;
-	context.clearRect(0, 0, 2000, 100);
+	context.clearRect(0, 0, width, 100);
 	context.fillStyle = '#131315';
 
-	//let count = 0;
 	for (const clip of timelineState.clips) {
-		if (
-			clip.track !== timelineState.focusedTrack ||
-			clip.deleted ||
-			clip.source.type === 'text' ||
-			clip.source.type === 'test'
-		)
+		if (clip.track !== timelineState.focusedTrack || clip.deleted || clip.source.type === 'text')
 			continue;
 
 		const clipWidth = frameToCanvasPixel(clip.duration, false);
 		const clipStartPixel = frameToCanvasPixel(clip.start);
 
 		const fps = 30;
-		const startTimeInSeconds = clip.sourceOffset / fps;
+		const startTimeInSeconds = clip.source.type === 'test' ? 0 : clip.sourceOffset / fps;
 		const durationInSeconds = clip.duration / fps;
 
 		// 3333.33 is assuming we samples at a rate of 300 per second
@@ -111,41 +105,58 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D) => {
 		const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3333.33);
 
 		const scaleFactor = audioDataLength / clipWidth;
-		const lineWidth = scaleFactor < 0.4 ? 3 : scaleFactor < 1 ? 2 : 1;
+		const lineWidth = scaleFactor < 0.3 ? 5 : scaleFactor < 0.5 ? 3 : scaleFactor < 1 ? 2 : 1;
 
 		const canvasHeight = 100;
 		const waveHeight = 50;
-		if (clip.source && clip.source.audioWaveform) {
-			const data = clip.source.audioWaveform;
 
-			const maxLines = new Map();
-			// Calculate the longest line for each position
+		const testWave = [];
+		for (let i = 0; i <= 20; i++) {
+			const scaledPosition = i + 1;
+			const height = (Math.log(21) - Math.log(scaledPosition)) / Math.log(21);
+			testWave.push(Math.max(0, height));
+		}
+
+		const maxLines = new Map();
+		// Calculate the longest line for each position
+		if (clip.source.audioWaveform) {
 			for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
 				const position = Math.floor(j / scaleFactor + clipStartPixel);
-				if (position < 0 || position > 2000) {
-					continue;
-				}
-				const value = data[i];
+				if (position < 0 || position > width) continue;
+
+				const value = clip.source.audioWaveform[i];
 				if (!maxLines.has(position) || value > maxLines.get(position)) {
 					maxLines.set(position, value);
 				}
 			}
-
-			context.beginPath();
-			for (const [position, value] of maxLines) {
-				context.rect(
-					position,
-					canvasHeight / 2 - (value * waveHeight) / 2,
-					lineWidth,
-					value * waveHeight
-				);
-				//count++;
+		} else {
+			// test card waveform
+			for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
+				const position = Math.floor(j / scaleFactor + clipStartPixel);
+				if (position < 0 || position > width) continue;
+				let value = 0;
+				if ((i - 150) % 300 >= 0 && (i - 150) % 300 <= 20) {
+					const relativePosition = (i - 150) % 300;
+					value = testWave[relativePosition];
+				}
+				if (!maxLines.has(position) || value > maxLines.get(position)) {
+					maxLines.set(position, value);
+				}
 			}
-			context.fill(); // Fill the entire path with the specified fillStyle
-			context.closePath();
 		}
+
+		context.beginPath();
+		for (const [position, value] of maxLines) {
+			context.rect(
+				position,
+				canvasHeight / 2 - (value * waveHeight) / 2,
+				lineWidth,
+				value * waveHeight
+			);
+		}
+		context.fill();
+		context.closePath();
 	}
-	//console.log(`drawn: ${count}`);
 };
 
 const drawRuler = (context: CanvasRenderingContext2D) => {

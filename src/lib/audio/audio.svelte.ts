@@ -13,6 +13,7 @@ export class AudioState {
 	gainNodes = new Map<string, GainNode | null>();
 	panNodes = new Map<string, StereoPannerNode | null>();
 	offsets = new Map<string, number>();
+	testTones = new Map<string, number>();
 	decoderPool = new DecoderPool();
 
 	startingFrame = 0;
