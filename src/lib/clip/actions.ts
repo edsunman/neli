@@ -3,6 +3,7 @@ import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
+import { getClipInitialScaleFactor } from './utils';
 
 export const createClip = (
 	sourceId: string,
@@ -42,13 +43,13 @@ export const createClip = (
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
 	if (source.type === 'video') {
-		// scale to fit canvas
+		/* 	// scale to fit canvas
 		const scaleX = 1920 / source.width;
 		const scaleY = 1080 / source.height;
 
 		// The final scaling factor is the smaller of the two
-		let scaleFactor = Math.min(scaleX, scaleY);
-		scaleFactor = Math.round(scaleFactor * 1000) / 1000;
+		let scaleFactor = Math.min(scaleX, scaleY); */
+		const scaleFactor = getClipInitialScaleFactor(clip);
 		clip.params[0] = scaleFactor;
 		clip.params[1] = scaleFactor;
 	}
@@ -484,4 +485,16 @@ const getRightSibling = (clip: Clip, trackNumber = 0) => {
 		}
 	}
 	return sibling;
+};
+
+export const getClipsAtFrame = (frameNumber: number) => {
+	const clips = [];
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
+			clips.push(clip);
+		}
+	}
+	clips.sort((a, b) => a.track - b.track);
+	return clips;
 };

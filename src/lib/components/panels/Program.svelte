@@ -6,6 +6,8 @@
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import UndoIcon from '../icons/UndoIcon.svelte';
+	import { getClipsAtFrame } from '$lib/clip/actions';
+	import { getClipInitialScaleFactor } from '$lib/clip/utils';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -118,6 +120,27 @@
 		);
 	};
 
+	const canvasMouseDown = (e: MouseEvent) => {
+		timelineState.selectedClip = null;
+		const clips = getClipsAtFrame(timelineState.currentFrame);
+		for (const clip of clips) {
+			const clipWidthPixels = clip.source.width * clip.params[0];
+			const clipHeightPixels = clip.source.height * clip.params[1];
+			const centerOfClipX = (clip.params[2] / 2 + 0.5) * 1920;
+			const centerOfClipY = (1 - (clip.params[3] / 2 + 0.5)) * 1080;
+			if (
+				e.offsetX > centerOfClipX - clipWidthPixels / 2 &&
+				e.offsetX < centerOfClipX + clipWidthPixels / 2 &&
+				e.offsetY > centerOfClipY - clipHeightPixels / 2 &&
+				e.offsetY < centerOfClipY + clipHeightPixels / 2
+			) {
+				timelineState.selectedClip = clip;
+				break;
+			}
+		}
+		timelineState.invalidate = true;
+	};
+
 	let contextMenu: ContextMenu;
 	const buttons = $state([
 		{
@@ -135,8 +158,9 @@
 						newValue: [1, 1, 0, 0]
 					}
 				});
-				clip.params[0] = 1;
-				clip.params[1] = 1;
+				const scaleFactor = getClipInitialScaleFactor(clip);
+				clip.params[0] = scaleFactor;
+				clip.params[1] = scaleFactor;
 				clip.params[2] = 0;
 				clip.params[3] = 0;
 				updateWorkerClip(timelineState.selectedClip);
@@ -167,6 +191,7 @@
 			bind:this={canvas}
 			width={1920}
 			height={1080}
+			onmousedown={canvasMouseDown}
 			oncontextmenu={(e) => {
 				e.preventDefault();
 			}}
