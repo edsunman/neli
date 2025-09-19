@@ -59,7 +59,7 @@
 
 	<a href="https://github.com/edsunman/neli" target="_blank" aria-label="github repo">
 		<svg
-			class="size-10 mt-10 text-zinc-300 hover:text-white"
+			class="size-8 mt-10 text-zinc-300 hover:text-white"
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 98 96"
 			fill="currentColor"

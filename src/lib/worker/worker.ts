@@ -206,7 +206,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		const clipFrame = frameNumber - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
-			f = decoder?.run(clipFrame * 33.33333333);
+			f = decoder?.run(clipFrame * 33.33333333, encoding);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);

@@ -94,7 +94,7 @@ export class VDecoder {
 	}
 
 	/** Called quickly during playback and encoding to keep frame queue full */
-	run(elapsedTimeMs: number) {
+	run(elapsedTimeMs: number, encoding = false) {
 		const frameTime = Math.floor(elapsedTimeMs * 1000);
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
@@ -140,7 +140,7 @@ export class VDecoder {
 
 			return chosenFrame;
 		}
-		if (this.#lastFrame) {
+		if (this.#lastFrame && !encoding) {
 			return this.#lastFrame;
 		}
 	}
