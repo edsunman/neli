@@ -132,25 +132,13 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			audioState.testTones.set(clip.id, nextMultiple);
 
 			const sampleRate = audioState.audioContext.sampleRate;
-
 			const duration = 2 / 30;
-			const frameCount = audioState.audioContext.sampleRate * duration;
+			const frameCount = sampleRate * duration;
+			const high = ((nextMultiple - 15) / 30) % 4 === 0;
 
+			const f32 = generateTone(high, sampleRate, frameCount);
 			const buffer = audioState.audioContext.createBuffer(1, frameCount, sampleRate);
-
-			const bufferData = buffer.getChannelData(0); // get the first channel
-			const frequency = ((nextMultiple - 15) / 30) % 4 === 0 ? 880 : 440; // A4 in Hz
-			const fadeDuration = 0.0005;
-			const fadeFrames = sampleRate * fadeDuration;
-			const amplitude = 1;
-			for (let i = 0; i < frameCount; i++) {
-				const time = i / sampleRate;
-				let gain = 1;
-				if (i > frameCount - fadeFrames) {
-					gain = (frameCount - i) / fadeFrames;
-				}
-				bufferData[i] = gain * amplitude * Math.sin(2 * Math.PI * frequency * time);
-			}
+			buffer.copyToChannel(f32, 0);
 
 			const sourceNode = audioState.audioContext.createBufferSource();
 			sourceNode.buffer = buffer;
@@ -377,13 +365,13 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 	const masterGainNode = offlineAudioContext.createGain();
 	masterGainNode.connect(offlineAudioContext.destination);
 	masterGainNode.gain.value = audioState.masterGain;
-	console.log(timelineState.clips);
+
 	for (const clip of timelineState.clips) {
 		if (
 			clip.deleted ||
 			clip.start + clip.duration < startFrame ||
 			clip.start > endFrame ||
-			(clip.source.type !== 'video' && clip.source.type !== 'audio')
+			(clip.source.type !== 'video' && clip.source.type !== 'audio' && clip.source.type !== 'test')
 		)
 			continue;
 
@@ -410,14 +398,30 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 		}
 		const scheduleStartSeconds = scheduleStartFrame / 30;
 
-		if (!clip.source.audioConfig) continue;
+		const bufferSampleRate = clip.source.audioConfig
+			? clip.source.audioConfig.sampleRate
+			: sampleRate;
 		const audioBuffer = offlineAudioContext.createBuffer(
 			2,
-			durationSeconds * clip.source.audioConfig.sampleRate,
-			clip.source.audioConfig.sampleRate
+			durationSeconds * bufferSampleRate,
+			bufferSampleRate
 		);
 
-		await decodeSource(audioBuffer, clip, sourceStartFrame);
+		if (clip.source.type === 'test') {
+			const duration = 2 / 30;
+			const f32 = generateTone(true, sampleRate, sampleRate * duration);
+			const f32Low = generateTone(false, sampleRate, sampleRate * duration);
+			const channelDataLeft = audioBuffer.getChannelData(0);
+			const channelDataRight = audioBuffer.getChannelData(1);
+			for (let i = 0; i < Math.ceil(durationSeconds); i++) {
+				const offset = sampleRate / 2 + i * sampleRate;
+				if (offset + f32.length > channelDataLeft.length) break;
+				channelDataLeft.set(i % 4 === 0 ? f32 : f32Low, offset);
+				channelDataRight.set(i % 4 === 0 ? f32 : f32Low, offset);
+			}
+		} else {
+			await decodeSource(audioBuffer, clip, sourceStartFrame);
+		}
 
 		const gainNode = offlineAudioContext.createGain();
 		gainNode.gain.value = clip.params[4];
@@ -520,4 +524,21 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: nu
 	decodeLoop();
 
 	return promise;
+};
+
+const generateTone = (high = false, sampleRate: number, frameCount: number) => {
+	const frequency = high ? 880 : 440; // A4 in Hz
+	const fadeDuration = 0.0005;
+	const fadeFrames = sampleRate * fadeDuration;
+	const amplitude = 1;
+	const f32 = new Float32Array(frameCount);
+	for (let i = 0; i < frameCount; i++) {
+		const time = i / sampleRate;
+		let gain = 1;
+		if (i > frameCount - fadeFrames) {
+			gain = (frameCount - i) / fadeFrames;
+		}
+		f32[i] = gain * amplitude * Math.sin(2 * Math.PI * frequency * time);
+	}
+	return f32;
 };

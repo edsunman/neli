@@ -18,6 +18,7 @@ const clips: WorkerClip[] = [];
 const sources: WorkerSource[] = [];
 
 self.addEventListener('message', async function (e) {
+	console.log(e.data);
 	switch (e.data.command) {
 		case 'init':
 			{
@@ -206,7 +207,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		const clipFrame = frameNumber - videoClip.start + videoClip.sourceOffset;
 		let f;
 		if (run) {
-			f = decoder?.run(clipFrame * 33.33333333);
+			f = decoder?.run(clipFrame * 33.33333333, encoding);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);
