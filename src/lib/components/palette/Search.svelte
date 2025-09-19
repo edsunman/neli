@@ -76,7 +76,7 @@
 					icon: HelpIcon,
 					shortcuts: [],
 					action: () => {
-						window.open('https://neli.video/docs', '_blank');
+						window.open('https://neli.video/docs/getting-started', '_blank');
 						appState.showPalette = false;
 					}
 				},

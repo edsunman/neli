@@ -76,6 +76,8 @@ export const sendFileToWorker = (source: Source) => {
 	});
 };
 
+// TODO: updates should be batched together
+// so multiple clip updates are sent in one message
 export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
 	const workerClip: WorkerClip = {

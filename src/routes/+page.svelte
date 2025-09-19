@@ -8,6 +8,7 @@
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
 	import Controls from '$lib/components/panels/Settings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
+	import { setupTests } from '$lib/tests';
 
 	let timelineMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let timelineMouseUp = $state<(e: MouseEvent) => void>();
@@ -37,6 +38,8 @@
 
 		createTextSource();
 		createTestSource();
+
+		setupTests();
 	});
 </script>
 

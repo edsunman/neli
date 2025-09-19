@@ -6,7 +6,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 	// run decoders
 	const currentClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
-		if (clip.deleted) continue;
+		if (clip.deleted || clip.source.type === 'text') continue;
 		if (clip.start <= frame && clip.start + clip.duration > frame) {
 			currentClips.push(clip);
 			if (audioState.playingClips.find((c) => c === clip.id)) {
@@ -52,6 +52,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			audioState.gainNodes.get(clip)?.disconnect();
 			audioState.gainNodes.delete(clip);
 			audioState.offsets.delete(clip);
+			audioState.testTones.delete(clip);
 
 			audioState.playingClips.splice(i, 1);
 		}
@@ -103,11 +104,11 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
 			}
 
-			const source = audioState.audioContext.createBufferSource();
-			source.buffer = audioBuffer;
+			const sourceNode = audioState.audioContext.createBufferSource();
+			sourceNode.buffer = audioBuffer;
 
 			const gainNode = audioState.gainNodes.get(clipId);
-			if (gainNode) source.connect(gainNode);
+			if (gainNode) sourceNode.connect(gainNode);
 
 			const currentOffset = audioState.offsets.get(clipId);
 			let scheduledTime = audioState.audioContext.currentTime;
@@ -115,9 +116,38 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			if (currentOffset) {
 				scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
 			}
-			source.start(scheduledTime);
+			sourceNode.start(scheduledTime);
 
 			audioState.offsets.set(clipId, scheduledTime + audioBuffer.duration);
+		}
+	}
+
+	for (const clip of currentClips) {
+		if (clip.source.type !== 'test') continue;
+
+		const nextMultiple = Math.ceil((frame - clip.start + 15) / 30) * 30 - 15;
+
+		const nextToneFrame = audioState.testTones.get(clip.id);
+		if (!nextToneFrame || nextToneFrame !== nextMultiple) {
+			audioState.testTones.set(clip.id, nextMultiple);
+
+			const sampleRate = audioState.audioContext.sampleRate;
+			const duration = 2 / 30;
+			const frameCount = sampleRate * duration;
+			const high = ((nextMultiple - 15) / 30) % 4 === 0;
+
+			const f32 = generateTone(high, sampleRate, frameCount);
+			const buffer = audioState.audioContext.createBuffer(1, frameCount, sampleRate);
+			buffer.copyToChannel(f32, 0);
+
+			const sourceNode = audioState.audioContext.createBufferSource();
+			sourceNode.buffer = buffer;
+
+			const gainNode = audioState.gainNodes.get(clip.id);
+			if (gainNode) sourceNode.connect(gainNode);
+			sourceNode.start(
+				audioState.audioContext.currentTime + (nextMultiple - (frame - clip.start)) / 30
+			);
 		}
 	}
 
@@ -135,6 +165,7 @@ export const pauseAudio = () => {
 	});
 	audioState.gainNodes.clear();
 	audioState.offsets.clear();
+	audioState.testTones.clear();
 
 	audioState.playingClips.length = 0;
 	appState.audioLevel = [0, 0];
@@ -334,13 +365,13 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 	const masterGainNode = offlineAudioContext.createGain();
 	masterGainNode.connect(offlineAudioContext.destination);
 	masterGainNode.gain.value = audioState.masterGain;
-	console.log(timelineState.clips);
+
 	for (const clip of timelineState.clips) {
 		if (
 			clip.deleted ||
 			clip.start + clip.duration < startFrame ||
 			clip.start > endFrame ||
-			(clip.source.type !== 'video' && clip.source.type !== 'audio')
+			(clip.source.type !== 'video' && clip.source.type !== 'audio' && clip.source.type !== 'test')
 		)
 			continue;
 
@@ -367,14 +398,30 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 		}
 		const scheduleStartSeconds = scheduleStartFrame / 30;
 
-		if (!clip.source.audioConfig) continue;
+		const bufferSampleRate = clip.source.audioConfig
+			? clip.source.audioConfig.sampleRate
+			: sampleRate;
 		const audioBuffer = offlineAudioContext.createBuffer(
 			2,
-			durationSeconds * clip.source.audioConfig.sampleRate,
-			clip.source.audioConfig.sampleRate
+			durationSeconds * bufferSampleRate,
+			bufferSampleRate
 		);
 
-		await decodeSource(audioBuffer, clip, sourceStartFrame);
+		if (clip.source.type === 'test') {
+			const duration = 2 / 30;
+			const f32 = generateTone(true, sampleRate, sampleRate * duration);
+			const f32Low = generateTone(false, sampleRate, sampleRate * duration);
+			const channelDataLeft = audioBuffer.getChannelData(0);
+			const channelDataRight = audioBuffer.getChannelData(1);
+			for (let i = 0; i < Math.ceil(durationSeconds); i++) {
+				const offset = sampleRate / 2 + i * sampleRate;
+				if (offset + f32.length > channelDataLeft.length) break;
+				channelDataLeft.set(i % 4 === 0 ? f32 : f32Low, offset);
+				channelDataRight.set(i % 4 === 0 ? f32 : f32Low, offset);
+			}
+		} else {
+			await decodeSource(audioBuffer, clip, sourceStartFrame);
+		}
 
 		const gainNode = offlineAudioContext.createGain();
 		gainNode.gain.value = clip.params[4];
@@ -388,9 +435,8 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 
 		source.start(scheduleStartSeconds);
 	}
-	console.log(offlineAudioContext);
+
 	const renderedBuffer = await offlineAudioContext.startRendering();
-	console.log(renderedBuffer);
 	const combinedPlanarBuffer = new Float32Array(sampleRate * durationInSeconds * numberOfChannels);
 
 	// The audio goes into the buffer one channel after another, not interleaved
@@ -478,4 +524,21 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: nu
 	decodeLoop();
 
 	return promise;
+};
+
+const generateTone = (high = false, sampleRate: number, frameCount: number) => {
+	const frequency = high ? 880 : 440; // A4 in Hz
+	const fadeDuration = 0.0005;
+	const fadeFrames = sampleRate * fadeDuration;
+	const amplitude = 1;
+	const f32 = new Float32Array(frameCount);
+	for (let i = 0; i < frameCount; i++) {
+		const time = i / sampleRate;
+		let gain = 1;
+		if (i > frameCount - fadeFrames) {
+			gain = (frameCount - i) / fadeFrames;
+		}
+		f32[i] = gain * amplitude * Math.sin(2 * Math.PI * frequency * time);
+	}
+	return f32;
 };
