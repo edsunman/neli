@@ -18,7 +18,6 @@ const clips: WorkerClip[] = [];
 const sources: WorkerSource[] = [];
 
 self.addEventListener('message', async function (e) {
-	console.log(e.data);
 	switch (e.data.command) {
 		case 'init':
 			{
