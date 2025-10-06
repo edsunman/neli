@@ -48,6 +48,7 @@ self.addEventListener('message', async function (e) {
 		case 'play':
 			{
 				if (seeking) break;
+				self.postMessage({ command: 'ready-to-play' });
 				playing = true;
 				seeking = false;
 				startPlayLoop(e.data.frame);
@@ -112,14 +113,13 @@ const processSeekFrame = async () => {
 			break;
 		}
 	}
-
 	seeking = false;
 };
 
 const startPlayLoop = async (frame: number) => {
 	const startingFrame = frame;
 
-	setupFrame(startingFrame);
+	await setupFrame(startingFrame);
 
 	let firstTimestamp: number | null = null;
 	let previousFrame = -1;
@@ -132,7 +132,6 @@ const startPlayLoop = async (frame: number) => {
 	let i = 0;
 	const loop = async (timestamp: number) => {
 		if (!playing) return;
-
 		// pause for two loops to wait for VideoDecoders to warm up
 		if (i < 2) {
 			i++;
@@ -172,12 +171,13 @@ const startPlayLoop = async (frame: number) => {
 	self.requestAnimationFrame(loop);
 };
 
-const setupFrame = (frameNumber: number) => {
+const setupFrame = async (frameNumber: number) => {
+	// start decoders and wait for them to flush
 	for (const clip of clips) {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
 			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
-			decoderPool.decoders.get(clip.id)?.play(clipFrame);
+			await decoderPool.decoders.get(clip.id)?.play(clipFrame);
 		}
 	}
 };
@@ -207,6 +207,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		let f;
 		if (run) {
 			f = decoder?.run(clipFrame * 33.33333333, encoding);
+			//console.log(`running decoder for clip ${videoClip.id} requesting frame ${clipFrame}`);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);
@@ -343,7 +344,7 @@ const encodeAndCreateFile = async (
 
 	await encoder.finalizeAudio();
 
-	setupFrame(startFrame);
+	await setupFrame(startFrame);
 
 	let i = 0;
 	let retries = 0;

@@ -70,7 +70,7 @@
 
 	mouseUp = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'program') return;
-		appState.disableHoverStates = false;
+		appState.mouseIsDown = false;
 		appState.mouseMoveOwner = 'timeline';
 
 		if (dragging) {
@@ -109,7 +109,7 @@
 		e.stopPropagation();
 		e.preventDefault();
 		appState.mouseMoveOwner = 'program';
-		appState.disableHoverStates = true;
+		appState.mouseIsDown = true;
 		resizing = true;
 
 		savedClipCenter = center;
@@ -220,7 +220,7 @@
 				savedClipPosition = { x: clip.params[2], y: clip.params[3] };
 				mouseDownPosition = { x: e.clientX, y: e.clientY };
 				appState.mouseMoveOwner = 'program';
-				appState.disableHoverStates = true;
+				appState.mouseIsDown = true;
 			}}
 			oncontextmenu={(e) => {
 				e.preventDefault();

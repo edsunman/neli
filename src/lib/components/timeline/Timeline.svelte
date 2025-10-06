@@ -135,7 +135,7 @@
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
 		appState.mouseMoveOwner = 'timeline';
-		appState.disableHoverStates = true;
+		appState.mouseIsDown = true;
 		if (e.button > 0) return;
 		if (e.offsetY < timelineState.padding * 0.8) {
 			scrubbing = true;
@@ -224,7 +224,7 @@
 			scrolling = false;
 		}
 
-		appState.disableHoverStates = false;
+		appState.mouseIsDown = false;
 		timelineState.dragOffset = 0;
 		historyManager.finishCommand();
 		removeInvalidAllClips();
@@ -393,7 +393,7 @@
 				event.preventDefault();
 				if (timelineState.playing) {
 					pause();
-				} else {
+				} else if (!appState.mouseIsDown) {
 					play();
 				}
 				break;
