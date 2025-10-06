@@ -20,7 +20,6 @@ export class VDecoder {
 	/** used when playing */
 	#startingFrameTimeStamp = 0;
 	#lastChunkIndex = 0;
-	#feedingPaused = false;
 	#startToQueueFrames = false;
 
 	id = 0;
@@ -42,6 +41,7 @@ export class VDecoder {
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
 		if (!this.#ready) return null;
 
+		this.#chunkBuffer = [];
 		await this.#decoder.flush();
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -64,7 +64,6 @@ export class VDecoder {
 			return Promise.resolve(null);
 		}
 
-		this.#chunkBuffer = [];
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
 			this.#chunkBuffer.push(this.#chunks[i]);
 		}
@@ -78,14 +77,16 @@ export class VDecoder {
 
 	async play(frameNumber: number) {
 		if (this.#running) return;
+
+		this.#chunkBuffer = [];
 		await this.#decoder.flush();
+
 		this.#running = true;
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 		const { targetFrameIndex, keyFrameIndex } = this.#getKeyFrameIndex(frameTimestamp);
 
 		this.#startingFrameTimeStamp = this.#chunks[targetFrameIndex].timestamp;
 
-		this.#chunkBuffer = [];
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
 			this.#chunkBuffer.push(this.#chunks[i]);
 			this.#lastChunkIndex = i;
@@ -120,27 +121,25 @@ export class VDecoder {
 				this.#chunkBuffer.push(this.#chunks[i]);
 				this.#lastChunkIndex = i;
 			}
-
 			this.#feedDecoder();
 		}
 
 		const chosenFrame = this.#frameQueue.shift();
-
+		//console.log(this.#frameQueue.length);
 		if (chosenFrame && chosenFrame.format) {
 			if (this.#lastFrame) this.#lastFrame.close();
 			this.#lastFrame = chosenFrame;
 
 			if (DEBUG)
 				console.log(
-					'Returning frame. Frame time delta = %dms (%d vs %d)',
-					minTimeDelta / 1000,
-					frameTime,
-					chosenFrame.timestamp
+					`Returning frame, delta: ${minTimeDelta / 1000}ms \n` +
+						`want: ${frameTime} got: ${chosenFrame.timestamp}`
 				);
 
 			return chosenFrame;
 		}
 		if (this.#lastFrame && !encoding) {
+			if (DEBUG) console.log('returning an old frame');
 			return this.#lastFrame;
 		}
 	}
@@ -158,7 +157,6 @@ export class VDecoder {
 		this.#chunkBuffer = [];
 		this.#startToQueueFrames = false;
 		await this.#decoder.flush();
-		//console.log(`Decoder ${this.id} flushed`);
 	}
 
 	get running() {
@@ -167,12 +165,11 @@ export class VDecoder {
 
 	// runs in a loop until chunk buffer is empty
 	#feedDecoder() {
-		if (this.#feedingPaused) return;
 		if (this.#decoder.decodeQueueSize >= 5) {
-			this.#feedingPaused = true;
+			//	this.#feedingPaused = true;
 			if (DEBUG)
 				console.log(
-					'Pausing feeding. #frameQueue:',
+					'Skip feeding. #frameQueue:',
 					this.#frameQueue.length,
 					'decodeQueueSize:',
 					this.#decoder.decodeQueueSize
@@ -188,7 +185,7 @@ export class VDecoder {
 				return;
 			}
 			try {
-				if (DEBUG) console.log('Sending chunk to encoder: ', chunk.timestamp);
+				if (DEBUG) console.log(`Sending chunk to encoder: ${chunk.timestamp} (${chunk.type})`);
 				this.#decoder.decode(chunk);
 				this.#feedDecoder();
 			} catch (e) {
@@ -221,16 +218,12 @@ export class VDecoder {
 			frame.close();
 		}
 
-		if (!this.#feedingPaused) return;
-
 		if (this.#decoder.decodeQueueSize < 3) {
-			if (DEBUG) console.log('Resuming feeding.');
-			this.#feedingPaused = false;
+			if (DEBUG) console.log('Resuming feeding, decoder queue small enough');
 			this.#feedDecoder();
 		}
 		if (this.#frameQueue.length > 10) {
-			if (DEBUG) console.log('Force feeding.');
-			this.#feedingPaused = false;
+			if (DEBUG) console.log('Resuming feeding, frame queue getting big');
 			this.#feedDecoder();
 		}
 	};

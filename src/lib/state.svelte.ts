@@ -11,7 +11,7 @@ class AppState {
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
 	audioLevel = $state([0, 0]);
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
-	disableHoverStates = $state(false);
+	mouseIsDown = $state(false);
 
 	disableKeyboardShortcuts = false;
 	lockPalette = false;

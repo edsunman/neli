@@ -3,6 +3,7 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { setSourceThumbnail } from '$lib/source/actions';
 import type { Source } from '$lib/source/source.svelte';
 import { appState, timelineState } from '$lib/state.svelte';
+import { startPlayLoop } from '$lib/timeline/actions';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
 
@@ -19,6 +20,10 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 	);
 	appState.mediaWorker.addEventListener('message', async (event) => {
 		switch (event.data.command) {
+			case 'ready-to-play': {
+				startPlayLoop();
+				break;
+			}
 			case 'thumbnail': {
 				const videoFrame = event.data.videoFrame;
 				const canvas = document.createElement('canvas');

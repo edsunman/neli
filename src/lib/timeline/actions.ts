@@ -19,10 +19,13 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 };
 
 export const play = () => {
+	playWorker(timelineState.currentFrame);
+};
+
+export const startPlayLoop = () => {
 	timelineState.playing = true;
 	timelineState.selectedClip = null;
-
-	playWorker(timelineState.currentFrame);
+	//playWorker(timelineState.currentFrame);
 
 	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
 	let accumulator = 0;
