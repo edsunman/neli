@@ -51,14 +51,6 @@
 	let contextMenu: ContextMenu;
 	let clickedFrame = 0;
 
-	$effect(() => {
-		// redraw on window resize
-		innerHeight.current, innerWidth.current;
-		setCanvasWidth();
-		if (waveContext) drawWaveform(waveContext, timelineState.width);
-		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
-	});
-
 	const buttons = $state([
 		{
 			text: 'split clip',
@@ -300,9 +292,10 @@
 	};
 	requestAnimationFrame(step);
 
-	onMount(async () => {
-		await tick();
+	onMount(() => {
+		//await tick();
 		if (!canvas) return;
+		timelineState.width = document.body.clientWidth;
 		waveCanvas = new OffscreenCanvas(timelineState.width, 100);
 		waveContext = waveCanvas.getContext('2d');
 
@@ -355,13 +348,20 @@
 			contextMenu.openContextMenu(e);
 		}}
 		bind:clientHeight={height}
-		bind:clientWidth={timelineState.width}
 		bind:this={canvasContainer}
 	>
 		<canvas bind:this={canvas}></canvas>
 	</div>
 </div>
 <svelte:window
+	onresize={async (e) => {
+		timelineState.width = document.body.clientWidth;
+		setCanvasWidth();
+		console.log(document.body.clientWidth);
+
+		if (waveContext) drawWaveform(waveContext, timelineState.width);
+		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
 		if (appState.showPalette) return;
@@ -377,9 +377,11 @@
 				setCurrentFrame(timelineState.currentFrame + 1);
 				break;
 			case 'Minus':
+				if (event.ctrlKey) break;
 				zoomOut();
 				break;
 			case 'Equal':
+				if (event.ctrlKey) break;
 				zoomIn();
 				break;
 			case 'Digit0':

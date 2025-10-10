@@ -63,8 +63,6 @@ export const drawCanvas = (
 
 	context.translate(playheadPosition - 6, playheadTop);
 	context.fill(PLAYHEAD_PATH);
-	//context.fillStyle = '#18181b';
-	//context.fill(PLAYHEAD_INSET_PATH);
 	context.translate(-playheadPosition + 6, -playheadTop);
 
 	// scrollbar
