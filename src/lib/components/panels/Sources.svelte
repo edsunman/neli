@@ -25,8 +25,9 @@
 	};
 
 	const fileSelected = (file: File) => {
-		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
-			return;
+		console.log('selected', file);
+		/* if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
+			return; */
 		appState.fileToImport = file;
 		appState.palettePage = 'import';
 		appState.showPalette = true;
@@ -124,7 +125,8 @@
 			</div>
 			<input
 				onchange={(e) => {
-					if (!e.currentTarget.files) return;
+					if (!e.currentTarget.files || (e.currentTarget.files && e.currentTarget.files.length < 1))
+						return;
 					const file = e.currentTarget.files[0];
 					fileSelected(file);
 				}}

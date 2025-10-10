@@ -11,6 +11,7 @@
 	--color-zinc-350: #c9c9ce;
 	--color-zinc-370: #b6b6bb;
 }
+@custom-variant height-xl (@media (height >= 1000px));
 @font-face {
 	font-family: Sen;
 	font-style: normal;

@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 	import { checkDroppedSource, createAudioSource, createVideoSource } from '$lib/source/actions';
+	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
+	import type { FileInfo } from '$lib/types';
+
+	import Button from '../ui/Button.svelte';
 	import InfoIcon from '../icons/InfoIcon.svelte';
 	import SpinningIcon from '../icons/SpinningIcon.svelte';
-	import Button from '../ui/Button.svelte';
-	import type { FileInfo } from '$lib/types';
 	import AudioIcon from '../icons/AudioIcon.svelte';
-	import { onMount } from 'svelte';
+	import HelpIcon from '../icons/HelpIcon.svelte';
 
 	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
@@ -71,10 +73,6 @@
 
 	const processFile = async (file: File) => {
 		appState.fileToImport = null;
-		console.log(file.type);
-
-		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
-			return;
 
 		fileDetails.name = file.name;
 		fileDetails.type = file.type;
@@ -82,8 +80,17 @@
 		appState.lockPalette = true;
 		showDetails = true;
 
+		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav') {
+			fileDetails.type = 'unknown';
+			warningMessage = 'file type not supported';
+			loadingMessage = '';
+			disableButton = false;
+			return;
+		}
+
 		if (file.size > 1e9) {
 			warningMessage = 'file exceeds 1GB size limit';
+			fileDetails.type = 'unknown';
 			loadingMessage = '';
 			disableButton = false;
 			return;
@@ -123,6 +130,18 @@
 		}
 
 		setAudioReady();
+	};
+
+	const truncateString = (str: string, maxLength: number) => {
+		if (!str || str.length <= maxLength) {
+			return str;
+		}
+		const ellipsis = '...';
+		const truncateLength = maxLength - ellipsis.length;
+		if (truncateLength <= 0) {
+			return maxLength >= 1 ? str.substring(0, maxLength) : ellipsis;
+		}
+		return str.substring(0, truncateLength) + ellipsis;
 	};
 
 	onMount(() => {
@@ -187,9 +206,14 @@
 					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
 						<AudioIcon class="size-12 text-clip-blue-600" />
 					{/if}
+					{#if fileDetails.type === 'unknown'}
+						<HelpIcon class="size-12 text-zinc-600" />
+					{/if}
 				</div>
 			</div>
-			<div class="w-20 flex-1 content-center"><p>{fileDetails.name}</p></div>
+			<div class="w-20 flex-1 content-center wrap-break-word">
+				{truncateString(fileDetails.name, 80)}
+			</div>
 		</div>
 		{#if fileDetails.info && !('error' in fileDetails.info)}
 			<div class="grid grid-cols-2 grid-rows-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
