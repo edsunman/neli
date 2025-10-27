@@ -26,8 +26,6 @@
 
 	const fileSelected = (file: File) => {
 		console.log('selected', file);
-		/* if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
-			return; */
 		appState.fileToImport = file;
 		appState.palettePage = 'import';
 		appState.showPalette = true;
@@ -124,6 +122,10 @@
 				<AddIcon class="w-6 h-6 pointer-events-none" />
 			</div>
 			<input
+				onclick={(e) => {
+					// allow on change to run for same file
+					e.currentTarget.value = '';
+				}}
 				onchange={(e) => {
 					if (!e.currentTarget.files || (e.currentTarget.files && e.currentTarget.files.length < 1))
 						return;

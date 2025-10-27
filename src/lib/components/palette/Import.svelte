@@ -39,8 +39,7 @@
 		thumbnailReady = true;
 		thumbnail = source.thumbnail;
 		if (gap > 70 && warningMessage === '') {
-			warningMessage =
-				'this video has a large gap between keyframes which may result in poor playback performance';
+			warningMessage = `this video has a large gap between keyframes (${gap}) which may result in poor playback performance`;
 		}
 		if (audioReady) {
 			unlock();

@@ -127,7 +127,7 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D, width: 
 					maxLines.set(position, value);
 				}
 			}
-		} else {
+		} else if (clip.source.type === 'test') {
 			// test card waveform
 			for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
 				const position = Math.floor(j / scaleFactor + clipStartPixel);
