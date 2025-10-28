@@ -3,11 +3,11 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
 	import type { Clip } from '$lib/clip/clip.svelte';
-
-	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
-	import UndoIcon from '../icons/UndoIcon.svelte';
+	import { undoIcon } from '../icons/Icons.svelte';
 	import { getClipsAtFrame } from '$lib/clip/actions';
 	import { getClipInitialScaleFactor } from '$lib/clip/utils';
+
+	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -145,7 +145,7 @@
 	const buttons = $state([
 		{
 			text: 'reset transform',
-			icon: UndoIcon,
+			icon: undoIcon,
 			onclick: () => {
 				const clip = timelineState.selectedClip;
 				if (!clip) return;

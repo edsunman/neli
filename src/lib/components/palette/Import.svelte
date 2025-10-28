@@ -4,12 +4,9 @@
 	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
 	import type { FileInfo } from '$lib/types';
+	import { infoIcon, spinningIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
 
 	import Button from '../ui/Button.svelte';
-	import InfoIcon from '../icons/InfoIcon.svelte';
-	import SpinningIcon from '../icons/SpinningIcon.svelte';
-	import AudioIcon from '../icons/AudioIcon.svelte';
-	import HelpIcon from '../icons/HelpIcon.svelte';
 
 	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
@@ -203,10 +200,10 @@
 					]}
 				>
 					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
-						<AudioIcon class="size-12 text-clip-blue-600" />
+						{@render audioIcon('size-12 text-clip-blue-600')}
 					{/if}
 					{#if fileDetails.type === 'unknown'}
-						<HelpIcon class="size-12 text-zinc-600" />
+						{@render helpIcon('size-12 text-zinc-600')}
 					{/if}
 				</div>
 			</div>
@@ -237,13 +234,13 @@
 			<div
 				class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center"
 			>
-				<InfoIcon class="size-6 mr-2 text-rose-600" />
+				{@render infoIcon('size-6 mr-2 text-rose-600')}
 				<p class="flex-1 content-center">{warningMessage}</p>
 			</div>
 		{/if}
 		{#if loadingMessage}
 			<div class="text-zinc-200 mt-4 flex justify-center">
-				<div class="mr-4 content-center"><SpinningIcon class="size-5" /></div>
+				<div class="mr-4 content-center">{@render spinningIcon('size-5')}</div>
 				<p class="content-center">{loadingMessage}</p>
 			</div>
 		{/if}

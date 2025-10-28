@@ -11,18 +11,21 @@
 	import { onMount } from 'svelte';
 	import { stringToFramesAndSynopsis } from '$lib/timeline/utils';
 
-	import InfoIcon from '../icons/InfoIcon.svelte';
-	import ZoomInIcon from '../icons/ZoomInIcon.svelte';
-	import ZoomOutIcon from '../icons/ZoomOutIcon.svelte';
-	import ImportIcon from '../icons/ImportIcon.svelte';
-	import ExportIcon from '../icons/ExportIcon.svelte';
-	import HelpIcon from '../icons/HelpIcon.svelte';
-	import SeekIcon from '../icons/SeekIcon.svelte';
-	import PlayIcon from '../icons/PlayIcon.svelte';
-	import ForwardIcon from '../icons/ForwardIcon.svelte';
-	import BackIcon from '../icons/BackIcon.svelte';
-	import UndoIcon from '../icons/UndoIcon.svelte';
-	import RedoIcon from '../icons/RedoIcon.svelte';
+	import {
+		infoIcon,
+		zoomInIcon,
+		zoomOutIcon,
+		importIcon,
+		exportIcon,
+		helpIcon,
+		seekIcon,
+		playIcon,
+		folderIcon,
+		backIcon,
+		undoIcon,
+		redoIcon,
+		forwardIcon
+	} from '../icons/Icons.svelte';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -41,7 +44,7 @@
 					id: 101,
 					text: 'import',
 					selected: true,
-					icon: ImportIcon,
+					icon: importIcon,
 					shortcuts: ['I'],
 					action: () => (appState.palettePage = 'import')
 				},
@@ -49,7 +52,7 @@
 					id: 102,
 					text: 'export',
 					selected: false,
-					icon: ExportIcon,
+					icon: exportIcon,
 					shortcuts: ['E'],
 					action: () => (appState.palettePage = 'export')
 				},
@@ -65,7 +68,7 @@
 					id: 104,
 					text: 'about',
 					selected: false,
-					icon: InfoIcon,
+					icon: infoIcon,
 					shortcuts: [],
 					action: () => (appState.palettePage = 'about')
 				},
@@ -73,7 +76,7 @@
 					id: 105,
 					text: 'help',
 					selected: false,
-					icon: HelpIcon,
+					icon: helpIcon,
 					shortcuts: [],
 					action: () => {
 						window.open('https://neli.video/docs/getting-started', '_blank');
@@ -84,7 +87,7 @@
 					id: 106,
 					text: 'undo',
 					selected: false,
-					icon: UndoIcon,
+					icon: undoIcon,
 					shortcuts: ['ctrl', 'Z'],
 					action: () => {
 						historyManager.undo();
@@ -95,7 +98,7 @@
 					id: 107,
 					text: 'redo',
 					selected: false,
-					icon: RedoIcon,
+					icon: redoIcon,
 					shortcuts: ['ctrl', 'alt', 'Z'],
 					action: () => {
 						historyManager.redo();
@@ -112,7 +115,7 @@
 					id: 201,
 					text: 'play / pause',
 					selected: false,
-					icon: PlayIcon,
+					icon: playIcon,
 					shortcuts: ['space'],
 					action: () => {
 						if (timelineState.playing) {
@@ -127,7 +130,7 @@
 					id: 202,
 					text: 'zoom in',
 					selected: false,
-					icon: ZoomInIcon,
+					icon: zoomInIcon,
 					shortcuts: ['='],
 					action: () => {
 						zoomIn();
@@ -138,7 +141,7 @@
 					id: 203,
 					text: 'zoom out',
 					selected: false,
-					icon: ZoomOutIcon,
+					icon: zoomOutIcon,
 					shortcuts: ['-'],
 					action: () => {
 						zoomOut();
@@ -149,7 +152,7 @@
 					id: 204,
 					text: 'one frame forward',
 					selected: false,
-					icon: ForwardIcon,
+					icon: forwardIcon,
 					shortcuts: ['right arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame + 1);
@@ -160,7 +163,7 @@
 					id: 205,
 					text: 'one frame back',
 					selected: false,
-					icon: BackIcon,
+					icon: backIcon,
 					shortcuts: ['left arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame - 1);
@@ -329,7 +332,7 @@
 							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
 						]}
 					>
-						<command.icon class="size-5 inline mr-3" />
+						{@render command.icon('size-5 inline mr-3')}
 						<p class="flex-1">{@html formatString(command.text)}</p>
 						{#each command.shortcuts as key, i}
 							{#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if}
@@ -355,8 +358,7 @@
 			]}
 			onclick={seekEvent}
 		>
-			<SeekIcon class="size-5 inline mr-2" />
-			<!-- {@html formatString(command.text)} -->
+			{@render seekIcon('size-5 inline mr-2')}
 			<p>{targetFrameFormatted}</p>
 		</button>
 	{/if}

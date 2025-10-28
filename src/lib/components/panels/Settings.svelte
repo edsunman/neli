@@ -1,16 +1,11 @@
 <script lang="ts">
 	import { appState, audioState, timelineState } from '$lib/state.svelte';
 	import { ToggleGroup, Tooltip } from 'bits-ui';
+	import { speakerIcon, audioIcon, textIcon, moveIcon } from '../icons/Icons.svelte';
 
 	import SettingsInput from '../ui/SettingsInput.svelte';
 	import SettingsGroup from '../ui/SettingsGroup.svelte';
 	import Slider from '../ui/Slider.svelte';
-
-	import SpeakerIcon from '../icons/SpeakerIcon.svelte';
-	import SettingsIcon from '../icons/SettingsIcon.svelte';
-	import AudioIcon from '../icons/AudioIcon.svelte';
-	import TextIcon from '../icons/TextIcon.svelte';
-	import MoveIcon from '../icons/MoveIcon.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
 
 	let selected = $state<'masterAudio' | 'project' | 'layout' | 'audio' | 'text'>('audio');
@@ -42,7 +37,7 @@
 								'p-2'
 							]}
 						>
-							<SpeakerIcon class="w-6 h-6" />
+							{@render speakerIcon('w-6 h-6')}
 						</div>
 					{/snippet}
 					output audio
@@ -72,7 +67,8 @@
 										'p-2'
 									]}
 								>
-									<MoveIcon class="w-6 h-6" />
+									{@render moveIcon('w-6 h-6')}
+									<!-- <MoveIcon class="w-6 h-6" /> -->
 								</div>
 							{/snippet}
 							clip transform
@@ -90,7 +86,7 @@
 										'p-2'
 									]}
 								>
-									<TextIcon class="w-6 h-6" />
+									{@render textIcon('w-6 h-6')}
 								</div>
 							{/snippet}
 							clip text
@@ -108,7 +104,7 @@
 										'p-2'
 									]}
 								>
-									<AudioIcon class="w-6 h-6" />
+									{@render audioIcon('w-6 h-6')}
 								</div>
 							{/snippet}
 							clip audio

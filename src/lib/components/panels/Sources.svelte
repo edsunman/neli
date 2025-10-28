@@ -2,14 +2,16 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createClip } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
+	import {
+		addIcon,
+		audioIcon,
+		textIcon,
+		paletteIcon,
+		filmIcon,
+		folderIcon
+	} from '../icons/Icons.svelte';
 
-	import TextIcon from '../icons/TextIcon.svelte';
-	import AudioIcon from '../icons/AudioIcon.svelte';
-	import FilmIcon from '../icons/FilmIcon.svelte';
-	import PaletteIcon from '../icons/PaletteIcon.svelte';
-	import FolderIcon from '../icons/FolderIcon.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	import AddIcon from '../icons/AddIcon.svelte';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -42,7 +44,7 @@
 				>
 					{#snippet trigger()}
 						<div class="p-2 text-zinc-600 hover:text-zinc-400">
-							<PaletteIcon class="w-6 h-6" />
+							{@render paletteIcon('w-6 h-6')}
 						</div>
 					{/snippet}
 					command palette
@@ -53,7 +55,7 @@
 				<MyTooltip contentProps={{ side: 'right' }}>
 					{#snippet trigger()}
 						<div class="p-2 text-zinc-200">
-							<FolderIcon class="w-6 h-6" />
+							{@render folderIcon('w-6 h-6')}
 						</div>
 					{/snippet}
 					sources folder
@@ -90,11 +92,11 @@
 						]}
 					>
 						{#if source.type === 'text'}
-							<TextIcon class="size-6 text-clip-purple-600" />
+							{@render textIcon('w-6 h-6 text-clip-purple-600')}
 						{:else if source.type === 'test'}
-							<FilmIcon class="size-6 text-clip-green-600" />
+							{@render filmIcon('w-6 h-6 text-clip-green-600')}
 						{:else if source.type === 'audio'}
-							<AudioIcon class="size-6 text-clip-blue-600" />
+							{@render audioIcon('w-6 h-6 text-clip-blue-600')}
 						{/if}
 					</span>
 
@@ -106,7 +108,7 @@
 			<div
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
-					'rounded-lg border-2  flex-1',
+					'rounded-lg border-2 select-none flex-1',
 					'border-dashed items-center justify-center flex h-14 mt-2',
 					'hover:border-zinc-500 hover:text-zinc-400'
 				]}
@@ -119,7 +121,7 @@
 					fileInput.click();
 				}}
 			>
-				<AddIcon class="w-6 h-6 pointer-events-none" />
+				{@render addIcon('size-5 mr-2 pointer-events-none')} import file
 			</div>
 			<input
 				onclick={(e) => {

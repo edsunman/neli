@@ -29,11 +29,10 @@
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
-	import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import MouseIcon from '../icons/MouseIcon.svelte';
+	import { mouseIcon } from '../icons/Icons.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -61,7 +60,7 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
-			shortcuts: ['shift', MouseIcon]
+			shortcuts: ['shift', mouseIcon]
 		},
 		{
 			text: 'focus clip',
@@ -354,10 +353,9 @@
 	</div>
 </div>
 <svelte:window
-	onresize={async (e) => {
+	onresize={async () => {
 		timelineState.width = document.body.clientWidth;
 		setCanvasWidth();
-		console.log(document.body.clientWidth);
 
 		if (waveContext) drawWaveform(waveContext, timelineState.width);
 		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
