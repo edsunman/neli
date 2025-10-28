@@ -15,8 +15,9 @@ export class Clip {
 	joinLeft = false;
 	joinRight = false;
 
-	// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan
-	params = $state([1, 1, 0, 0, 1, 0]);
+	// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan,
+	// 6 font size, 7 line height, 8 justify (l,c,r), 9 red, 10 green, 11 blue
+	params = $state([1, 1, 0, 0, 1, 0, 20, 0, 1, 1, 1, 1]);
 	text = $state('text');
 
 	deleted = false;

@@ -102,17 +102,7 @@ export class WebGPURenderer {
 
 	textPass(frameNumber: number, params: number[], inputText: string) {
 		if (!this.#textRenderer || !this.#font || !this.#passEncoder) return;
-		const text = this.#textRenderer.prepareText(
-			this.#font,
-			inputText,
-			{
-				centered: true,
-				lineHeight: 0,
-				pixelScale: 1 / 100,
-				color: [1, 1, 1, 1]
-			},
-			params
-		);
+		const text = this.#textRenderer.prepareText(this.#font, inputText, params);
 		this.#textRenderer.render(this.#passEncoder, [text]);
 	}
 
@@ -133,17 +123,9 @@ export class WebGPURenderer {
 			String(SS).padStart(2, '0') +
 			':' +
 			String(FF).padStart(2, '0');
-		const text = this.#textRenderer.prepareText(
-			this.#testFont,
-			t,
-			{
-				centered: true,
-				lineHeight: 0,
-				pixelScale: 1 / 150,
-				color: [1, 1, 1, 1]
-			},
-			params
-		);
+
+		params[6] = 35;
+		const text = this.#textRenderer.prepareText(this.#testFont, t, params);
 		this.#textRenderer.render(this.#passEncoder, [text]);
 	}
 

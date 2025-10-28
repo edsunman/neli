@@ -111,7 +111,7 @@ export class MsdfText {
 }
 
 export type MsdfTextFormattingOptions = {
-	centered?: boolean;
+	justify?: 'left' | 'center' | 'right';
 	pixelScale?: number;
 	lineHeight?: number;
 	color?: [number, number, number, number];
@@ -342,12 +342,7 @@ export class MsdfTextRenderer {
 	}
 
 	// This can be called multiple times before calling render()
-	prepareText(
-		font: MsdfFont,
-		text: string,
-		options: MsdfTextFormattingOptions = {},
-		params: number[]
-	): MsdfText {
+	prepareText(font: MsdfFont, text: string, params: number[]): MsdfText {
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
 			size: (text.length + 6) * Float32Array.BYTES_PER_ELEMENT * 4,
@@ -358,40 +353,30 @@ export class MsdfTextRenderer {
 		const textArray = new Float32Array(textBuffer.getMappedRange());
 		let offset = 8; // Accounts for the values managed by MsdfText internally.
 
-		if (!options.lineHeight) options.lineHeight = 0;
-		let measurements: MsdfTextMeasurements;
-		if (options.centered) {
-			measurements = this.measureText(font, text, options.lineHeight);
+		const measurements = this.measureText(font, text, params[7]);
 
-			this.measureText(
-				font,
-				text,
-				options.lineHeight,
-				(textX: number, textY: number, line: number, char: MsdfChar) => {
-					const lineOffset =
-						measurements.width * -0.5 - (measurements.width - measurements.lineWidths[line]) * -0.5;
-
-					textArray[offset] = textX + lineOffset;
-
-					textArray[offset + 1] = textY + measurements.height * 0.5;
-					textArray[offset + 2] = char.charIndex;
-					offset += 4;
+		this.measureText(
+			font,
+			text,
+			params[7],
+			(textX: number, textY: number, line: number, char: MsdfChar) => {
+				if (params[8] === 1) {
+					// center
+					textX = textX + (measurements.width - measurements.lineWidths[line]) / 2;
 				}
-			);
-		} else {
-			measurements = this.measureText(
-				font,
-				text,
-				options.lineHeight,
-				(textX: number, textY: number, line: number, char: MsdfChar) => {
-					textArray[offset] = textX;
-
-					textArray[offset + 1] = textY;
-					textArray[offset + 2] = char.charIndex;
-					offset += 4;
+				if (params[8] === 2) {
+					// right
+					textX = textX + (measurements.width - measurements.lineWidths[line]);
 				}
-			);
-		}
+
+				textX = textX - measurements.width / 2;
+				textArray[offset] = textX;
+				textArray[offset + 1] = textY + measurements.height * 0.5;
+				textArray[offset + 2] = char.charIndex;
+				offset += 4;
+			}
+		);
+
 		textBuffer.unmap();
 
 		const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
@@ -425,13 +410,9 @@ export class MsdfTextRenderer {
 		const renderBundle = encoder.finish();
 
 		const msdfText = new MsdfText(this.device, renderBundle, measurements, font, textBuffer);
-		if (options.pixelScale !== undefined) {
-			msdfText.setPixelScale(options.pixelScale);
-		}
 
-		if (options.color !== undefined) {
-			msdfText.setColor(...options.color);
-		}
+		msdfText.setPixelScale(params[6] / 5000);
+		msdfText.setColor(params[9], params[10], params[11]);
 
 		return msdfText;
 	}
@@ -481,9 +462,12 @@ export class MsdfTextRenderer {
 		lineWidths.push(textOffsetX);
 		maxWidth = Math.max(maxWidth, textOffsetX);
 
+		const characterHeights = lineWidths.length * font.lineHeight;
+		const lineHeightSpacing = (lineWidths.length - 1) * lineHeight;
+
 		return {
 			width: maxWidth,
-			height: lineWidths.length * font.lineHeight,
+			height: characterHeights + lineHeightSpacing,
 			lineWidths,
 			printedCharCount
 		};
