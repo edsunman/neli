@@ -11,6 +11,9 @@
 		helpIcon,
 		importIcon,
 		infoIcon,
+		justifyLeftIcon,
+		justifyCenterIcon,
+		justifyRightIcon,
 		logoIcon,
 		mouseIcon,
 		moveIcon,
@@ -211,6 +214,54 @@
 	>
 		<path d="M12,12 L12,15" /> <line x1="12" y1="9" x2="12" y2="9" />
 		<circle cx="12" cy="12" r="10" />
+	</svg>
+{/snippet}
+
+{#snippet justifyLeftIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M6 10L14 10M6 6L18 6M6 14L18 14M6 18L14 18" />
+	</svg>
+{/snippet}
+
+{#snippet justifyCenterIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M8 10L16 10M6 6L18 6M6 14L18 14M8 18L16 18" />
+	</svg>
+{/snippet}
+
+{#snippet justifyRightIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M10 10h8M6 6h12M6 14h12m-8 4h8" />
 	</svg>
 {/snippet}
 

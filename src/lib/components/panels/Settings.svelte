@@ -1,13 +1,18 @@
 <script lang="ts">
 	import { appState, audioState, timelineState } from '$lib/state.svelte';
 	import { ToggleGroup, Tooltip } from 'bits-ui';
-	import { speakerIcon, audioIcon, textIcon, moveIcon } from '../icons/Icons.svelte';
+	import {
+		speakerIcon,
+		audioIcon,
+		textIcon,
+		moveIcon,
+		justifyCenterIcon,
+		justifyLeftIcon,
+		justifyRightIcon
+	} from '../icons/Icons.svelte';
 
-	//import SettingsInput from '../ui/SettingsInput.svelte';
-	//import SettingsGroup from '../ui/settings/Group.svelte';
 	import Slider from '../ui/Slider.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	//import SettingsTextarea from '../ui/SettingsTextarea.svelte';
 	import Settings from '../ui/settings';
 
 	type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text';
@@ -18,7 +23,9 @@
 			if (type === 'audio') {
 				return 'audio';
 			}
-			if (type === 'text' && previousSelected === 'text') return 'text';
+			if (type === 'text') {
+				return 'text';
+			}
 			if ((type === 'video' || type === 'test') && previousSelected === 'audio') return 'audio';
 			previousSelected = 'layout';
 			return 'layout';
@@ -185,7 +192,15 @@
 				<Settings.Input bind:value={clip.params[6]} fallback={20} />
 			</Settings.Group>
 			<Settings.Group label={'justify'}>
-				<Settings.Input bind:value={clip.params[8]} fallback={0} />
+				<!-- <Settings.Input bind:value={clip.params[8]} fallback={0} /> -->
+				<Settings.Toggle
+					bind:value={clip.params[8]}
+					items={[
+						{ value: 0, icon: justifyLeftIcon },
+						{ value: 1, icon: justifyCenterIcon },
+						{ value: 2, icon: justifyRightIcon }
+					]}
+				/>
 			</Settings.Group>
 			<Settings.Group label={'line height'}>
 				<Settings.Input bind:value={clip.params[7]} fallback={0} />

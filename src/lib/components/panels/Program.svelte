@@ -124,6 +124,7 @@
 		timelineState.selectedClip = null;
 		const clips = getClipsAtFrame(timelineState.currentFrame);
 		for (const clip of clips) {
+			if (clip.source.type === 'text' || clip.source.type === 'video') continue;
 			const clipWidthPixels = clip.source.width * clip.params[0];
 			const clipHeightPixels = clip.source.height * clip.params[1];
 			const centerOfClipX = (clip.params[2] / 2 + 0.5) * 1920;
@@ -197,7 +198,7 @@
 			}}
 		></canvas>
 	</div>
-	{#if timelineState.selectedClip && timelineState.selectedClip.source.type !== 'audio' && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
+	{#if timelineState.selectedClip && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 		{@const clip = timelineState.selectedClip}
 		{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
 		{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}
@@ -205,51 +206,78 @@
 		{@const offsetY = (clip.params[3] / 2) * 1080 * (scale / 100)}
 		{@const top = height / 2 - boxSizeY / 2 - offsetY}
 		{@const left = width / 2 - boxSizeX / 2 + offsetX}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<!-- svelte-ignore a11y_mouse_events_have_key_events -->
-		<div
-			style:top={`${top}px`}
-			style:left={`${left}px`}
-			style:width={`${boxSizeX}px`}
-			style:height={`${boxSizeY}px`}
-			class="border-2 border-white absolute top-0 left-0"
-			onmousedown={(e) => {
-				if (e.button > 0) return;
-				e.preventDefault();
-				dragging = true;
-				savedClipPosition = { x: clip.params[2], y: clip.params[3] };
-				mouseDownPosition = { x: e.clientX, y: e.clientY };
-				appState.mouseMoveOwner = 'program';
-				appState.mouseIsDown = true;
-			}}
-			oncontextmenu={(e) => {
-				e.preventDefault();
-				contextMenu.openContextMenu(e);
-			}}
-		>
-			{@render cornerBox(0)}
-			{@render cornerBox(1)}
-			{@render cornerBox(2)}
-			{@render cornerBox(3)}
-			{#snippet cornerBox(corner: number)}
-				<div
-					onmouseenter={() => {
-						cornerHover = true;
-						cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
-					}}
-					onmouseleave={() => {
-						cornerHover = false;
-					}}
-					onmousedown={(e) =>
-						cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-					class={[
-						corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
-						corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
-						'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
-					]}
-				></div>
-			{/snippet}
-		</div>
+		{#if clip.source.type === 'video' || clip.source.type === 'test'}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_mouse_events_have_key_events -->
+			<div
+				style:top={`${top}px`}
+				style:left={`${left}px`}
+				style:width={`${boxSizeX}px`}
+				style:height={`${boxSizeY}px`}
+				class="border-2 border-white absolute top-0 left-0"
+				onmousedown={(e) => {
+					if (e.button > 0) return;
+					e.preventDefault();
+					dragging = true;
+					savedClipPosition = { x: clip.params[2], y: clip.params[3] };
+					mouseDownPosition = { x: e.clientX, y: e.clientY };
+					appState.mouseMoveOwner = 'program';
+					appState.mouseIsDown = true;
+				}}
+				oncontextmenu={(e) => {
+					e.preventDefault();
+					contextMenu.openContextMenu(e);
+				}}
+			>
+				{@render cornerBox(0)}
+				{@render cornerBox(1)}
+				{@render cornerBox(2)}
+				{@render cornerBox(3)}
+				{#snippet cornerBox(corner: number)}
+					<div
+						onmouseenter={() => {
+							cornerHover = true;
+							cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
+						}}
+						onmouseleave={() => {
+							cornerHover = false;
+						}}
+						onmousedown={(e) =>
+							cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
+						class={[
+							corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
+							corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
+							'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
+						]}
+					></div>
+				{/snippet}
+			</div>
+		{/if}
+		{#if clip.source.type === 'text'}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+
+			<div
+				onmouseenter={() => {
+					cornerHover = true;
+					cornerHoverStyle = 'move';
+				}}
+				onmouseleave={() => {
+					cornerHover = false;
+				}}
+				onmousedown={(e) => {
+					if (e.button > 0) return;
+					e.preventDefault();
+					dragging = true;
+					savedClipPosition = { x: clip.params[2], y: clip.params[3] };
+					mouseDownPosition = { x: e.clientX, y: e.clientY };
+					appState.mouseMoveOwner = 'program';
+					appState.mouseIsDown = true;
+				}}
+				style:top={`${top + boxSizeY / 2 - 7}px`}
+				style:left={`${left + boxSizeX / 2 - 7}px`}
+				class={['h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute  bg-zinc-900']}
+			></div>
+		{/if}
 	{/if}
 </div>
 

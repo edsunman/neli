@@ -346,6 +346,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 		newClipOffset
 	);
 	newClip.params = [...clip.params];
+	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });

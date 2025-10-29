@@ -99,7 +99,6 @@
 							{@render audioIcon('w-6 h-6 text-clip-blue-600')}
 						{/if}
 					</span>
-
 					{source.name}
 				</button>
 			{/each}
