@@ -23,7 +23,6 @@
 		appState.encoderProgress.percentage = 0;
 		const fileName = inputValue ? inputValue : 'video';
 		encode(fileName, startFrame, endFrame);
-		console.log(startFrame, endFrame);
 	};
 </script>
 

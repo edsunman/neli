@@ -1,4 +1,4 @@
-import type { SourceType } from '$lib/types';
+import type { SourceType, SrtEntry } from '$lib/types';
 
 export class Source {
 	id: string;
@@ -11,6 +11,7 @@ export class Source {
 	audioChunks: EncodedAudioChunk[] = [];
 	audioConfig?: AudioEncoderConfig;
 	audioWaveform?: Float32Array;
+	srtEntries: SrtEntry[] = [];
 
 	width = 1920;
 	height = 1080;

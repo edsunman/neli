@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createClip } from '$lib/clip/actions';
+	import { createClip, setTrackClipJoins } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
 	import {
 		addIcon,
@@ -12,6 +12,7 @@
 	} from '../icons/Icons.svelte';
 
 	import MyTooltip from '../ui/Tooltip.svelte';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -71,7 +72,26 @@
 						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
 					]}
 					onclick={() => {
-						createClip(source.id, 0, timelineState.currentFrame);
+						if (source.type === 'srt') {
+							for (const entry of source.srtEntries) {
+								//console.log(entry.text);
+								const clip = createClip(
+									appState.sources[0].id,
+									1,
+									entry.inPoint,
+									entry.outPoint - entry.inPoint
+								);
+								if (!clip) continue;
+								clip.text = entry.text;
+								clip.params[3] = -0.75;
+								clip.params[6] = 12;
+								clip.params[7] = 1.5;
+								updateWorkerClip(clip);
+							}
+							setTrackClipJoins(1);
+						} else {
+							createClip(source.id, 0, timelineState.currentFrame);
+						}
 						historyManager.finishCommand();
 					}}
 					ondragstart={(e) => {
@@ -84,7 +104,7 @@
 					<span
 						style:background-image={`url(${source.thumbnail})`}
 						class={[
-							source.type === 'text' ? 'bg-clip-purple-500' : '',
+							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
@@ -93,6 +113,8 @@
 					>
 						{#if source.type === 'text'}
 							{@render textIcon('w-6 h-6 text-clip-purple-600')}
+						{:else if source.type === 'srt'}
+							<span class="text-clip-purple-600 text-xl font-extrabold">.srt</span>
 						{:else if source.type === 'test'}
 							{@render filmIcon('w-6 h-6 text-clip-green-600')}
 						{:else if source.type === 'audio'}

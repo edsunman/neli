@@ -420,7 +420,7 @@ export class MsdfTextRenderer {
 	measureText(
 		font: MsdfFont,
 		text: string,
-		lineHeight: number,
+		lineSpacing: number,
 		charCallback?: (x: number, y: number, line: number, char: MsdfChar) => void
 	): MsdfTextMeasurements {
 		let maxWidth = 0;
@@ -434,14 +434,14 @@ export class MsdfTextRenderer {
 		for (let i = 0; i < text.length; ++i) {
 			const charCode = nextCharCode;
 			nextCharCode = i < text.length - 1 ? text.charCodeAt(i + 1) : -1;
-
+			//console.log(font.lineHeight);
 			switch (charCode) {
 				case 10: // Newline
 					lineWidths.push(textOffsetX);
 					line++;
 					maxWidth = Math.max(maxWidth, textOffsetX);
 					textOffsetX = 0;
-					textOffsetY -= font.lineHeight + lineHeight;
+					textOffsetY -= font.lineHeight * lineSpacing;
 					break;
 				case 13: // CR
 					break;
@@ -462,12 +462,12 @@ export class MsdfTextRenderer {
 		lineWidths.push(textOffsetX);
 		maxWidth = Math.max(maxWidth, textOffsetX);
 
-		const characterHeights = lineWidths.length * font.lineHeight;
-		const lineHeightSpacing = (lineWidths.length - 1) * lineHeight;
+		const linePitch = lineSpacing * font.lineHeight;
+		const height = font.lineHeight + (lineWidths.length - 1) * linePitch;
 
 		return {
 			width: maxWidth,
-			height: characterHeights + lineHeightSpacing,
+			height,
 			lineWidths,
 			printedCharCount
 		};

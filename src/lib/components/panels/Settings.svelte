@@ -174,10 +174,12 @@
 
 		{#if selected === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Settings.Group label={'size'}>
-				<Settings.Input bind:value={clip.params[0]} fallback={1} />
-				<Settings.Input bind:value={clip.params[1]} fallback={1} />
-			</Settings.Group>
+			{#if clip.source.type !== 'text'}
+				<Settings.Group label={'size'}>
+					<Settings.Input bind:value={clip.params[0]} fallback={1} />
+					<Settings.Input bind:value={clip.params[1]} fallback={1} />
+				</Settings.Group>
+			{/if}
 			<Settings.Group label={'position'}>
 				<Settings.Input bind:value={clip.params[2]} />
 				<Settings.Input bind:value={clip.params[3]} />
@@ -202,8 +204,8 @@
 					]}
 				/>
 			</Settings.Group>
-			<Settings.Group label={'line height'}>
-				<Settings.Input bind:value={clip.params[7]} fallback={0} />
+			<Settings.Group label={'line spacing'}>
+				<Settings.Input bind:value={clip.params[7]} fallback={1} />
 			</Settings.Group>
 		{/if}
 		{#if selected === 'audio' && timelineState.selectedClip}

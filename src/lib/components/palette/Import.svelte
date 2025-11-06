@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import { checkDroppedSource, createAudioSource, createVideoSource } from '$lib/source/actions';
+	import {
+		checkDroppedSource,
+		createAudioSource,
+		createSrtSource,
+		createVideoSource
+	} from '$lib/source/actions';
 	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
 	import type { FileInfo } from '$lib/types';
@@ -20,7 +25,7 @@
 		type: '',
 		info: null
 	});
-	let thumbnailReady = false;
+	let thumbnailReady = true;
 	let audioReady = false;
 
 	const formatDuration = (seconds: number) => {
@@ -45,11 +50,6 @@
 		}
 	};
 
-	const setAudioReady = () => {
-		audioReady = true;
-		if (thumbnailReady) unlock();
-	};
-
 	const unlock = () => {
 		loadingMessage = '';
 		appState.lockPalette = false;
@@ -68,6 +68,7 @@
 	};
 
 	const processFile = async (file: File) => {
+		console.log(file.type);
 		appState.fileToImport = null;
 
 		fileDetails.name = file.name;
@@ -76,7 +77,12 @@
 		appState.lockPalette = true;
 		showDetails = true;
 
-		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav') {
+		if (
+			file.type !== 'video/mp4' &&
+			file.type !== 'audio/mpeg' &&
+			file.type !== 'audio/wav' &&
+			file.type !== 'application/x-subrip'
+		) {
 			fileDetails.type = 'unknown';
 			warningMessage = 'file type not supported';
 			loadingMessage = '';
@@ -110,6 +116,7 @@
 
 		if (info.type === 'video') {
 			loadingMessage = 'processing video';
+			thumbnailReady = false;
 			await createVideoSource(
 				file,
 				setThumbnailReady,
@@ -121,11 +128,15 @@
 
 		if (info.type === 'audio') {
 			loadingMessage = 'generating audio waveform';
-			thumbnailReady = true;
 			await createAudioSource(file, info.duration);
 		}
 
-		setAudioReady();
+		if (info.type === 'srt') {
+			await createSrtSource(file);
+		}
+
+		audioReady = true;
+		if (thumbnailReady) unlock();
 	};
 
 	const truncateString = (str: string, maxLength: number) => {
@@ -170,7 +181,7 @@
 				fileInput.click();
 			}}
 		>
-			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav)</small></p>
+			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav, .srt)</small></p>
 		</div>
 		<input
 			onchange={(e) => {
@@ -195,12 +206,17 @@
 					class={[
 						fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'
 							? 'bg-clip-blue-500'
-							: 'border-2 border-zinc-700 ',
+							: fileDetails.type === 'application/x-subrip'
+								? 'bg-clip-purple-500'
+								: 'border-2 border-zinc-700',
 						'rounded-lg w-full h-full flex items-center justify-center'
 					]}
 				>
 					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
 						{@render audioIcon('size-12 text-clip-blue-600')}
+					{/if}
+					{#if fileDetails.type === 'application/x-subrip'}
+						<span class="text-clip-purple-600 text-3xl font-extrabold">.srt</span>
 					{/if}
 					{#if fileDetails.type === 'unknown'}
 						{@render helpIcon('size-12 text-zinc-600')}
@@ -212,7 +228,7 @@
 			</div>
 		</div>
 		{#if fileDetails.info && !('error' in fileDetails.info)}
-			<div class="grid grid-cols-2 grid-rows-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
+			<div class="grid grid-cols-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
 				{#if fileDetails.info.type === 'video'}
 					{@render info('codec:', fileDetails.info.codec)}
 					{@render info('duration:', formatDuration(fileDetails.info.duration))}
@@ -227,6 +243,10 @@
 					{@render info('duration:', formatDuration(fileDetails.info.duration))}
 					{@render info('sample rate:', `${fileDetails.info.sampleRate / 1000} kHz`)}
 					{@render info('channels:', fileDetails.info.channelCount)}
+				{/if}
+				{#if fileDetails.info.type === 'srt'}
+					{@render info('duration:', fileDetails.info.duration)}
+					{@render info('captions:', fileDetails.info.entries)}
 				{/if}
 			</div>
 		{/if}
