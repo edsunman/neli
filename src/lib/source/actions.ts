@@ -67,51 +67,31 @@ export const checkDroppedSource = async (file: File): Promise<FileInfo> => {
 };
 
 function timestampToFrames(timestamp: string, fps: number = 30): number {
-	// Regex to extract hours, minutes, seconds, and milliseconds
 	// Assumes format HH:MM:SS,mmm
 	const match = timestamp.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+	if (!match) return 0;
 
-	if (!match) {
-		console.error(`Invalid timestamp format: ${timestamp}`);
-		return 0;
-	}
-
-	// Extract matched groups
 	const hours = parseInt(match[1], 10);
 	const minutes = parseInt(match[2], 10);
 	const seconds = parseInt(match[3], 10);
-	const milliseconds = parseInt(match[4], 10);
-
-	// 1. Convert everything to total milliseconds
-	const totalMilliseconds =
-		hours * 3600 * 1000 + minutes * 60 * 1000 + seconds * 1000 + milliseconds;
-
-	// 2. Convert milliseconds to seconds
+	const ms = parseInt(match[4], 10);
+	const totalMilliseconds = hours * 3600 * 1000 + minutes * 60 * 1000 + seconds * 1000 + ms;
 	const totalSeconds = totalMilliseconds / 1000;
 
-	// 3. Convert seconds to frames and round to the nearest whole frame
-	const frameNumber = Math.round(totalSeconds * fps);
-
-	return frameNumber;
+	return Math.round(totalSeconds * fps);
 }
 
 function parseSrt(srtContent: string): SrtEntry[] {
-	// 1. Normalize Newlines: Convert all \r\n (Windows) and \r (Mac Classic) to \n.
+	// Convert all \r\n (Windows) and \r (Mac Classic) to \n.
 	const normalizedContent = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-	// 2. Split the content into individual subtitle blocks.
-	// SRT blocks are typically separated by two newlines, and the file ends with newlines.
-	// The first block is usually empty or contains file-specific header info, so we discard it.
 	const blocks = normalizedContent.split(/\n\s*\n/g).filter((block) => block.trim() !== '');
 
 	const entries: SrtEntry[] = [];
 
-	// Regex to extract time and text from a *single block*
-	// This is simpler and less prone to issues than a multi-block regex.
-	// Group 1: Sequence number (e.g., 1) - Often unused but good for verification.
+	// Group 1: Sequence number
 	// Group 2: In-point timestamp
 	// Group 3: Out-point timestamp
-	// Group 4: Text content (everything after the time line)
+	// Group 4: Text content
 	const blockRegex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*)/;
 
 	for (const block of blocks) {
