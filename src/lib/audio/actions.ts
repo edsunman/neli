@@ -258,6 +258,7 @@ export const generateWaveformData = async (source: Source) => {
 	decoder.play(0);
 
 	let count = 0;
+	let retries = 0;
 	const state = {
 		currentIndex: 0,
 		samplesRemaining: 0,
@@ -265,6 +266,7 @@ export const generateWaveformData = async (source: Source) => {
 		tempSamples: []
 	};
 	const decodeLoop = async () => {
+		retries++;
 		decoder.run(0, true);
 
 		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
@@ -283,9 +285,12 @@ export const generateWaveformData = async (source: Source) => {
 			processAudioChunk(rawData, step, state, data);
 			audioData.close();
 			count++;
+			retries = 0;
 		}
 
-		if (count < source.audioChunks.length - 2) {
+		if (retries > 50) {
+			resolve(false);
+		} else if (count < source.audioChunks.length - 2) {
 			setTimeout(decodeLoop, 0);
 		} else {
 			source.audioWaveform = data;

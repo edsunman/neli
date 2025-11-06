@@ -2,12 +2,8 @@
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { pause, play } from '$lib/timeline/actions';
 	import { framesToTimecode } from '$lib/timeline/utils';
+	import { pauseIcon, playIcon, seekIcon, copyIcon, mouseIcon } from '../icons/Icons.svelte';
 
-	import PauseIcon from '../icons/PauseIcon.svelte';
-	import PlayIcon from '../icons/PlayIcon.svelte';
-	import SeekIcon from '../icons/SeekIcon.svelte';
-	import CopyIcon from '../icons/CopyIcon.svelte';
-	import MouseIcon from '../icons/MouseIcon.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 
 	let showFrames = $state(false);
@@ -20,16 +16,16 @@
 	const buttons = $state([
 		{
 			text: 'show frames',
-			icon: SeekIcon,
+			icon: seekIcon,
 			onclick: () => {
 				showFrames = !showFrames;
 				buttons[0].text = showFrames ? 'show timecode' : 'show frames';
 			},
-			shortcuts: ['shift', MouseIcon]
+			shortcuts: ['shift', mouseIcon]
 		},
 		{
 			text: 'copy timecode',
-			icon: CopyIcon,
+			icon: copyIcon,
 			onclick: async () => {
 				const type = 'text/plain';
 				const clipboardItemData = {
@@ -69,9 +65,9 @@
 		}}
 	>
 		{#if timelineState.playing}
-			<PauseIcon class={['absolute size-3.5 left-3 top-[13px] ']} />
+			{@render pauseIcon('absolute size-3.5 left-3 top-[13px]')}
 		{:else}
-			<PlayIcon class={['absolute size-3.5 left-3 top-[13px]']} />
+			{@render playIcon('absolute size-3.5 left-3 top-[13px]')}
 		{/if}
 
 		<span>

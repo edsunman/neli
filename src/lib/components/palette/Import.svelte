@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import { checkDroppedSource, createAudioSource, createVideoSource } from '$lib/source/actions';
+	import {
+		checkDroppedSource,
+		createAudioSource,
+		createSrtSource,
+		createVideoSource
+	} from '$lib/source/actions';
 	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
 	import type { FileInfo } from '$lib/types';
+	import { infoIcon, spinningIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
 
 	import Button from '../ui/Button.svelte';
-	import InfoIcon from '../icons/InfoIcon.svelte';
-	import SpinningIcon from '../icons/SpinningIcon.svelte';
-	import AudioIcon from '../icons/AudioIcon.svelte';
-	import HelpIcon from '../icons/HelpIcon.svelte';
 
 	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
@@ -23,7 +25,7 @@
 		type: '',
 		info: null
 	});
-	let thumbnailReady = false;
+	let thumbnailReady = true;
 	let audioReady = false;
 
 	const formatDuration = (seconds: number) => {
@@ -39,19 +41,13 @@
 		thumbnailReady = true;
 		thumbnail = source.thumbnail;
 		if (gap > 70 && warningMessage === '') {
-			warningMessage =
-				'this video has a large gap between keyframes which may result in poor playback performance';
+			warningMessage = `this video has a large gap between keyframes (${gap}) which may result in poor playback performance`;
 		}
 		if (audioReady) {
 			unlock();
 		} else {
 			loadingMessage = 'generating audio waveform';
 		}
-	};
-
-	const setAudioReady = () => {
-		audioReady = true;
-		if (thumbnailReady) unlock();
 	};
 
 	const unlock = () => {
@@ -72,6 +68,7 @@
 	};
 
 	const processFile = async (file: File) => {
+		console.log(file.type);
 		appState.fileToImport = null;
 
 		fileDetails.name = file.name;
@@ -80,7 +77,12 @@
 		appState.lockPalette = true;
 		showDetails = true;
 
-		if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav') {
+		if (
+			file.type !== 'video/mp4' &&
+			file.type !== 'audio/mpeg' &&
+			file.type !== 'audio/wav' &&
+			file.type !== 'application/x-subrip'
+		) {
 			fileDetails.type = 'unknown';
 			warningMessage = 'file type not supported';
 			loadingMessage = '';
@@ -114,6 +116,7 @@
 
 		if (info.type === 'video') {
 			loadingMessage = 'processing video';
+			thumbnailReady = false;
 			await createVideoSource(
 				file,
 				setThumbnailReady,
@@ -125,11 +128,15 @@
 
 		if (info.type === 'audio') {
 			loadingMessage = 'generating audio waveform';
-			thumbnailReady = true;
 			await createAudioSource(file, info.duration);
 		}
 
-		setAudioReady();
+		if (info.type === 'srt') {
+			await createSrtSource(file);
+		}
+
+		audioReady = true;
+		if (thumbnailReady) unlock();
 	};
 
 	const truncateString = (str: string, maxLength: number) => {
@@ -174,7 +181,7 @@
 				fileInput.click();
 			}}
 		>
-			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav)</small></p>
+			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav, .srt)</small></p>
 		</div>
 		<input
 			onchange={(e) => {
@@ -199,15 +206,20 @@
 					class={[
 						fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'
 							? 'bg-clip-blue-500'
-							: 'border-2 border-zinc-700 ',
+							: fileDetails.type === 'application/x-subrip'
+								? 'bg-clip-purple-500'
+								: 'border-2 border-zinc-700',
 						'rounded-lg w-full h-full flex items-center justify-center'
 					]}
 				>
 					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
-						<AudioIcon class="size-12 text-clip-blue-600" />
+						{@render audioIcon('size-12 text-clip-blue-600')}
+					{/if}
+					{#if fileDetails.type === 'application/x-subrip'}
+						<span class="text-clip-purple-600 text-3xl font-extrabold">.srt</span>
 					{/if}
 					{#if fileDetails.type === 'unknown'}
-						<HelpIcon class="size-12 text-zinc-600" />
+						{@render helpIcon('size-12 text-zinc-600')}
 					{/if}
 				</div>
 			</div>
@@ -216,7 +228,7 @@
 			</div>
 		</div>
 		{#if fileDetails.info && !('error' in fileDetails.info)}
-			<div class="grid grid-cols-2 grid-rows-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
+			<div class="grid grid-cols-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
 				{#if fileDetails.info.type === 'video'}
 					{@render info('codec:', fileDetails.info.codec)}
 					{@render info('duration:', formatDuration(fileDetails.info.duration))}
@@ -232,19 +244,23 @@
 					{@render info('sample rate:', `${fileDetails.info.sampleRate / 1000} kHz`)}
 					{@render info('channels:', fileDetails.info.channelCount)}
 				{/if}
+				{#if fileDetails.info.type === 'srt'}
+					{@render info('duration:', fileDetails.info.duration)}
+					{@render info('captions:', fileDetails.info.entries)}
+				{/if}
 			</div>
 		{/if}
 		{#if warningMessage}
 			<div
 				class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center"
 			>
-				<InfoIcon class="size-6 mr-2 text-rose-600" />
+				{@render infoIcon('size-6 mr-2 text-rose-600')}
 				<p class="flex-1 content-center">{warningMessage}</p>
 			</div>
 		{/if}
 		{#if loadingMessage}
 			<div class="text-zinc-200 mt-4 flex justify-center">
-				<div class="mr-4 content-center"><SpinningIcon class="size-5" /></div>
+				<div class="mr-4 content-center">{@render spinningIcon('size-5')}</div>
 				<p class="content-center">{loadingMessage}</p>
 			</div>
 		{/if}

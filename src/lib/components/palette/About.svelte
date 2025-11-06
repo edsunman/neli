@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
-	import InfoIcon from '../icons/InfoIcon.svelte';
-	import LogoIcon from '../icons/LogoIcon.svelte';
+	import { infoIcon, logoIcon } from '../icons/Icons.svelte';
 
 	let errorMessage = $state<'none' | 'webGpu' | 'webCodecs'>('none');
 
@@ -17,8 +16,7 @@
 </script>
 
 <div class="mx-8 flex-1 grow flex flex-col relative items-center">
-	<LogoIcon class="text-rose-500 size-35 absolute -top-5 left-38" />
-	<!-- <h1 class="text-7xl text-white font-semibold text-center mt-30">neli</h1> -->
+	{@render logoIcon('text-rose-500 size-35 absolute -top-5 left-38 ')}
 	<svg
 		class="text-white w-40 mt-35 mb-5"
 		xmlns="http://www.w3.org/2000/svg"
@@ -42,7 +40,7 @@
 	<div class="text-zinc-500 font-semibold text-sm text-center">v{__VERSION__}</div>
 	{#if errorMessage !== 'none'}
 		<div class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center">
-			<InfoIcon class="size-6 mr-2 text-rose-600" />
+			{@render infoIcon('size-6 mr-2 text-rose-600 ')}
 			<p class="flex-1 content-center">
 				{#if errorMessage === 'webCodecs'}WebCodecs not supported{/if}
 				{#if errorMessage === 'webGpu'}WebGpu not supported{/if}

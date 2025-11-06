@@ -9,6 +9,7 @@
 	import Controls from '$lib/components/panels/Settings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import { setupTests } from '$lib/tests';
+	import { loadFont, measureText } from '$lib/text/utils';
 
 	let timelineMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let timelineMouseUp = $state<(e: MouseEvent) => void>();
@@ -38,6 +39,9 @@
 
 		createTextSource();
 		createTestSource();
+
+		const font = await loadFont('/text.json');
+		appState.fonts.push(font);
 
 		setupTests();
 	});

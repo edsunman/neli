@@ -1,4 +1,10 @@
-export type SourceType = 'text' | 'video' | 'audio' | 'test';
+export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt';
+
+export type SrtEntry = {
+	inPoint: number;
+	outPoint: number;
+	text: string;
+};
 
 export type WorkerClip = {
 	id: string;
@@ -39,4 +45,37 @@ export type FileInfo =
 			sampleRate: number;
 			channelCount: number;
 			duration: number;
+	  }
+	| {
+			type: 'srt';
+			entries: number;
+			duration: number;
 	  };
+
+export type Font = {
+	charCount: number;
+	defaultChar: Character;
+	lineHeight: number;
+	characters: Characters;
+	kernings: KerningMap;
+};
+
+export type Character = {
+	id: number;
+	index: number;
+	char: string;
+	width: number;
+	height: number;
+	xoffset: number;
+	yofsset: number;
+	xadvance: number;
+	chnl: number;
+	x: number;
+	y: number;
+	page: number;
+	charIndex: number;
+};
+
+export type KerningMap = Map<number, Map<number, number>>;
+
+export type Characters = { [x: number]: Character };

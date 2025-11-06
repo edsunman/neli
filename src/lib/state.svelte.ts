@@ -2,6 +2,7 @@ import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
+import type { Font } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
@@ -13,6 +14,7 @@ class AppState {
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 
+	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};

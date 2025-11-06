@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createClip } from '$lib/clip/actions';
+	import { createClip, setTrackClipJoins } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
+	import {
+		addIcon,
+		audioIcon,
+		textIcon,
+		paletteIcon,
+		filmIcon,
+		folderIcon
+	} from '../icons/Icons.svelte';
 
-	import TextIcon from '../icons/TextIcon.svelte';
-	import AudioIcon from '../icons/AudioIcon.svelte';
-	import FilmIcon from '../icons/FilmIcon.svelte';
-	import PaletteIcon from '../icons/PaletteIcon.svelte';
-	import FolderIcon from '../icons/FolderIcon.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	import AddIcon from '../icons/AddIcon.svelte';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -26,8 +29,6 @@
 
 	const fileSelected = (file: File) => {
 		console.log('selected', file);
-		/* if (file.type !== 'video/mp4' && file.type !== 'audio/mpeg' && file.type !== 'audio/wav')
-			return; */
 		appState.fileToImport = file;
 		appState.palettePage = 'import';
 		appState.showPalette = true;
@@ -44,7 +45,7 @@
 				>
 					{#snippet trigger()}
 						<div class="p-2 text-zinc-600 hover:text-zinc-400">
-							<PaletteIcon class="w-6 h-6" />
+							{@render paletteIcon('w-6 h-6')}
 						</div>
 					{/snippet}
 					command palette
@@ -55,7 +56,7 @@
 				<MyTooltip contentProps={{ side: 'right' }}>
 					{#snippet trigger()}
 						<div class="p-2 text-zinc-200">
-							<FolderIcon class="w-6 h-6" />
+							{@render folderIcon('w-6 h-6')}
 						</div>
 					{/snippet}
 					sources folder
@@ -71,7 +72,26 @@
 						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
 					]}
 					onclick={() => {
-						createClip(source.id, 0, timelineState.currentFrame);
+						if (source.type === 'srt') {
+							for (const entry of source.srtEntries) {
+								//console.log(entry.text);
+								const clip = createClip(
+									appState.sources[0].id,
+									1,
+									entry.inPoint,
+									entry.outPoint - entry.inPoint
+								);
+								if (!clip) continue;
+								clip.text = entry.text;
+								clip.params[3] = -0.75;
+								clip.params[6] = 12;
+								clip.params[7] = 1.5;
+								updateWorkerClip(clip);
+							}
+							setTrackClipJoins(1);
+						} else {
+							createClip(source.id, 0, timelineState.currentFrame);
+						}
 						historyManager.finishCommand();
 					}}
 					ondragstart={(e) => {
@@ -84,7 +104,7 @@
 					<span
 						style:background-image={`url(${source.thumbnail})`}
 						class={[
-							source.type === 'text' ? 'bg-clip-purple-500' : '',
+							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
@@ -92,14 +112,15 @@
 						]}
 					>
 						{#if source.type === 'text'}
-							<TextIcon class="size-6 text-clip-purple-600" />
+							{@render textIcon('w-6 h-6 text-clip-purple-600')}
+						{:else if source.type === 'srt'}
+							<span class="text-clip-purple-600 text-xl font-extrabold">.srt</span>
 						{:else if source.type === 'test'}
-							<FilmIcon class="size-6 text-clip-green-600" />
+							{@render filmIcon('w-6 h-6 text-clip-green-600')}
 						{:else if source.type === 'audio'}
-							<AudioIcon class="size-6 text-clip-blue-600" />
+							{@render audioIcon('w-6 h-6 text-clip-blue-600')}
 						{/if}
 					</span>
-
 					{source.name}
 				</button>
 			{/each}
@@ -108,7 +129,7 @@
 			<div
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
-					'rounded-lg border-2  flex-1',
+					'rounded-lg border-2 select-none flex-1',
 					'border-dashed items-center justify-center flex h-14 mt-2',
 					'hover:border-zinc-500 hover:text-zinc-400'
 				]}
@@ -121,9 +142,13 @@
 					fileInput.click();
 				}}
 			>
-				<AddIcon class="w-6 h-6 pointer-events-none" />
+				{@render addIcon('size-5 mr-2 pointer-events-none')} import file
 			</div>
 			<input
+				onclick={(e) => {
+					// allow on change to run for same file
+					e.currentTarget.value = '';
+				}}
 				onchange={(e) => {
 					if (!e.currentTarget.files || (e.currentTarget.files && e.currentTarget.files.length < 1))
 						return;
