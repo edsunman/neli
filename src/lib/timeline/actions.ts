@@ -1,12 +1,11 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
 import { timelineState } from '$lib/state.svelte';
-import { canvasPixelToFrame } from './utils';
-import { deselectClipIfTooSmall } from '$lib/clip/actions';
+import { calculateMaxZoomLevel, canvasPixelToFrame, frameToCanvasPixel } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
-	if (frame > 8999) frame = 8999;
+	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
 	seekWorker(frame);
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
@@ -99,7 +98,10 @@ export const checkViewBounds = () => {
 
 export const zoomIn = () => {
 	timelineState.zoom = timelineState.zoom * 2;
-	if (timelineState.zoom > 220) timelineState.zoom = 220;
+
+	const maxZoom = calculateMaxZoomLevel();
+	if (timelineState.zoom > maxZoom) timelineState.zoom = maxZoom;
+
 	centerViewOnPlayhead();
 	checkViewBounds();
 	timelineState.invalidate = true;
@@ -137,23 +139,54 @@ export const updateScrollPosition = () => {
 
 export const focusTrack = (trackNumber: number) => {
 	timelineState.focusedTrack = trackNumber;
-	if (trackNumber === 0) {
-		timelineState.trackHeights = [35, 35, 35, 35];
-		timelineState.trackTops = [0, 50, 100, 150];
-	} else if (trackNumber === 1) {
-		timelineState.trackHeights = [110, 20, 20, 20];
-		timelineState.trackTops = [0, 115, 140, 165];
-	} else if (trackNumber === 2) {
-		timelineState.trackHeights = [20, 110, 20, 20];
-		timelineState.trackTops = [0, 25, 140, 165];
-	} else if (trackNumber === 3) {
-		timelineState.trackHeights = [20, 20, 110, 20];
-		timelineState.trackTops = [0, 25, 50, 165];
-	} else if (trackNumber === 4) {
-		timelineState.trackHeights = [20, 20, 20, 110];
-		timelineState.trackTops = [0, 25, 50, 75];
+
+	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+		if (trackNumber === 0) {
+			timelineState.trackHeights[i] = 35;
+		} else if (i === trackNumber - 1) {
+			timelineState.trackHeights[i] = 110;
+		} else {
+			timelineState.trackHeights[i] = 20;
+		}
 	}
+
+	setTrackPositions();
 	timelineState.invalidateWaveform = true;
+};
+
+/** Call after changing track heights to recalculate and set positions */
+export const setTrackPositions = () => {
+	timelineState.trackTops.length = 0;
+
+	const flexHeight = timelineState.height - 35;
+	const trackContainerHeight = flexHeight * 0.8;
+	const rulerContainerHeight = flexHeight * 0.2;
+	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 5;
+	if (trackContainerHeight < 220) trackPadding = 5;
+
+	let totalTrackHeight = 0;
+	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+		if (
+			timelineState.trackHeights.length > 2 &&
+			trackContainerHeight < 190 &&
+			timelineState.focusedTrack > 0
+		) {
+			// very small screen, only show focued track in focus mode
+			timelineState.trackTops.push(i === timelineState.focusedTrack - 1 ? 0 : 1000);
+			totalTrackHeight = 110;
+		} else {
+			timelineState.trackTops.push(totalTrackHeight);
+			totalTrackHeight += timelineState.trackHeights[i];
+			if (i < timelineState.trackHeights.length - 1) {
+				totalTrackHeight += trackPadding;
+			}
+		}
+	}
+
+	const topOfAllTracks = (trackContainerHeight - totalTrackHeight) / 2;
+	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+		timelineState.trackTops[i] += topOfAllTracks + rulerContainerHeight;
+	}
 };
 
 export const focusClip = () => {
@@ -170,6 +203,23 @@ export const focusClip = () => {
 	//checkViewBounds();
 
 	focusTrack(clip.track);
+};
+
+export const extendTimeline = (endPoint: number) => {
+	const oldTimlineDuration = timelineState.duration;
+
+	const framesPerMinute = 30 * 60;
+	const roundedMinutes = Math.ceil(endPoint / framesPerMinute);
+	let roundedFrameNumber = roundedMinutes * framesPerMinute;
+	if (roundedFrameNumber > 9000) roundedFrameNumber = 9000;
+
+	if (roundedFrameNumber <= timelineState.duration) return;
+
+	timelineState.duration = roundedFrameNumber;
+
+	const ratio = timelineState.duration / oldTimlineDuration;
+	timelineState.zoom = timelineState.zoom * ratio;
+	timelineState.offset = timelineState.offset / ratio;
 };
 
 export const getUsedTimelineDuration = () => {

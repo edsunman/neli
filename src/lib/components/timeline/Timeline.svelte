@@ -10,7 +10,9 @@
 		pause,
 		play,
 		focusTrack,
-		focusClip
+		focusClip,
+		extendTimeline,
+		setTrackPositions
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -29,7 +31,11 @@
 		finaliseClip
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
-	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
+	import {
+		calculateMaxZoomLevel,
+		canvasPixelToFrame,
+		frameToCanvasPixel
+	} from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
@@ -44,7 +50,7 @@
 	let waveCanvas: OffscreenCanvas;
 	let waveContext: OffscreenCanvasRenderingContext2D | null;
 	let canvasContainer = $state<HTMLDivElement>();
-	let height = $state(0);
+	//let height = $state(0);
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
@@ -143,13 +149,17 @@
 		timelineState.dragStart.x = e.offsetX;
 		timelineState.dragStart.y = e.offsetY;
 		if (e.button > 0) return;
-		if (e.offsetY < timelineState.padding * 0.8) {
+		if (e.offsetY < (timelineState.height - 32) * 0.2) {
 			scrubbing = true;
 			setCurrentFrameFromOffset(e.offsetX);
 		}
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
-		if (e.offsetY > height - 60 && e.offsetX > scrollBarStart && e.offsetX < scrollBarEnd) {
+		if (
+			e.offsetY > timelineState.height - 40 &&
+			e.offsetX > scrollBarStart &&
+			e.offsetX < scrollBarEnd
+		) {
 			scrolling = true;
 			timelineState.offsetStart = timelineState.offset;
 			return;
@@ -202,13 +212,19 @@
 			scrubbing = false;
 		}
 		if (dragging) {
-			// TODO: if mouse has not moved much then select
 			dragging = false;
-			if (clip) finaliseClip(clip, 'moveClip');
+			if (clip) {
+				finaliseClip(clip, 'moveClip');
+				extendTimeline(clip.start + clip.duration);
+			}
 			if (timelineState.selectedClips.size > 0) {
+				let endPoint = 0;
 				for (const multiSelectClip of timelineState.selectedClips) {
+					const end = multiSelectClip.start + multiSelectClip.duration;
+					if (end > endPoint) endPoint = end;
 					finaliseClip(multiSelectClip, 'moveClip');
 				}
+				extendTimeline(endPoint);
 			}
 		}
 		if (resizing) {
@@ -270,25 +286,25 @@
 		}
 	};
 
-	const setCanvasWidth = async () => {
+	const setCanvasSize = async () => {
 		if (!context || !canvas || !waveCanvas) return;
 		const dpr = window.devicePixelRatio;
 		if (dpr !== 1) {
-			canvas.height = height * dpr;
+			canvas.height = timelineState.height * dpr;
 			canvas.width = timelineState.width * dpr;
-			canvas.style.height = `${height}px`;
+			canvas.style.height = `${timelineState.height}px`;
 			canvas.style.width = `${timelineState.width}px`;
 			context.setTransform(dpr, 0, 0, dpr, 0, 0);
 		} else {
-			canvas.height = height;
+			canvas.height = timelineState.height;
 			canvas.width = timelineState.width;
 		}
 
 		waveCanvas.width = timelineState.width;
-		if (height < 320) timelineState.padding = 60;
+		setTrackPositions();
 
 		await tick();
-		drawCanvas(context, timelineState.width, height, waveCanvas);
+		drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 	};
 
 	const step = () => {
@@ -298,7 +314,7 @@
 			timelineState.invalidate = true;
 		}
 		if (timelineState.invalidate && fontsLoaded) {
-			if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+			if (context) drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 			timelineState.invalidate = false;
 		}
 		requestAnimationFrame(step);
@@ -307,14 +323,15 @@
 
 	onMount(() => {
 		//await tick();
-		if (!canvas) return;
+		if (!canvas || !canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
+		timelineState.height = canvasContainer.clientHeight;
 		waveCanvas = new OffscreenCanvas(timelineState.width, 100);
 		waveContext = waveCanvas.getContext('2d');
 
 		context = canvas.getContext('2d', { alpha: false });
 
-		setCanvasWidth();
+		setCanvasSize();
 
 		document.fonts.ready.then(() => {
 			fontsLoaded = true;
@@ -360,19 +377,20 @@
 
 			contextMenu.openContextMenu(e);
 		}}
-		bind:clientHeight={height}
 		bind:this={canvasContainer}
 	>
-		<canvas bind:this={canvas}></canvas>
+		<canvas class="absolute" bind:this={canvas}></canvas>
 	</div>
 </div>
 <svelte:window
 	onresize={async () => {
+		if (!canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
-		setCanvasWidth();
+		timelineState.height = canvasContainer?.clientHeight;
+		setCanvasSize();
 
 		if (waveContext) drawWaveform(waveContext, timelineState.width);
-		if (context) drawCanvas(context, timelineState.width, height, waveCanvas);
+		if (context) drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
@@ -397,8 +415,9 @@
 				zoomIn();
 				break;
 			case 'Digit0':
-				if (timelineState.zoom < 230.4) {
-					setZoom(230.4);
+				const maxZoom = calculateMaxZoomLevel();
+				if (timelineState.zoom < maxZoom) {
+					setZoom(maxZoom);
 				} else {
 					setZoom(0.9);
 				}

@@ -25,16 +25,20 @@ export const drawCanvas = (
 	context.fillStyle = '#18181b';
 	context.fillRect(0, 0, width, height);
 
-	drawRuler(context);
+	const flexHeight = height - 35;
+	const rulerContainerHeight = flexHeight * 0.2;
+
+	drawRuler(context, rulerContainerHeight);
 
 	// tracks
 	const offsetInPixels = timelineState.width * timelineState.zoom * timelineState.offset;
+
 	context.fillStyle = '#111114';
-	for (let i = 0; i < 4; i++) {
+	for (let i = 0; i < timelineState.trackHeights.length; i++) {
 		context.beginPath();
 		context.roundRect(
 			Math.floor(-offsetInPixels),
-			timelineState.trackTops[i] + timelineState.padding,
+			timelineState.trackTops[i],
 			Math.floor(timelineState.width * timelineState.zoom),
 			timelineState.trackHeights[i],
 			8
@@ -57,11 +61,7 @@ export const drawCanvas = (
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
-		context.drawImage(
-			waveCanvas,
-			0,
-			timelineState.trackTops[timelineState.focusedTrack - 1] + 25 + timelineState.padding
-		);
+		context.drawImage(waveCanvas, 0, timelineState.trackTops[timelineState.focusedTrack - 1] + 25);
 
 	// select box
 	if (timelineState.action === 'selecting') {
@@ -82,7 +82,7 @@ export const drawCanvas = (
 
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-	const playheadTop = Math.floor((timelineState.padding - 50) / 3.33);
+	const playheadTop = rulerContainerHeight * 0.2;
 	context.fillStyle = 'white';
 	context.fillRect(playheadPosition, playheadTop + 15, 2, 300);
 
@@ -91,20 +91,30 @@ export const drawCanvas = (
 	context.translate(-playheadPosition + 6, -playheadTop);
 
 	// scrollbar
-	if (timelineState.zoom > 0.9 && timelineState.padding > 65) {
+	if (timelineState.zoom > 0.9) {
 		const padding = 0.05 / timelineState.zoom;
 		const paddingInPixels = padding * width;
 		context.fillStyle = '#3c3c44';
 		context.beginPath();
 		context.roundRect(
 			(timelineState.offset + padding) * width,
-			height - 40,
+			height - 20,
 			width / timelineState.zoom - paddingInPixels * 2,
 			10,
 			8
 		);
 		context.fill();
 	}
+
+	// debug boxes
+	/* 	context.fillStyle = 'rgba(255,0,0,0.2)';
+	context.fillRect(0, height - 35, 200, 35);
+
+	context.fillStyle = 'rgba(0,255,0,0.2)';
+	context.fillRect(0, 0, 200, flexHeight * 0.2);
+
+	context.fillStyle = 'rgba(0,0,255,0.2)';
+	context.fillRect(0, flexHeight * 0.2, 200, flexHeight * 0.8); */
 };
 
 export const drawWaveform = (context: OffscreenCanvasRenderingContext2D, width: number) => {
@@ -182,8 +192,9 @@ export const drawWaveform = (context: OffscreenCanvasRenderingContext2D, width: 
 	}
 };
 
-const drawRuler = (context: CanvasRenderingContext2D) => {
-	const rulerPosition = (timelineState.padding - 50) / 2.5;
+const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) => {
+	//const rulerPosition = (containerHeight - 22) / 2;
+	const rulerPosition = (containerHeight - 22) / 1.5;
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
 	const minuteInPixels = (timelineState.width / durationInMinutes) * timelineState.zoom;
@@ -197,41 +208,63 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 	context.fillStyle = '#71717b';
 	context.font = '12px sen';
 
-	if (minuteInPixels <= 1000) {
+	// draw every minute
+	if (minuteInPixels <= 700) {
 		const numberOfMinutesToShow = Math.ceil((endFrame - startFrame) / 1800) + 1;
 		let startMinute = Math.floor(startFrame / 1800);
 		for (let i = 0; i < numberOfMinutesToShow; i++) {
 			const position = Math.floor(minuteInPixels * startMinute - offsetInPixels);
-			context.fillRect(position, rulerPosition + 10, 1, 22);
-			context.fillText(secondsToTimecode(startMinute * 60), position + 5, rulerPosition + 25);
+			context.fillRect(position, rulerPosition, 1, 22);
+			context.fillText(secondsToTimecode(startMinute * 60), position + 5, rulerPosition + 15);
 			startMinute++;
 		}
 	}
 
-	if (minuteInPixels > 1000 && minuteInPixels <= 6000) {
+	// draw every 10 seconds
+	if (minuteInPixels > 700 && minuteInPixels <= 7000) {
 		const numberOfSecondsToShow = Math.ceil((endFrame - startFrame) / 30 / 6) + 1;
 		let startSecond = Math.floor(startFrame / 30 / 10);
-
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
-			const position = Math.floor((minuteInPixels / 6) * startSecond - offsetInPixels);
-			context.fillRect(position, rulerPosition + 10, 1, 22);
-			context.fillText(secondsToTimecode(startSecond * 10), position + 5, rulerPosition + 25);
+			if (startSecond >= 0) {
+				const position = Math.floor((minuteInPixels / 6) * startSecond - offsetInPixels);
+				context.fillRect(position, rulerPosition, 1, 22);
+				context.fillText(secondsToTimecode(startSecond * 10), position + 5, rulerPosition + 15);
+			}
 			startSecond++;
 		}
 	}
 
-	if (minuteInPixels > 6000) {
+	// also draw every 5 seconds
+	if (minuteInPixels > 3000 && minuteInPixels <= 7000) {
+		const numberOfSecondsToShow = Math.ceil((endFrame - startFrame) / 30 / 6) + 1;
+		let startSecond = Math.floor(startFrame / 30 / 10);
+		for (let i = 0; i < numberOfSecondsToShow; i++) {
+			if (startSecond >= 0) {
+				const position = Math.floor(
+					(minuteInPixels / 6) * startSecond - offsetInPixels + minuteInPixels / 12
+				);
+				context.fillRect(position, rulerPosition, 1, 22);
+				context.fillText(secondsToTimecode(startSecond * 10 + 5), position + 5, rulerPosition + 15);
+			}
+			startSecond++;
+		}
+	}
+
+	// draw every second
+	if (minuteInPixels > 7000) {
 		const numberOfSecondsToShow = Math.ceil((endFrame - startFrame) / 30) + 1;
 		let startSecond = Math.floor(startFrame / 30);
-
 		for (let i = 0; i < numberOfSecondsToShow; i++) {
-			const position = Math.floor((minuteInPixels / 60) * startSecond - offsetInPixels);
-			context.fillRect(position, rulerPosition + 10, 1, 22);
-			context.fillText(secondsToTimecode(startSecond), position + 5, rulerPosition + 25);
+			if (startSecond >= 0) {
+				const position = Math.floor((minuteInPixels / 60) * startSecond - offsetInPixels);
+				context.fillRect(position, rulerPosition, 1, 22);
+				context.fillText(secondsToTimecode(startSecond), position + 5, rulerPosition + 15);
+			}
 			startSecond++;
 		}
 	}
 
+	// draw every frame
 	if (minuteInPixels > 40000) {
 		const numberOfFramesToShow = Math.ceil(endFrame - startFrame) + 1;
 		let frame = startFrame > 0 ? startFrame : 0;
@@ -241,7 +274,7 @@ const drawRuler = (context: CanvasRenderingContext2D) => {
 				continue;
 			}
 			const position = Math.floor((minuteInPixels / 60 / 30) * frame - offsetInPixels);
-			context.fillRect(position, rulerPosition + 19, 1, 5);
+			context.fillRect(position, rulerPosition + 9, 1, 5);
 			frame++;
 		}
 	}
@@ -268,7 +301,7 @@ const drawClip = (
 	}
 
 	const gap = 3;
-	const trackTop = timelineState.trackTops[clip.track - 1] + timelineState.padding;
+	const trackTop = timelineState.trackTops[clip.track - 1];
 	const clipHeight =
 		timelineState.trackHeights[clip.track - 1] > 35
 			? 35

@@ -95,3 +95,9 @@ export const stringToFramesAndSynopsis = (
 
 	return { frames, synopsis };
 };
+
+export const calculateMaxZoomLevel = () => {
+	const framePixelWidth = 50;
+	const basePixelsPerFrame = timelineState.width / timelineState.duration;
+	return framePixelWidth / basePixelsPerFrame;
+};

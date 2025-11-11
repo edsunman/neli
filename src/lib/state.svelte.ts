@@ -27,10 +27,11 @@ export const appState = new AppState();
 
 class TimelineState {
 	clips: Clip[] = [];
-	duration = $state(9000); // frames
+	duration = $state(1800); // frames
 	currentFrame = $state(0);
 	playing = $state(false);
 	width = $state(0); // pixels
+	height = 0; // pixels
 	selectedClip = $state<Clip | null>(null);
 	selectedClips = new Set<Clip>();
 
@@ -44,7 +45,7 @@ class TimelineState {
 	focusedTrack = 0;
 	padding = 100;
 	trackTops = [0, 50, 100, 150];
-	trackHeights = [35, 35, 35, 35];
+	trackHeights = [35, 35];
 	invalidate = false;
 	invalidateWaveform = false;
 }

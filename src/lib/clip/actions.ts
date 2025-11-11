@@ -111,10 +111,11 @@ export const moveSelectedClip = (mouseY: number) => {
 				const offset = clip.savedStart - firstClip.savedStart;
 				clip.start = offset;
 			}
-		} else if (groupEndFrame > timelineState.duration && lastClip) {
+		} else if (groupEndFrame > 9000 && lastClip) {
+			// timeline max length 5 mins
 			for (const clip of timelineState.selectedClips) {
 				const offset = lastClip.savedStart - clip.savedStart;
-				clip.start = timelineState.duration - lastClip.duration - offset;
+				clip.start = 9000 - lastClip.duration - offset;
 			}
 		}
 
@@ -170,8 +171,9 @@ export const moveSelectedClip = (mouseY: number) => {
 	if (clip.start < 0) {
 		clip.start = 0;
 	}
-	if (clip.start + clip.duration > timelineState.duration) {
-		clip.start = timelineState.duration - clip.duration;
+	// timeline max length 5 mins
+	if (clip.start + clip.duration > 9000) {
+		clip.start = 9000 - clip.duration;
 	}
 
 	// move between tracks
@@ -386,7 +388,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	newClip.params = [...clip.params];
 	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
-	console.log(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
 	//historyManager.finishCommand();
@@ -416,9 +417,8 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.trackTops.length; i++) {
 			if (
-				offsetY > timelineState.trackTops[i] + timelineState.padding &&
-				offsetY <
-					timelineState.trackTops[i] + timelineState.trackHeights[i] + timelineState.padding &&
+				offsetY > timelineState.trackTops[i] &&
+				offsetY < timelineState.trackTops[i] + timelineState.trackHeights[i] &&
 				clip.track === i + 1
 			) {
 				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
@@ -462,9 +462,8 @@ export const multiSelectClipsInRange = () => {
 	const tracks = new Set<number>();
 	for (let i = 0; i < 4; i++) {
 		if (
-			startTop <
-				timelineState.trackTops[i] + timelineState.padding + timelineState.trackHeights[i] &&
-			endTop > timelineState.trackTops[i] + timelineState.padding
+			startTop < timelineState.trackTops[i] + timelineState.trackHeights[i] &&
+			endTop > timelineState.trackTops[i]
 		) {
 			tracks.add(i + 1);
 		}
