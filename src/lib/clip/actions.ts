@@ -54,24 +54,18 @@ export const createClip = (
 	if (!temp) {
 		trimSiblingClips(clip);
 		updateWorkerClip(clip);
-		//historyManager.newCommand({ action: 'addClip', data: { clipId: clip.id } });
 		historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
-		timelineState.selectedClip = clip;
 	}
 
 	return clip;
 };
 
-export const deleteClip = (id: string) => {
-	for (const clip of timelineState.clips) {
-		if (clip.id === id) {
-			clip.deleted = true;
-			timelineState.selectedClip = null;
-			setTrackClipJoins(clip.track);
-			historyManager.newCommand({ action: 'deleteClip', data: { clipId: clip.id } });
-			updateWorkerClip(clip);
-		}
-	}
+export const deleteClip = (clip: Clip) => {
+	clip.deleted = true;
+	timelineState.selectedClip = null;
+	setTrackClipJoins(clip.track);
+	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
+	updateWorkerClip(clip);
 };
 
 /** Unlike delete this will permanently remove clip and not write to history */
@@ -87,13 +81,57 @@ export const removeClip = (id: string) => {
 };
 
 export const moveSelectedClip = (mouseY: number) => {
-	const frame = canvasPixelToFrame(timelineState.dragOffset, false);
+	const frame = canvasPixelToFrame(timelineState.dragOffset.x, false);
+
+	// multi select
+	if (timelineState.selectedClips.size > 0) {
+		const tracks = new Set<number>();
+		for (const clip of timelineState.selectedClips) {
+			clip.start = clip.savedStart + frame;
+			tracks.add(clip.track);
+		}
+
+		// boundry check
+		let groupStartFrame = Infinity;
+		let groupEndFrame = 0;
+		let firstClip: Clip | undefined;
+		let lastClip: Clip | undefined;
+		for (const clip of timelineState.selectedClips) {
+			if (clip.start < groupStartFrame) {
+				groupStartFrame = clip.start;
+				firstClip = clip;
+			}
+			if (clip.start + clip.duration > groupEndFrame) {
+				groupEndFrame = clip.start + clip.duration;
+				lastClip = clip;
+			}
+		}
+		if (groupStartFrame < 0 && firstClip) {
+			for (const clip of timelineState.selectedClips) {
+				const offset = clip.savedStart - firstClip.savedStart;
+				clip.start = offset;
+			}
+		} else if (groupEndFrame > timelineState.duration && lastClip) {
+			for (const clip of timelineState.selectedClips) {
+				const offset = lastClip.savedStart - clip.savedStart;
+				clip.start = timelineState.duration - lastClip.duration - offset;
+			}
+		}
+
+		for (const track of tracks) {
+			setTrackClipJoins(track);
+		}
+
+		return;
+	}
+
+	// single select
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
 	clip.start = clip.savedStart + frame;
 
-	// timeline snap
+	// playhead snap
 	const snapRange = canvasPixelToFrame(10, false);
 	if (isFrameInSnapRange(clip.start, timelineState.currentFrame, snapRange)) {
 		clip.start = timelineState.currentFrame;
@@ -158,10 +196,10 @@ export const resizeSelctedClip = () => {
 	if (!clip) return;
 
 	const snapRange = canvasPixelToFrame(10, false);
-	let minimumSize = canvasPixelToFrame(35, false);
+	let minimumSize = canvasPixelToFrame(36, false);
 	minimumSize = minimumSize < 1 ? 1 : minimumSize;
 	clip.invalid = false;
-	const frameOffset = canvasPixelToFrame(timelineState.dragOffset, false);
+	const frameOffset = canvasPixelToFrame(timelineState.dragOffset.x, false);
 
 	if (clip.resizeHover === 'start') {
 		clip.start = clip.savedStart + frameOffset;
@@ -348,8 +386,10 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	newClip.params = [...clip.params];
 	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
+	console.log(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
+	//historyManager.finishCommand();
 	setTrackClipJoins(newClip.track);
 };
 
@@ -369,9 +409,10 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	// NOTE: this runs every frame on mouse move so may be bad news
 	// with large numbers of clips. Hashmap may be better?
 	let foundClip;
-	const minimumSize = canvasPixelToFrame(35, false);
+	//const minimumSize = canvasPixelToFrame(35, false);
 	for (const clip of timelineState.clips) {
-		if (clip.deleted || clip.duration < minimumSize) continue;
+		//if (clip.deleted || clip.duration < minimumSize) continue;
+		if (clip.deleted) continue;
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.trackTops.length; i++) {
 			if (
@@ -390,6 +431,93 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		}
 	}
 	return foundClip;
+};
+
+export const multiSelectClip = (clipId: string) => {
+	const clip = getClip(clipId);
+	if (!clip) return;
+
+	if (timelineState.selectedClip) {
+		const selected = timelineState.selectedClip;
+		timelineState.selectedClip = null;
+		timelineState.selectedClips.add(selected);
+		timelineState.selectedClips.add(clip);
+	} else {
+		timelineState.selectedClips.add(clip);
+	}
+	timelineState.invalidate = true;
+};
+
+export const multiSelectClipsInRange = () => {
+	timelineState.selectedClips.clear();
+
+	const startTop = Math.min(
+		timelineState.dragStart.y,
+		timelineState.dragStart.y + timelineState.dragOffset.y
+	);
+	const endTop = Math.max(
+		timelineState.dragStart.y,
+		timelineState.dragStart.y + timelineState.dragOffset.y
+	);
+	const tracks = new Set<number>();
+	for (let i = 0; i < 4; i++) {
+		if (
+			startTop <
+				timelineState.trackTops[i] + timelineState.padding + timelineState.trackHeights[i] &&
+			endTop > timelineState.trackTops[i] + timelineState.padding
+		) {
+			tracks.add(i + 1);
+		}
+	}
+
+	const startFrame = canvasPixelToFrame(timelineState.dragStart.x);
+	const endFrame = canvasPixelToFrame(timelineState.dragStart.x + timelineState.dragOffset.x);
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		if (
+			clip.start <= Math.max(startFrame, endFrame) &&
+			clip.start + clip.duration > Math.min(startFrame, endFrame) &&
+			tracks.has(clip.track)
+		) {
+			timelineState.selectedClips.add(clip);
+		}
+	}
+};
+
+/** Call when clip is "dropped" to persist clip state to worker and history */
+export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip') => {
+	trimSiblingClips(clip);
+	updateWorkerClip(clip);
+	if (
+		historyAction === 'moveClip' &&
+		(clip.start !== clip.savedStart || clip.track !== clip.savedTrack)
+	) {
+		historyManager.pushAction({
+			action: 'moveClip',
+			data: {
+				clipId: clip.id,
+				newStart: clip.start,
+				oldStart: clip.savedStart,
+				newTrack: clip.track,
+				oldTrack: clip.savedTrack
+			}
+		});
+	}
+	if (
+		historyAction === 'trimClip' &&
+		(clip.start !== clip.savedStart || clip.duration !== clip.savedDuration)
+	) {
+		historyManager.pushAction({
+			action: 'trimClip',
+			data: {
+				clipId: clip.id,
+				newStart: clip.start,
+				oldStart: clip.savedStart,
+				newDuration: clip.duration,
+				oldDuration: clip.savedDuration
+			}
+		});
+	}
 };
 
 export const deselectClipIfTooSmall = () => {

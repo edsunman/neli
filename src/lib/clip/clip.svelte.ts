@@ -28,10 +28,12 @@ export class Clip {
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {
 		this.id = Math.random().toString(16).slice(2);
 		this.track = track;
+		this.savedTrack = track;
 		this.source = source;
 		this.start = start;
 		this.savedStart = start;
 		this.sourceOffset = sourceOffset;
 		this.duration = duration;
+		this.savedDuration = duration;
 	}
 }

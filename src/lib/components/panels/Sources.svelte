@@ -13,6 +13,7 @@
 
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { pause } from '$lib/timeline/actions';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -72,7 +73,10 @@
 						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
 					]}
 					onclick={() => {
+						pause();
+						timelineState.selectedClips.clear();
 						if (source.type === 'srt') {
+							// TODO: tidy this up
 							for (const entry of source.srtEntries) {
 								//console.log(entry.text);
 								const clip = createClip(
@@ -90,7 +94,8 @@
 							}
 							setTrackClipJoins(1);
 						} else {
-							createClip(source.id, 0, timelineState.currentFrame);
+							const clip = createClip(source.id, 0, timelineState.currentFrame);
+							if (clip) timelineState.selectedClip = clip;
 						}
 						historyManager.finishCommand();
 					}}

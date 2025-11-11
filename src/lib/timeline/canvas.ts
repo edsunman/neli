@@ -2,11 +2,14 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 
-const GREEN = '#50cfaf';
+const GREEN = '#41a088';
 const GREEN_DARK = '#1f4a42';
-const PURPLE = '#8b4fcf';
+const GREEN_LIGHT = '#50cfaf';
+const PURPLE = '#743bb0';
 const PURPLE_DARK = '#361f51';
-const BLUE = '#419fda';
+const PURPLE_LIGHT = '#964ee9';
+const BLUE = '#018bb8';
+const BLUE_LIGHT = '#1bc7ff';
 const BLUE_DARK = '#1e425b';
 
 const PLAYHEAD_PATH = new Path2D(
@@ -42,8 +45,13 @@ export const drawCanvas = (
 	// clips
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected || clip.deleted) continue;
-		drawClip(context, clip, width);
+		if (selected || clip.deleted || timelineState.selectedClips.has(clip)) continue;
+		drawClip(context, clip, width, false, false);
+	}
+
+	for (const clip of timelineState.selectedClips) {
+		if (clip.deleted) continue;
+		drawClip(context, clip, width, false, true);
 	}
 
 	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
@@ -54,6 +62,23 @@ export const drawCanvas = (
 			0,
 			timelineState.trackTops[timelineState.focusedTrack - 1] + 25 + timelineState.padding
 		);
+
+	// select box
+	if (timelineState.action === 'selecting') {
+		const x =
+			timelineState.dragOffset.x < 0
+				? timelineState.dragStart.x + timelineState.dragOffset.x
+				: timelineState.dragStart.x;
+		const y =
+			timelineState.dragOffset.y < 0
+				? timelineState.dragStart.y + timelineState.dragOffset.y
+				: timelineState.dragStart.y;
+		const boxWidth = Math.abs(timelineState.dragOffset.x);
+		const boxHeight = Math.abs(timelineState.dragOffset.y);
+		context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+		context.lineWidth = 1;
+		context.strokeRect(x + 0.5, y + 0.5, boxWidth, boxHeight);
+	}
 
 	// playhead
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
@@ -226,21 +251,28 @@ const drawClip = (
 	context: CanvasRenderingContext2D,
 	clip: Clip,
 	width: number,
-	selected = false
+	selected = false,
+	multiSelected = false
 ) => {
-	let clipColor = GREEN;
+	let clipColor = selected || multiSelected ? GREEN_LIGHT : GREEN;
+	let clipBaseColor = GREEN;
 	let clipDarkColor = GREEN_DARK;
 	if (clip.source.type === 'text') {
-		clipColor = PURPLE;
+		clipColor = selected || multiSelected ? PURPLE_LIGHT : PURPLE;
+		clipBaseColor = PURPLE;
 		clipDarkColor = PURPLE_DARK;
 	} else if (clip.source.type === 'audio') {
-		clipColor = BLUE;
+		clipColor = selected || multiSelected ? BLUE_LIGHT : BLUE;
+		clipBaseColor = BLUE;
 		clipDarkColor = BLUE_DARK;
 	}
 
 	const gap = 3;
 	const trackTop = timelineState.trackTops[clip.track - 1] + timelineState.padding;
-	const clipHeight = timelineState.trackHeights[clip.track - 1];
+	const clipHeight =
+		timelineState.trackHeights[clip.track - 1] > 35
+			? 35
+			: timelineState.trackHeights[clip.track - 1];
 
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
@@ -282,7 +314,27 @@ const drawClip = (
 	context.fillRect(clipStart, trackTop, clipWidth, clipHeight);
 	context.restore();
 
-	if (selected || clip.hovered) {
+	if (clipWidth < 10) return;
+
+	if (selected || multiSelected) {
+		context.strokeStyle = '#131315';
+		context.lineWidth = 3;
+		context.beginPath();
+		context.roundRect(clipStart + 4.5, trackTop + 4.5, clipWidth - 9, clipHeight - 9, [
+			clip.joinLeft ? 0 : 5,
+			clip.joinRight ? 0 : 5,
+			clip.joinRight ? 0 : 5,
+			clip.joinLeft ? 0 : 5
+		]);
+		if (!selected) context.fillStyle = clipBaseColor;
+		context.fill();
+		context.stroke();
+
+		//context.fillRect(clipStart + 14, trackTop + 3, clipWidth - 20, 3);
+		//context.fillRect(clipStart + 14, trackTop + clipHeight - 6, clipWidth - 20, 3);
+	}
+	if (clipWidth < 32) return;
+	if (selected || (clip.hovered && !multiSelected)) {
 		// handles
 		context.save();
 		context.beginPath();
@@ -298,12 +350,5 @@ const drawClip = (
 
 		context.fillRect(clipStart + 7, trackTop + 10, 3, clipHeight - 20);
 		context.fillRect(clipEnd - 9, trackTop + 10, 3, clipHeight - 20);
-
-		context.fillStyle = '#131315';
-
-		if (selected) {
-			context.fillRect(clipStart + 14, trackTop + 3, clipWidth - 20, 2);
-			context.fillRect(clipStart + 14, trackTop + clipHeight - 5, clipWidth - 20, 2);
-		}
 	}
 };

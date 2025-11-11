@@ -23,7 +23,10 @@
 		splitClip,
 		deleteClip,
 		createClip,
-		removeClip
+		removeClip,
+		multiSelectClip,
+		multiSelectClipsInRange,
+		finaliseClip
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
 	import { canvasPixelToFrame, frameToCanvasPixel } from '$lib/timeline/utils';
@@ -82,9 +85,17 @@
 			timelineState.invalidate = true;
 			return;
 		}
-		if (dragging || resizing || scrolling) {
-			timelineState.dragOffset = parentX - timelineState.dragStart;
+		if (dragging || resizing || scrolling || timelineState.action === 'selecting') {
+			timelineState.dragOffset.x = parentX - timelineState.dragStart.x;
+			timelineState.dragOffset.y = offsetY - timelineState.dragStart.y;
 		}
+
+		if (timelineState.action === 'selecting') {
+			multiSelectClipsInRange();
+			timelineState.invalidateWaveform = true;
+			return;
+		}
+
 		if (scrolling) {
 			updateScrollPosition();
 			timelineState.invalidateWaveform = true;
@@ -108,10 +119,12 @@
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
-		if (!clip) return;
+		if (!clip || timelineState.selectedClips.size > 0) return;
 
-		// hovering over a clip
 		clip.resizeHover = 'none';
+		const clipWidth = frameToCanvasPixel(clip.duration, false);
+		if (clipWidth < 35) return;
+
 		const start = frameToCanvasPixel(clip.start);
 		const end = frameToCanvasPixel(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
@@ -127,6 +140,8 @@
 		if (appState.disableKeyboardShortcuts) return;
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
+		timelineState.dragStart.x = e.offsetX;
+		timelineState.dragStart.y = e.offsetY;
 		if (e.button > 0) return;
 		if (e.offsetY < timelineState.padding * 0.8) {
 			scrubbing = true;
@@ -136,22 +151,32 @@
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
 		if (e.offsetY > height - 60 && e.offsetX > scrollBarStart && e.offsetX < scrollBarEnd) {
 			scrolling = true;
-			timelineState.dragStart = e.offsetX;
 			timelineState.offsetStart = timelineState.offset;
+			return;
 		}
 		if (timelineState.hoverClipId) {
 			// clicked a clip
 			if (timelineState.playing) pause();
-			if (e.shiftKey) {
-				splitClip(timelineState.hoverClipId, canvasPixelToFrame(e.offsetX));
-				timelineState.invalidateWaveform = true;
+			const clip = getClip(timelineState.hoverClipId);
+			if (!clip) return;
+
+			if (timelineState.selectedClips.has(clip)) {
+				// clicked a multi-selected clip
+				for (const selectedClip of timelineState.selectedClips) {
+					selectedClip.savedStart = selectedClip.start;
+				}
+				dragging = true;
 				return;
 			}
 
-			const clip = getClip(timelineState.hoverClipId);
+			if (e.shiftKey) {
+				// if there is a clip selected check we have not clicked it
+				if (timelineState.selectedClip === clip) return;
+				multiSelectClip(timelineState.hoverClipId);
+				return;
+			}
 			timelineState.selectedClip = clip;
-			if (!clip) return;
-
+			timelineState.selectedClips.clear();
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
@@ -159,64 +184,54 @@
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
-				timelineState.dragStart = e.offsetX;
 			} else {
 				dragging = true;
-				timelineState.dragStart = e.offsetX;
 			}
+			console.log(clip.resizeHover);
 		} else {
 			timelineState.selectedClip = null;
+			timelineState.selectedClips.clear();
+			timelineState.action = 'selecting';
 		}
 		removeHoverAllClips();
 		timelineState.invalidate = true;
 	};
 
-	mouseUp = (e: MouseEvent) => {
+	mouseUp = () => {
 		const clip = timelineState.selectedClip;
 		if (scrubbing) {
 			scrubbing = false;
 		}
 		if (dragging) {
+			// TODO: if mouse has not moved much then select
 			dragging = false;
-			if (clip) {
-				trimSiblingClips(clip);
-				updateWorkerClip(clip);
-				if (clip.start !== clip.savedStart || clip.track !== clip.savedTrack) {
-					historyManager.pushAction({
-						action: 'moveClip',
-						data: {
-							clipId: clip.id,
-							newStart: clip.start,
-							oldStart: clip.savedStart,
-							newTrack: clip.track,
-							oldTrack: clip.savedTrack
-						}
-					});
+			if (clip) finaliseClip(clip, 'moveClip');
+			if (timelineState.selectedClips.size > 0) {
+				for (const multiSelectClip of timelineState.selectedClips) {
+					finaliseClip(multiSelectClip, 'moveClip');
 				}
 			}
 		}
 		if (resizing) {
 			resizing = false;
-			if (clip) {
-				updateWorkerClip(clip);
-				historyManager.newCommand({
-					action: 'trimClip',
-					data: {
-						clipId: clip.id,
-						newStart: clip.start,
-						oldStart: clip.savedStart,
-						newDuration: clip.duration,
-						oldDuration: clip.savedDuration
-					}
-				});
+			if (clip) finaliseClip(clip, 'trimClip');
+		}
+		if ((timelineState.action = 'selecting')) {
+			if (timelineState.selectedClips.size === 1) {
+				// if there is only one clip, select it
+				const foundClip = timelineState.selectedClips.values().next().value;
+				if (foundClip) timelineState.selectedClip = foundClip;
+				timelineState.selectedClips.clear();
 			}
 		}
 		if (scrolling) {
 			scrolling = false;
 		}
-
+		timelineState.action = 'none';
+		timelineState.invalidate = true;
 		appState.mouseIsDown = false;
-		timelineState.dragOffset = 0;
+		timelineState.dragOffset.x = 0;
+		timelineState.dragOffset.y = 0;
 		historyManager.finishCommand();
 		removeInvalidAllClips();
 	};
@@ -229,12 +244,12 @@
 		const newClip = createClip(sourceId, 0, start, 0, 0, true);
 		if (!newClip) return;
 		timelineState.selectedClip = newClip;
-		timelineState.dragStart = e.offsetX;
+		timelineState.dragStart.x = e.offsetX;
 	};
 
 	const dragOver = (e: MouseEvent) => {
 		e.preventDefault();
-		timelineState.dragOffset = e.offsetX - timelineState.dragStart;
+		timelineState.dragOffset.x = e.offsetX - timelineState.dragStart.x;
 		moveSelectedClip(e.offsetY);
 		timelineState.invalidateWaveform = true;
 	};
@@ -398,9 +413,13 @@
 				}
 				break;
 			case 'Backspace':
-				const selectedClip = timelineState.selectedClip;
-				if (!selectedClip) break;
-				deleteClip(selectedClip.id);
+				if (timelineState.selectedClip) deleteClip(timelineState.selectedClip);
+				if (timelineState.selectedClips) {
+					for (const clip of timelineState.selectedClips) {
+						deleteClip(clip);
+					}
+				}
+				historyManager.finishCommand();
 				timelineState.invalidateWaveform = true;
 				break;
 			case 'KeyF': {

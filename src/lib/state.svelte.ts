@@ -32,12 +32,14 @@ class TimelineState {
 	playing = $state(false);
 	width = $state(0); // pixels
 	selectedClip = $state<Clip | null>(null);
+	selectedClips = new Set<Clip>();
 
+	action: 'none' | 'selecting' = 'none';
 	zoom = 0.9;
 	offset = -0.055; // percentage, 0...1
 	offsetStart = 0; // percentage, 0...1
-	dragOffset = 0; // pixels
-	dragStart = 0; // pixels
+	dragOffset = { x: 0, y: 0 }; // pixels
+	dragStart = { x: 0, y: 0 }; // pixels
 	hoverClipId = '';
 	focusedTrack = 0;
 	padding = 100;
