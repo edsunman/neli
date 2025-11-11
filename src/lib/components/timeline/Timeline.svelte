@@ -187,7 +187,6 @@
 			} else {
 				dragging = true;
 			}
-			console.log(clip.resizeHover);
 		} else {
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();

@@ -5,10 +5,10 @@ import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
 import type { FileInfo, SrtEntry } from '$lib/types';
 
-export const checkDroppedSource = async (file: File): Promise<FileInfo> => {
+export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {
 	console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-	console.log(file.type);
-	if (file.type === 'video/mp4') {
+	console.log(fileType);
+	if (fileType === 'video/mp4') {
 		const input = new Input({
 			formats: ALL_FORMATS,
 			source: new BlobSource(file)
@@ -31,7 +31,7 @@ export const checkDroppedSource = async (file: File): Promise<FileInfo> => {
 			frameRate,
 			duration
 		};
-	} else if (file.type === 'audio/mpeg' || file.type === 'audio/wav') {
+	} else if (fileType === 'audio/mpeg' || fileType === 'audio/wav') {
 		const input = new Input({
 			formats: ALL_FORMATS,
 			source: new BlobSource(file)
@@ -54,7 +54,7 @@ export const checkDroppedSource = async (file: File): Promise<FileInfo> => {
 			channelCount: audioTrack.numberOfChannels,
 			duration
 		};
-	} else if (file.type === 'application/x-subrip') {
+	} else if (fileType === 'application/x-subrip') {
 		const result = await readFileAsText(file);
 		const srtEntries = parseSrt(result);
 		return {

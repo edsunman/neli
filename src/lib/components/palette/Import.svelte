@@ -68,20 +68,25 @@
 	};
 
 	const processFile = async (file: File) => {
-		console.log(file.type);
+		//console.log(file.type);
+		appState.lockPalette = true;
+		showDetails = true;
 		appState.fileToImport = null;
 
 		fileDetails.name = file.name;
 		fileDetails.type = file.type;
 
-		appState.lockPalette = true;
-		showDetails = true;
+		if (!file.type) {
+			const lastDotIndex = file.name.lastIndexOf('.');
+			const extension = file.name.slice(lastDotIndex);
+			if (extension === '.srt') fileDetails.type = 'application/x-subrip';
+		}
 
 		if (
-			file.type !== 'video/mp4' &&
-			file.type !== 'audio/mpeg' &&
-			file.type !== 'audio/wav' &&
-			file.type !== 'application/x-subrip'
+			fileDetails.type !== 'video/mp4' &&
+			fileDetails.type !== 'audio/mpeg' &&
+			fileDetails.type !== 'audio/wav' &&
+			fileDetails.type !== 'application/x-subrip'
 		) {
 			fileDetails.type = 'unknown';
 			warningMessage = 'file type not supported';
@@ -98,7 +103,7 @@
 			return;
 		}
 
-		const info = await checkDroppedSource(file);
+		const info = await checkDroppedSource(file, fileDetails.type);
 		if (!info) return;
 
 		if ('error' in info) {
