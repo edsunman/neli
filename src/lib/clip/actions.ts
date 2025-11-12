@@ -177,18 +177,34 @@ export const moveSelectedClip = (mouseY: number) => {
 	}
 
 	// move between tracks
-	if (clip.source.type === 'video' || clip.source.type === 'test') {
-		const currentTrack = clip.track;
-		if (mouseY > timelineState.trackTops[2] + timelineState.padding - 5) {
-			clip.track = 3;
-		} else {
-			clip.track = 2;
+	const currentTrack = clip.track;
+	const padding = 5; // expand track hitbox vertically
+	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+		const trackTop = timelineState.trackTops[i] - padding;
+		const trackHeight = timelineState.trackHeights[i];
+		const trackBottom = trackTop + trackHeight + padding * 2;
+		if (i === 0 && mouseY < trackTop && timelineState.focusedTrack === 0) {
+			// above track 1
+			timelineState.trackDropZone = 0;
+			clip.track = 0;
 		}
-		if (clip.track !== currentTrack) {
-			// moved between tracks this frame
-			setTrackClipJoins(currentTrack);
+		if (mouseY >= trackTop && mouseY < trackBottom) {
+			// on track
+			clip.track = i + 1;
+			timelineState.trackDropZone = -1;
+		}
+		if (mouseY > trackBottom && mouseY < trackBottom + 15 && timelineState.focusedTrack === 0) {
+			// below track
+			timelineState.trackDropZone = i + 1;
+			clip.track = 0;
 		}
 	}
+	console.log(timelineState.trackDropZone);
+	if (clip.track !== currentTrack) {
+		// moved between tracks this frame
+		setTrackClipJoins(currentTrack);
+	}
+	//}
 	setTrackClipJoins(clip.track);
 	//setClipJoins(clip);
 };

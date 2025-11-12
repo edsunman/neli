@@ -12,7 +12,9 @@
 		focusTrack,
 		focusClip,
 		extendTimeline,
-		setTrackPositions
+		setTrackPositions,
+		addTrack,
+		removeEmptyTracks
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -50,7 +52,6 @@
 	let waveCanvas: OffscreenCanvas;
 	let waveContext: OffscreenCanvasRenderingContext2D | null;
 	let canvasContainer = $state<HTMLDivElement>();
-	//let height = $state(0);
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
@@ -214,6 +215,12 @@
 		if (dragging) {
 			dragging = false;
 			if (clip) {
+				if (timelineState.trackDropZone > -1) {
+					addTrack(timelineState.trackDropZone);
+					clip.track = timelineState.trackDropZone + 1;
+					timelineState.trackDropZone = -1;
+					removeEmptyTracks();
+				}
 				finaliseClip(clip, 'moveClip');
 				extendTimeline(clip.start + clip.duration);
 			}

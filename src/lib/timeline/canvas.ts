@@ -58,7 +58,12 @@ export const drawCanvas = (
 		drawClip(context, clip, width, false, true);
 	}
 
-	if (timelineState.selectedClip) drawClip(context, timelineState.selectedClip, width, true);
+	if (timelineState.selectedClip && timelineState.trackDropZone < 0)
+		drawClip(context, timelineState.selectedClip, width, true);
+
+	if (timelineState.trackDropZone > -1) {
+		drawInbetweenClip(context, width);
+	}
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
 		context.drawImage(waveCanvas, 0, timelineState.trackTops[timelineState.focusedTrack - 1] + 25);
@@ -384,4 +389,33 @@ const drawClip = (
 		context.fillRect(clipStart + 7, trackTop + 10, 3, clipHeight - 20);
 		context.fillRect(clipEnd - 9, trackTop + 10, 3, clipHeight - 20);
 	}
+};
+
+const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+
+	let clipColor = GREEN_LIGHT;
+	if (clip.source.type === 'text') {
+		clipColor = PURPLE_LIGHT;
+	}
+
+	const startPercent = clip.start / timelineState.duration - timelineState.offset;
+	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+
+	const clipStart = Math.round(startPercent * width * timelineState.zoom);
+	const clipEnd = Math.round(endPercent * width * timelineState.zoom);
+	let clipTop = 0;
+	if (timelineState.trackDropZone === 0) {
+		clipTop = timelineState.trackTops[0] - 10;
+	} else {
+		clipTop =
+			timelineState.trackTops[timelineState.trackDropZone - 1] +
+			timelineState.trackHeights[timelineState.trackDropZone - 1] +
+			5;
+	}
+	context.fillStyle = clipColor;
+	context.beginPath();
+	context.roundRect(clipStart, clipTop, clipEnd - clipStart, 5, 2);
+	context.fill();
 };

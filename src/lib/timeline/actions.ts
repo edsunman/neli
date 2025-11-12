@@ -1,6 +1,6 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
 import { timelineState } from '$lib/state.svelte';
-import { calculateMaxZoomLevel, canvasPixelToFrame, frameToCanvasPixel } from './utils';
+import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 
 export const setCurrentFrame = (frame: number) => {
@@ -185,7 +185,43 @@ export const setTrackPositions = () => {
 
 	const topOfAllTracks = (trackContainerHeight - totalTrackHeight) / 2;
 	for (let i = 0; i < timelineState.trackHeights.length; i++) {
-		timelineState.trackTops[i] += topOfAllTracks + rulerContainerHeight;
+		timelineState.trackTops[i] += Math.floor(topOfAllTracks + rulerContainerHeight);
+	}
+};
+
+export const addTrack = (position: number) => {
+	timelineState.trackHeights.push(35);
+	for (const clip of timelineState.clips) {
+		if (clip.track > position) clip.track++;
+	}
+	setTrackPositions();
+};
+
+export const removeTrack = (trackNumber: number) => {
+	timelineState.trackHeights.splice(trackNumber - 1, 1);
+	for (const clip of timelineState.clips) {
+		if (clip.track > trackNumber) clip.track--;
+	}
+	setTrackPositions();
+};
+
+export const removeEmptyTracks = () => {
+	console.log(timelineState.trackHeights);
+	const usedTracks = new Set<number>();
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		usedTracks.add(clip.track);
+	}
+	for (let i = timelineState.trackHeights.length - 1; i >= 0; i--) {
+		if (!usedTracks.has(i + 1)) {
+			console.log('remove', i + 1);
+			removeTrack(i + 1);
+		}
+	}
+
+	if (timelineState.trackHeights.length < 2) {
+		timelineState.trackHeights.push(35);
+		setTrackPositions();
 	}
 };
 

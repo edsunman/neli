@@ -46,6 +46,7 @@ class TimelineState {
 	padding = 100;
 	trackTops = [0, 50, 100, 150];
 	trackHeights = [35, 35];
+	trackDropZone = -1;
 	invalidate = false;
 	invalidateWaveform = false;
 }
