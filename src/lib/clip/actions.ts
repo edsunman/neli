@@ -4,7 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 import { getClipInitialScaleFactor } from './utils';
-import { removeEmptyTracks } from '$lib/timeline/actions';
+import { addTrack, removeEmptyTracks } from '$lib/timeline/actions';
 
 export const createClip = (
 	sourceId: string,
@@ -519,7 +519,16 @@ export const multiSelectClipsInRange = () => {
 /** Call when clip is "dropped" to persist clip state to worker and history */
 export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip') => {
 	trimSiblingClips(clip);
+
+	if (timelineState.trackDropZone > -1) {
+		addTrack(timelineState.trackDropZone);
+		clip.track = timelineState.trackDropZone + 1;
+		timelineState.trackDropZone = -1;
+		//removeEmptyTracks();
+	}
+
 	updateWorkerClip(clip);
+
 	if (
 		historyAction === 'moveClip' &&
 		(clip.start !== clip.savedStart || clip.track !== clip.savedTrack)
@@ -549,6 +558,10 @@ export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip')
 				oldDuration: clip.savedDuration
 			}
 		});
+	}
+
+	if (timelineState.trackDropZone > -1) {
+		removeEmptyTracks();
 	}
 };
 

@@ -1,11 +1,14 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
+import { setTrackPositions } from '$lib/timeline/actions';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 type Command =
 	| { action: 'addClip'; data: { clipId: string } }
 	| { action: 'deleteClip'; data: { clipId: string } }
+	| { action: 'addTrack'; data: { trackNumber: number } }
+	| { action: 'removeTrack'; data: { trackNumber: number } }
 	| {
 			action: 'moveClip';
 			data: {
@@ -68,7 +71,8 @@ export class HistoryManager {
 		if (this.#debug) console.debug('added to redo stack ', commands);
 
 		const updatedClips = new Set<Clip>();
-		for (const command of commands) {
+		const reversed = commands.toReversed();
+		for (const command of reversed) {
 			switch (command.action) {
 				case 'addClip':
 					for (const clip of timelineState.clips) {
@@ -112,6 +116,16 @@ export class HistoryManager {
 						clip.params[command.data.paramIndex[i]] = command.data.oldValue[i];
 					}
 					updatedClips.add(clip);
+					break;
+				}
+				case 'addTrack': {
+					timelineState.tracks.splice(command.data.trackNumber - 1, 1);
+					setTrackPositions();
+					break;
+				}
+				case 'removeTrack': {
+					timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+					setTrackPositions();
 					break;
 				}
 			}
@@ -177,8 +191,17 @@ export class HistoryManager {
 					for (let i = 0; i < command.data.paramIndex.length; i++) {
 						clip.params[command.data.paramIndex[i]] = command.data.newValue[i];
 					}
-					//clip.params[command.data.paramIndex] = command.data.newValue;
 					updatedClips.add(clip);
+					break;
+				}
+				case 'addTrack': {
+					timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+					setTrackPositions();
+					break;
+				}
+				case 'removeTrack': {
+					timelineState.tracks.splice(command.data.trackNumber - 1, 1);
+					setTrackPositions();
 					break;
 				}
 			}

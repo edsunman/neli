@@ -1,5 +1,5 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
-import { timelineState } from '$lib/state.svelte';
+import { historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 
@@ -137,7 +137,7 @@ export const zoomToFit = () => {
 	for (const clip of timelineState.clips) {
 		if (clip.start + clip.duration > lastFrame) lastFrame = clip.start + clip.duration;
 	}
-	lastFrame += 100;
+	//lastFrame += 100;
 	const percentOfTimeline = lastFrame / timelineState.duration;
 	timelineState.zoom = 0.95 / percentOfTimeline;
 
@@ -253,23 +253,54 @@ export const setTrackLocks = () => {
 	}
 };
 
-export const addTrack = (position: number) => {
+export const addTrack = (trackNumber: number) => {
 	timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+	historyManager.pushAction({ action: 'addTrack', data: { trackNumber } });
 	for (const clip of timelineState.clips) {
-		if (clip.track > position) clip.track++;
+		if (clip.track > trackNumber) {
+			//clip.savedTrack = clip.track;
+			clip.track++;
+			historyManager.pushAction({
+				action: 'moveClip',
+				data: {
+					clipId: clip.id,
+					newStart: clip.start,
+					oldStart: clip.start,
+					newTrack: clip.track,
+					oldTrack: clip.track - 1
+				}
+			});
+		}
 	}
+
 	setTrackPositions();
 };
 
 export const removeTrack = (trackNumber: number) => {
 	timelineState.tracks.splice(trackNumber - 1, 1);
+	historyManager.pushAction({ action: 'removeTrack', data: { trackNumber } });
 	for (const clip of timelineState.clips) {
-		if (clip.track > trackNumber) clip.track--;
+		if (clip.track > trackNumber) {
+			//clip.savedTrack = clip.track;
+			clip.track--;
+			historyManager.pushAction({
+				action: 'moveClip',
+				data: {
+					clipId: clip.id,
+					newStart: clip.start,
+					oldStart: clip.start,
+					newTrack: clip.track,
+					oldTrack: clip.track + 1
+				}
+			});
+		}
 	}
+
 	setTrackPositions();
 };
 
 export const removeEmptyTracks = () => {
+	//return;
 	if (timelineState.tracks.length <= 2) return;
 	const usedTracks = new Set<number>();
 	for (const clip of timelineState.clips) {

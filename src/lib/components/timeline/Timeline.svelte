@@ -69,6 +69,7 @@
 			onclick: () => {
 				if (timelineState.selectedClip) {
 					splitClip(timelineState.selectedClip.id, clickedFrame);
+					historyManager.finishCommand();
 					timelineState.invalidateWaveform = true;
 				}
 			},
@@ -147,11 +148,16 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
+		const selection = document.getSelection();
+		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
 		timelineState.dragStart.x = e.offsetX;
 		timelineState.dragStart.y = e.offsetY;
-		if (e.button > 0) return;
+		if (e.button > 0) {
+			timelineState.selectedClips.clear();
+			return;
+		}
 		if (e.offsetY < (timelineState.height - 32) * 0.2) {
 			scrubbing = true;
 			setCurrentFrameFromOffset(e.offsetX);
@@ -218,12 +224,6 @@
 		if (dragging) {
 			dragging = false;
 			if (clip) {
-				if (timelineState.trackDropZone > -1) {
-					addTrack(timelineState.trackDropZone);
-					clip.track = timelineState.trackDropZone + 1;
-					timelineState.trackDropZone = -1;
-					removeEmptyTracks();
-				}
 				finaliseClip(clip, 'moveClip');
 				extendTimeline(clip.start + clip.duration);
 				removeEmptyTracks();
