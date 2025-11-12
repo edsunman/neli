@@ -14,7 +14,9 @@
 		extendTimeline,
 		setTrackPositions,
 		addTrack,
-		removeEmptyTracks
+		removeEmptyTracks,
+		setTrackLocks,
+		zoomToFit
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -192,6 +194,7 @@
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
 			clip.savedTrack = clip.track;
+			setTrackLocks();
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
 				resizing = true;
@@ -223,6 +226,7 @@
 				}
 				finaliseClip(clip, 'moveClip');
 				extendTimeline(clip.start + clip.duration);
+				removeEmptyTracks();
 			}
 			if (timelineState.selectedClips.size > 0) {
 				let endPoint = 0;
@@ -255,7 +259,7 @@
 		timelineState.dragOffset.x = 0;
 		timelineState.dragOffset.y = 0;
 		historyManager.finishCommand();
-		removeInvalidAllClips();
+		//removeInvalidAllClips();
 	};
 
 	const dragEnter = (e: MouseEvent) => {
@@ -338,6 +342,8 @@
 
 		context = canvas.getContext('2d', { alpha: false });
 
+		timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+		timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
 		setCanvasSize();
 
 		document.fonts.ready.then(() => {
@@ -426,7 +432,8 @@
 				if (timelineState.zoom < maxZoom) {
 					setZoom(maxZoom);
 				} else {
-					setZoom(0.9);
+					//setZoom(0.9);
+					zoomToFit();
 				}
 				break;
 			case 'Space':

@@ -1,5 +1,12 @@
 export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt';
 
+export type Track = {
+	height: number;
+	top: number;
+	lockBottom: boolean;
+	lockTop: boolean;
+};
+
 export type SrtEntry = {
 	inPoint: number;
 	outPoint: number;

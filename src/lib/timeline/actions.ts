@@ -128,6 +128,26 @@ export const setZoom = (zoomAmount: number) => {
 	timelineState.invalidateWaveform = true;
 };
 
+export const zoomToFit = () => {
+	if (timelineState.clips.length < 1) {
+		setZoom(0.9);
+		return;
+	}
+	let lastFrame = 0;
+	for (const clip of timelineState.clips) {
+		if (clip.start + clip.duration > lastFrame) lastFrame = clip.start + clip.duration;
+	}
+	lastFrame += 100;
+	const percentOfTimeline = lastFrame / timelineState.duration;
+	timelineState.zoom = 0.95 / percentOfTimeline;
+
+	const middleFrame = lastFrame / 2;
+	const middleFramePercent = middleFrame / timelineState.duration;
+	const percentOfTimelineVisible = 1 / timelineState.zoom;
+	timelineState.offset = middleFramePercent - percentOfTimelineVisible / 2;
+	timelineState.invalidate = true;
+};
+
 export const updateScrollPosition = () => {
 	const padding = 0.05 / timelineState.zoom;
 	const offsetPercent = timelineState.dragOffset.x / timelineState.width;
@@ -140,13 +160,13 @@ export const updateScrollPosition = () => {
 export const focusTrack = (trackNumber: number) => {
 	timelineState.focusedTrack = trackNumber;
 
-	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (trackNumber === 0) {
-			timelineState.trackHeights[i] = 35;
+			timelineState.tracks[i].height = 35;
 		} else if (i === trackNumber - 1) {
-			timelineState.trackHeights[i] = 110;
+			timelineState.tracks[i].height = 110;
 		} else {
-			timelineState.trackHeights[i] = 20;
+			timelineState.tracks[i].height = 20;
 		}
 	}
 
@@ -156,7 +176,7 @@ export const focusTrack = (trackNumber: number) => {
 
 /** Call after changing track heights to recalculate and set positions */
 export const setTrackPositions = () => {
-	timelineState.trackTops.length = 0;
+	//timelineState.trackTops.length = 0;
 
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;
@@ -165,32 +185,76 @@ export const setTrackPositions = () => {
 	if (trackContainerHeight < 220) trackPadding = 5;
 
 	let totalTrackHeight = 0;
-	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (
-			timelineState.trackHeights.length > 2 &&
+			timelineState.tracks.length > 2 &&
 			trackContainerHeight < 190 &&
 			timelineState.focusedTrack > 0
 		) {
-			// very small screen, only show focued track in focus mode
-			timelineState.trackTops.push(i === timelineState.focusedTrack - 1 ? 0 : 1000);
+			// very small screen, only show focused track in focus mode
+			timelineState.tracks[i].top = i === timelineState.focusedTrack - 1 ? 0 : 1000;
 			totalTrackHeight = 110;
 		} else {
-			timelineState.trackTops.push(totalTrackHeight);
-			totalTrackHeight += timelineState.trackHeights[i];
-			if (i < timelineState.trackHeights.length - 1) {
+			timelineState.tracks[i].top = totalTrackHeight;
+			totalTrackHeight += timelineState.tracks[i].height;
+			if (i < timelineState.tracks.length - 1) {
 				totalTrackHeight += trackPadding;
 			}
 		}
 	}
 
 	const topOfAllTracks = (trackContainerHeight - totalTrackHeight) / 2;
-	for (let i = 0; i < timelineState.trackHeights.length; i++) {
-		timelineState.trackTops[i] += Math.floor(topOfAllTracks + rulerContainerHeight);
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		timelineState.tracks[i].top += Math.floor(topOfAllTracks + rulerContainerHeight);
+	}
+};
+
+export const setTrackLocks = () => {
+	// count clips on each track
+	const tracksInUse = new Set<number>();
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		if (timelineState.selectedClip && clip.id === timelineState.selectedClip.id) continue;
+		tracksInUse.add(clip.track);
+	}
+
+	// lock all tracks
+	for (const track of timelineState.tracks) {
+		track.lockTop = true;
+		track.lockBottom = true;
+	}
+
+	// if clip is audio and there are already 3 audio or video tracks then lock the others
+
+	// if clip is video and there are already 2 video tracks lock the others
+
+	// lock tops and bottoms
+
+	// if there are 4 tracks return early
+	if (timelineState.tracks.length >= 4) return;
+
+	// if track is top track unlock the top (unless empty)
+	// for all track not the bottom, unlock the bottom if that track and the one below has someing on it
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		if (i === 0) {
+			//const clipCount = countClipsOnTrack(i + 1, false);
+			if (tracksInUse.has(i + 1)) timelineState.tracks[i].lockTop = false;
+		}
+		if (i === timelineState.tracks.length - 1) {
+			//const clipCount = countClipsOnTrack(i + 1, false);
+			if (tracksInUse.has(i + 1)) timelineState.tracks[i].lockBottom = false;
+		}
+		if (i < timelineState.tracks.length - 1) {
+			//const clipCount = countClipsOnTrack(i + 1, false);
+			//const clipCountBelow = countClipsOnTrack(i + 2, false);
+			if (tracksInUse.has(i + 1) && tracksInUse.has(i + 2))
+				timelineState.tracks[i].lockBottom = false;
+		}
 	}
 };
 
 export const addTrack = (position: number) => {
-	timelineState.trackHeights.push(35);
+	timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
 	for (const clip of timelineState.clips) {
 		if (clip.track > position) clip.track++;
 	}
@@ -198,7 +262,7 @@ export const addTrack = (position: number) => {
 };
 
 export const removeTrack = (trackNumber: number) => {
-	timelineState.trackHeights.splice(trackNumber - 1, 1);
+	timelineState.tracks.splice(trackNumber - 1, 1);
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) clip.track--;
 	}
@@ -206,23 +270,19 @@ export const removeTrack = (trackNumber: number) => {
 };
 
 export const removeEmptyTracks = () => {
-	console.log(timelineState.trackHeights);
+	if (timelineState.tracks.length <= 2) return;
 	const usedTracks = new Set<number>();
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		usedTracks.add(clip.track);
 	}
-	for (let i = timelineState.trackHeights.length - 1; i >= 0; i--) {
+	for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
 		if (!usedTracks.has(i + 1)) {
-			console.log('remove', i + 1);
 			removeTrack(i + 1);
 		}
 	}
 
-	if (timelineState.trackHeights.length < 2) {
-		timelineState.trackHeights.push(35);
-		setTrackPositions();
-	}
+	setTrackPositions();
 };
 
 export const focusClip = () => {

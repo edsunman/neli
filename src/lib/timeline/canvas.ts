@@ -34,13 +34,13 @@ export const drawCanvas = (
 	const offsetInPixels = timelineState.width * timelineState.zoom * timelineState.offset;
 
 	context.fillStyle = '#111114';
-	for (let i = 0; i < timelineState.trackHeights.length; i++) {
+	for (let i = 0; i < timelineState.tracks.length; i++) {
 		context.beginPath();
 		context.roundRect(
 			Math.floor(-offsetInPixels),
-			timelineState.trackTops[i],
+			timelineState.tracks[i].top,
 			Math.floor(timelineState.width * timelineState.zoom),
-			timelineState.trackHeights[i],
+			timelineState.tracks[i].height,
 			8
 		);
 		context.fill();
@@ -66,7 +66,7 @@ export const drawCanvas = (
 	}
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
-		context.drawImage(waveCanvas, 0, timelineState.trackTops[timelineState.focusedTrack - 1] + 25);
+		context.drawImage(waveCanvas, 0, timelineState.tracks[timelineState.focusedTrack - 1].top + 25);
 
 	// select box
 	if (timelineState.action === 'selecting') {
@@ -306,11 +306,11 @@ const drawClip = (
 	}
 
 	const gap = 3;
-	const trackTop = timelineState.trackTops[clip.track - 1];
+	const trackTop = timelineState.tracks[clip.track - 1].top;
 	const clipHeight =
-		timelineState.trackHeights[clip.track - 1] > 35
+		timelineState.tracks[clip.track - 1].height > 35
 			? 35
-			: timelineState.trackHeights[clip.track - 1];
+			: timelineState.tracks[clip.track - 1].height;
 
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
@@ -400,6 +400,9 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 		clipColor = PURPLE_LIGHT;
 	}
 
+	const flexHeight = timelineState.height - 35;
+	const trackContainerHeight = flexHeight * 0.8;
+
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
@@ -407,12 +410,12 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 	const clipEnd = Math.round(endPercent * width * timelineState.zoom);
 	let clipTop = 0;
 	if (timelineState.trackDropZone === 0) {
-		clipTop = timelineState.trackTops[0] - 10;
+		clipTop = timelineState.tracks[0].top - 10;
 	} else {
 		clipTop =
-			timelineState.trackTops[timelineState.trackDropZone - 1] +
-			timelineState.trackHeights[timelineState.trackDropZone - 1] +
-			5;
+			timelineState.tracks[timelineState.trackDropZone - 1].top +
+			timelineState.tracks[timelineState.trackDropZone - 1].height +
+			(trackContainerHeight < 220 ? 0 : 5);
 	}
 	context.fillStyle = clipColor;
 	context.beginPath();

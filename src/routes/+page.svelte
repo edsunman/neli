@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, historyManager } from '$lib/state.svelte';
+	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createTestSource, createTextSource } from '$lib/source/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';

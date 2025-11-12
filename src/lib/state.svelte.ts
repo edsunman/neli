@@ -2,7 +2,7 @@ import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { Font } from './types';
+import type { Font, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
@@ -27,6 +27,7 @@ export const appState = new AppState();
 
 class TimelineState {
 	clips: Clip[] = [];
+	tracks: Track[] = [];
 	duration = $state(1800); // frames
 	currentFrame = $state(0);
 	playing = $state(false);
@@ -44,8 +45,8 @@ class TimelineState {
 	hoverClipId = '';
 	focusedTrack = 0;
 	padding = 100;
-	trackTops = [0, 50, 100, 150];
-	trackHeights = [35, 35];
+	//trackTops = [0, 50, 100, 150];
+	//trackHeights = [35, 35];
 	trackDropZone = -1;
 	invalidate = false;
 	invalidateWaveform = false;

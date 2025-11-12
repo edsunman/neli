@@ -4,6 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 import { getClipInitialScaleFactor } from './utils';
+import { removeEmptyTracks } from '$lib/timeline/actions';
 
 export const createClip = (
 	sourceId: string,
@@ -63,6 +64,7 @@ export const createClip = (
 export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
 	timelineState.selectedClip = null;
+	removeEmptyTracks();
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
@@ -177,29 +179,44 @@ export const moveSelectedClip = (mouseY: number) => {
 	}
 
 	// move between tracks
+	const flexHeight = timelineState.height - 35;
+	const trackContainerHeight = flexHeight * 0.8;
 	const currentTrack = clip.track;
-	const padding = 5; // expand track hitbox vertically
-	for (let i = 0; i < timelineState.trackHeights.length; i++) {
-		const trackTop = timelineState.trackTops[i] - padding;
-		const trackHeight = timelineState.trackHeights[i];
+	const padding = trackContainerHeight < 220 ? 0 : 5; // expand track hitbox vertically
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		const trackTop = timelineState.tracks[i].top - padding;
+		const trackHeight = timelineState.tracks[i].height;
 		const trackBottom = trackTop + trackHeight + padding * 2;
-		if (i === 0 && mouseY < trackTop && timelineState.focusedTrack === 0) {
-			// above track 1
+
+		// above track 1
+		if (
+			i === 0 &&
+			mouseY < trackTop &&
+			timelineState.focusedTrack === 0 &&
+			!timelineState.tracks[i].lockTop
+		) {
 			timelineState.trackDropZone = 0;
 			clip.track = 0;
 		}
+
+		// on track
 		if (mouseY >= trackTop && mouseY < trackBottom) {
-			// on track
 			clip.track = i + 1;
 			timelineState.trackDropZone = -1;
 		}
-		if (mouseY > trackBottom && mouseY < trackBottom + 15 && timelineState.focusedTrack === 0) {
-			// below track
+
+		// below track
+		if (
+			mouseY > trackBottom &&
+			mouseY < trackBottom + 15 &&
+			timelineState.focusedTrack === 0 &&
+			!timelineState.tracks[i].lockBottom
+		) {
 			timelineState.trackDropZone = i + 1;
 			clip.track = 0;
 		}
 	}
-	console.log(timelineState.trackDropZone);
+
 	if (clip.track !== currentTrack) {
 		// moved between tracks this frame
 		setTrackClipJoins(currentTrack);
@@ -431,10 +448,10 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		//if (clip.deleted || clip.duration < minimumSize) continue;
 		if (clip.deleted) continue;
 		clip.hovered = false;
-		for (let i = 0; i < timelineState.trackTops.length; i++) {
+		for (let i = 0; i < timelineState.tracks.length; i++) {
 			if (
-				offsetY > timelineState.trackTops[i] &&
-				offsetY < timelineState.trackTops[i] + timelineState.trackHeights[i] &&
+				offsetY > timelineState.tracks[i].top &&
+				offsetY < timelineState.tracks[i].top + timelineState.tracks[i].height &&
 				clip.track === i + 1
 			) {
 				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
@@ -476,10 +493,10 @@ export const multiSelectClipsInRange = () => {
 		timelineState.dragStart.y + timelineState.dragOffset.y
 	);
 	const tracks = new Set<number>();
-	for (let i = 0; i < 4; i++) {
+	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (
-			startTop < timelineState.trackTops[i] + timelineState.trackHeights[i] &&
-			endTop > timelineState.trackTops[i]
+			startTop < timelineState.tracks[i].top + timelineState.tracks[i].height &&
+			endTop > timelineState.tracks[i].top
 		) {
 			tracks.add(i + 1);
 		}
