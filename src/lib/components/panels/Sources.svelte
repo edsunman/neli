@@ -15,8 +15,29 @@
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { pause } from '$lib/timeline/actions';
 
+	let { mouseMove = $bindable() } = $props();
+
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
+
+	let startingCursor = { x: 0, y: 0 };
+	let cursorMovedEnough = false;
+
+	mouseMove = (e: MouseEvent) => {
+		if (appState.dragAndDrop.active) {
+			appState.dragAndDrop.x = e.clientX;
+			appState.dragAndDrop.y = e.clientY;
+			if (!cursorMovedEnough) {
+				const distance = Math.sqrt(
+					Math.pow(startingCursor.y - e.clientY, 2) + Math.pow(startingCursor.x - e.clientX, 2)
+				);
+				if (distance > 10) {
+					cursorMovedEnough = true;
+					appState.dragAndDrop.showIcon = true;
+				}
+			}
+		}
+	};
 
 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
@@ -67,11 +88,21 @@
 		<div class="text-zinc-500 text-sm w-full block border-separate border-spacing-y-1">
 			{#each appState.sources as source}
 				<button
-					draggable="true"
 					class={[
 						'group h-14 pl-20 select-none text-left relative',
 						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
 					]}
+					onmousedown={(e) => {
+						cursorMovedEnough = false;
+						startingCursor = { x: e.clientX, y: e.clientY };
+						appState.mouseIsDown = true;
+						appState.dragAndDrop.active = true;
+						appState.dragAndDrop.showIcon = false;
+						appState.dragAndDrop.source = source;
+						timelineState.selectedClip = null;
+						timelineState.selectedClips.clear();
+						timelineState.invalidate = true;
+					}}
 					onclick={() => {
 						pause();
 						timelineState.selectedClips.clear();
@@ -98,12 +129,6 @@
 							if (clip) timelineState.selectedClip = clip;
 						}
 						historyManager.finishCommand();
-					}}
-					ondragstart={(e) => {
-						appState.dragAndDropSourceId = source.id;
-						if (!e.dataTransfer) return;
-						const el = document.createElement('div');
-						e.dataTransfer.setDragImage(el, 0, 0);
 					}}
 				>
 					<span

@@ -23,6 +23,7 @@ export class Clip {
 	deleted = false;
 	invalid = false;
 	hovered = false;
+	temp = $state(false);
 	resizeHover: 'none' | 'start' | 'end' = 'none';
 
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {

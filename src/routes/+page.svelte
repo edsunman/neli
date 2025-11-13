@@ -2,21 +2,25 @@
 	import { onMount } from 'svelte';
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { createTestSource, createTextSource } from '$lib/source/actions';
+	import { setupTests } from '$lib/tests';
+	import { loadFont } from '$lib/text/utils';
+	import { focusTrack } from '$lib/timeline/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
 	import Controls from '$lib/components/panels/Settings.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
-	import { setupTests } from '$lib/tests';
-	import { loadFont, measureText } from '$lib/text/utils';
+	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
 
+	let sourcesMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let timelineMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let timelineMouseUp = $state<(e: MouseEvent) => void>();
 	let programMouseMove = $state<(e: MouseEvent, x: number, y: number) => void>();
 	let programMouseUp = $state<(e: MouseEvent) => void>();
 
 	window.onmousemove = (e: MouseEvent) => {
+		if (sourcesMouseMove) sourcesMouseMove(e, e.clientX, e.clientY);
 		if (timelineMouseMove) timelineMouseMove(e, e.clientX, e.clientY);
 		if (programMouseMove) programMouseMove(e, e.clientX, e.clientY);
 	};
@@ -24,6 +28,10 @@
 	window.onmouseup = (e: MouseEvent) => {
 		if (timelineMouseUp) timelineMouseUp(e);
 		if (programMouseUp) programMouseUp(e);
+		if (appState.dragAndDrop.active) {
+			appState.dragAndDrop.active = false;
+			appState.mouseIsDown = false;
+		}
 	};
 
 	onMount(async () => {
@@ -49,14 +57,16 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] height-xl:grid-rows-[calc(100svh-440px)_440px] bg-zinc-900"
+	id="portalContainer"
+	class="relative overflow-hidden h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] height-xl:grid-rows-[calc(100svh-440px)_440px] bg-zinc-900"
 >
-	<div class="overflow-hidden"><Sources /></div>
+	<div class="overflow-hidden"><Sources bind:mouseMove={sourcesMouseMove} /></div>
 	<div><Program bind:mouseMove={programMouseMove} bind:mouseUp={programMouseUp} /></div>
 	<div><Controls /></div>
 	<div class="col-span-3">
 		<Timeline bind:mouseMove={timelineMouseMove} bind:mouseUp={timelineMouseUp} />
 	</div>
+	<DragAndDropIcon />
 </div>
 
 {#if appState.showPalette}
@@ -86,6 +96,7 @@
 				break;
 			case 'KeyZ':
 				if (!event.ctrlKey) break;
+				focusTrack(0);
 				if (event.shiftKey) {
 					historyManager.redo();
 				} else {

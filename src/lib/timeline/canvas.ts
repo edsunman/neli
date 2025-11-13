@@ -49,8 +49,13 @@ export const drawCanvas = (
 	// clips
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected || clip.deleted || timelineState.selectedClips.has(clip)) continue;
+		if (selected || clip.deleted || clip.temp || timelineState.selectedClips.has(clip)) continue;
 		drawClip(context, clip, width, false, false);
+	}
+
+	// draw base for selected clips
+	for (const clip of timelineState.selectedClips) {
+		drawBaseShape(context, clip, width);
 	}
 
 	for (const clip of timelineState.selectedClips) {
@@ -58,8 +63,10 @@ export const drawCanvas = (
 		drawClip(context, clip, width, false, true);
 	}
 
-	if (timelineState.selectedClip && timelineState.trackDropZone < 0)
+	if (timelineState.selectedClip && timelineState.trackDropZone < 0) {
+		drawBaseShape(context, timelineState.selectedClip, width);
 		drawClip(context, timelineState.selectedClip, width, true);
+	}
 
 	if (timelineState.trackDropZone > -1) {
 		drawInbetweenClip(context, width);
@@ -89,7 +96,7 @@ export const drawCanvas = (
 	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
 	const playheadTop = rulerContainerHeight * 0.2;
 	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, playheadTop + 15, 2, 300);
+	context.fillRect(playheadPosition, playheadTop + 15, 2, flexHeight - 35);
 
 	context.translate(playheadPosition - 6, playheadTop);
 	context.fill(PLAYHEAD_PATH);
@@ -211,7 +218,8 @@ const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) =
 	);
 
 	context.fillStyle = '#71717b';
-	context.font = '12px sen';
+	context.font = '13px sen';
+	context.letterSpacing = '0.2px';
 
 	// draw every minute
 	if (minuteInPixels <= 700) {
@@ -220,7 +228,7 @@ const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) =
 		for (let i = 0; i < numberOfMinutesToShow; i++) {
 			const position = Math.floor(minuteInPixels * startMinute - offsetInPixels);
 			context.fillRect(position, rulerPosition, 1, 22);
-			context.fillText(secondsToTimecode(startMinute * 60), position + 5, rulerPosition + 15);
+			context.fillText(secondsToTimecode(startMinute * 60), position + 7, rulerPosition + 15);
 			startMinute++;
 		}
 	}
@@ -233,7 +241,7 @@ const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) =
 			if (startSecond >= 0) {
 				const position = Math.floor((minuteInPixels / 6) * startSecond - offsetInPixels);
 				context.fillRect(position, rulerPosition, 1, 22);
-				context.fillText(secondsToTimecode(startSecond * 10), position + 5, rulerPosition + 15);
+				context.fillText(secondsToTimecode(startSecond * 10), position + 7, rulerPosition + 15);
 			}
 			startSecond++;
 		}
@@ -249,7 +257,7 @@ const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) =
 					(minuteInPixels / 6) * startSecond - offsetInPixels + minuteInPixels / 12
 				);
 				context.fillRect(position, rulerPosition, 1, 22);
-				context.fillText(secondsToTimecode(startSecond * 10 + 5), position + 5, rulerPosition + 15);
+				context.fillText(secondsToTimecode(startSecond * 10 + 5), position + 7, rulerPosition + 15);
 			}
 			startSecond++;
 		}
@@ -263,7 +271,7 @@ const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) =
 			if (startSecond >= 0) {
 				const position = Math.floor((minuteInPixels / 60) * startSecond - offsetInPixels);
 				context.fillRect(position, rulerPosition, 1, 22);
-				context.fillText(secondsToTimecode(startSecond), position + 5, rulerPosition + 15);
+				context.fillText(secondsToTimecode(startSecond), position + 7, rulerPosition + 15);
 			}
 			startSecond++;
 		}
@@ -315,8 +323,8 @@ const drawClip = (
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
 
-	const clipFullStart = Math.round(startPercent * width * timelineState.zoom);
-	const clipFullEnd = Math.round(endPercent * width * timelineState.zoom);
+	const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
+	const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
 
 	const clipStart = clipFullStart + 1;
 	const clipWidth = clipFullEnd - clipFullStart - gap;
@@ -327,7 +335,7 @@ const drawClip = (
 	if (clip.joinLeft || clip.joinRight) maskWidth = clipWidth + 20;
 	if (clip.joinLeft && clip.joinRight) maskWidth = clipWidth + 40;
 
-	// TODO: each clip should not be a seperate draw call
+	// TODO:  clip should not be a seperate draw call
 
 	// focus shapes
 	if (clip.track === timelineState.focusedTrack) {
@@ -420,5 +428,27 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 	context.fillStyle = clipColor;
 	context.beginPath();
 	context.roundRect(clipStart, clipTop, clipEnd - clipStart, 5, 2);
+	context.fill();
+};
+
+const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: number) => {
+	const gap = 3;
+	const trackTop = timelineState.tracks[clip.track - 1].top;
+	const clipHeight =
+		timelineState.tracks[clip.track - 1].height > 35
+			? 35
+			: timelineState.tracks[clip.track - 1].height;
+
+	const startPercent = clip.start / timelineState.duration - timelineState.offset;
+	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+
+	const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
+	const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
+
+	const clipStart = clipFullStart + 1;
+	const clipWidth = clipFullEnd - clipFullStart - gap;
+	context.fillStyle = '#131315';
+	context.beginPath();
+	context.roundRect(clipStart - 3, trackTop - 3, clipWidth + 6, clipHeight + 6, 11);
 	context.fill();
 };

@@ -24,7 +24,7 @@
 </script>
 
 {#if showContextMenu}
-	<Portal>
+	<Portal to="#portalContainer">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="h-dvh w-dvw absolute top-0 left-0 z-10"

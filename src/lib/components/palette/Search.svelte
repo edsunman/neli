@@ -2,6 +2,7 @@
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import {
 		centerViewOnPlayhead,
+		focusTrack,
 		pause,
 		play,
 		setCurrentFrame,
@@ -90,6 +91,7 @@
 					icon: undoIcon,
 					shortcuts: ['ctrl', 'Z'],
 					action: () => {
+						focusTrack(0);
 						historyManager.undo();
 						appState.showPalette = false;
 					}
@@ -101,6 +103,7 @@
 					icon: redoIcon,
 					shortcuts: ['ctrl', 'alt', 'Z'],
 					action: () => {
+						focusTrack(0);
 						historyManager.redo();
 						appState.showPalette = false;
 					}

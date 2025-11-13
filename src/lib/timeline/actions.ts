@@ -129,15 +129,17 @@ export const setZoom = (zoomAmount: number) => {
 };
 
 export const zoomToFit = () => {
-	if (timelineState.clips.length < 1) {
+	let lastFrame = 0;
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		if (clip.start + clip.duration > lastFrame) lastFrame = clip.start + clip.duration;
+	}
+
+	if (lastFrame < 1) {
 		setZoom(0.9);
 		return;
 	}
-	let lastFrame = 0;
-	for (const clip of timelineState.clips) {
-		if (clip.start + clip.duration > lastFrame) lastFrame = clip.start + clip.duration;
-	}
-	//lastFrame += 100;
+
 	const percentOfTimeline = lastFrame / timelineState.duration;
 	timelineState.zoom = 0.95 / percentOfTimeline;
 

@@ -30,16 +30,12 @@ export const createClip = (
 		}
 	}
 
-	if (start + duration > timelineState.duration) {
-		// clip outside timeline bounds
+	if (start + duration > timelineState.duration && !temp) {
+		// clip duration outside timeline bounds
 		duration = timelineState.duration - start;
 	}
 
-	if (track < 1) {
-		if (source.type === 'text') track = 1;
-		if (source.type === 'test' || source.type === 'video') track = 2;
-		if (source.type === 'audio') track = 4;
-	}
+	if (track < 1) track = 1;
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
@@ -517,14 +513,14 @@ export const multiSelectClipsInRange = () => {
 };
 
 /** Call when clip is "dropped" to persist clip state to worker and history */
-export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip') => {
+export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip' | 'addClip') => {
+	clip.temp = false;
 	trimSiblingClips(clip);
 
 	if (timelineState.trackDropZone > -1) {
 		addTrack(timelineState.trackDropZone);
 		clip.track = timelineState.trackDropZone + 1;
 		timelineState.trackDropZone = -1;
-		//removeEmptyTracks();
 	}
 
 	updateWorkerClip(clip);
@@ -559,9 +555,11 @@ export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip')
 			}
 		});
 	}
-
-	if (timelineState.trackDropZone > -1) {
-		removeEmptyTracks();
+	if (historyAction === 'addClip') {
+		historyManager.pushAction({
+			action: 'addClip',
+			data: { clipId: clip.id }
+		});
 	}
 };
 

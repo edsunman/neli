@@ -4,6 +4,14 @@ import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
 import type { Font, Track } from './types';
 
+type DragAndDropState = {
+	active: boolean;
+	x: number;
+	y: number;
+	showIcon: boolean;
+	source: Source | null;
+};
+
 class AppState {
 	mediaWorker?: Worker;
 	waveformCanvas?: HTMLCanvasElement;
@@ -13,12 +21,18 @@ class AppState {
 	audioLevel = $state([0, 0]);
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
+	dragAndDrop = $state<DragAndDropState>({
+		active: false,
+		x: 0,
+		y: 0,
+		showIcon: true,
+		source: null
+	});
 
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};
-	dragAndDropSourceId = '';
 	fileToImport: File | null = null;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }

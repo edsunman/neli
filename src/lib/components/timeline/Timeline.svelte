@@ -58,6 +58,7 @@
 	let dragging = false;
 	let resizing = false;
 	let scrolling = false;
+	let inDropZone = false;
 	let fontsLoaded = false;
 	let contextMenu: ContextMenu;
 	let clickedFrame = 0;
@@ -114,7 +115,7 @@
 		if (dragging) {
 			moveSelectedClip(offsetY);
 			timelineState.invalidateWaveform = true;
-			return;
+			// don't return yet (we may be drag and dropping)
 		}
 		if (resizing) {
 			resizeSelctedClip();
@@ -125,6 +126,17 @@
 
 		if (offsetY < 0) return;
 		timelineState.invalidate = true;
+
+		if (appState.dragAndDrop.active) {
+			if (offsetY > timelineState.height * 0.2) {
+				if (!inDropZone) mouseEnteredDropZone(e);
+				inDropZone = true;
+			} else {
+				mouseLeftDropZone();
+				inDropZone = false;
+			}
+			return;
+		}
 
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
@@ -223,8 +235,14 @@
 		}
 		if (dragging) {
 			dragging = false;
+
 			if (clip) {
-				finaliseClip(clip, 'moveClip');
+				if (appState.dragAndDrop.active) {
+					// drag and dropped clip
+					finaliseClip(clip, 'addClip');
+				} else {
+					finaliseClip(clip, 'moveClip');
+				}
 				extendTimeline(clip.start + clip.duration);
 				removeEmptyTracks();
 			}
@@ -262,9 +280,33 @@
 		//removeInvalidAllClips();
 	};
 
+	const mouseEnteredDropZone = (e: MouseEvent) => {
+		if (!appState.dragAndDrop.active) return;
+		appState.dragAndDrop.showIcon = false;
+		const sourceId = appState.dragAndDrop.source?.id;
+		if (!sourceId) return;
+		const start = canvasPixelToFrame(e.offsetX - 50);
+		const newClip = createClip(sourceId, 0, start, 0, 0, true);
+		if (!newClip) return;
+		newClip.temp = true;
+		timelineState.selectedClip = newClip;
+		timelineState.dragStart.x = e.offsetX;
+		setTrackLocks();
+		dragging = true;
+	};
+
+	const mouseLeftDropZone = () => {
+		//if (!appState.dragAndDrop.active) return;
+		appState.dragAndDrop.showIcon = true;
+		if (timelineState.selectedClip) {
+			removeClip(timelineState.selectedClip.id);
+			timelineState.invalidateWaveform = true;
+		}
+	};
+
 	const dragEnter = (e: MouseEvent) => {
 		e.preventDefault();
-		const sourceId = appState.dragAndDropSourceId;
+		const sourceId = appState.dragAndDrop.source?.id;
 		if (!sourceId) return;
 		const start = canvasPixelToFrame(e.offsetX);
 		const newClip = createClip(sourceId, 0, start, 0, 0, true);
@@ -274,6 +316,7 @@
 	};
 
 	const dragOver = (e: MouseEvent) => {
+		console.log('drag over');
 		e.preventDefault();
 		timelineState.dragOffset.x = e.offsetX - timelineState.dragStart.x;
 		moveSelectedClip(e.offsetY);
@@ -373,10 +416,6 @@
 		class="flex-1"
 		role="navigation"
 		onmousedown={mouseDown}
-		ondragenter={dragEnter}
-		ondragover={dragOver}
-		ondragleave={dragLeave}
-		ondrop={drop}
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			timelineState.hoverClipId = '';
