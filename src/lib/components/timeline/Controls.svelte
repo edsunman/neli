@@ -43,7 +43,7 @@
 	<button
 		class={[
 			!appState.mouseIsDown && 'hover:bg-zinc-700 group',
-			'text-white select-non pl-9 pr-3 py-1 mr-6 bg-hover rounded-lg relative',
+			'text-white pl-9 pr-3 py-1 mr-6 bg-hover rounded-lg relative',
 			'transition-colors duration-200 hover:duration-0 select-none'
 		]}
 		oncontextmenu={(e) => {

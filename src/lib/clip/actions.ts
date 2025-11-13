@@ -17,6 +17,11 @@ export const createClip = (
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
+	if (start > timelineState.duration && !temp) {
+		// clip added after end of timeline
+		return;
+	}
+
 	if (duration === 0) {
 		// no duration set so use defaults
 		duration = 500;

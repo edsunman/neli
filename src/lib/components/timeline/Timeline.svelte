@@ -84,20 +84,20 @@
 		}
 	]);
 
-	mouseMove = (e: MouseEvent, parentX: number, parentY: number) => {
+	mouseMove = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
 
 		canvas.style.cursor = 'default';
-		const offsetY = parentY - canvasContainer.offsetTop;
+		const offsetY = e.clientY - canvasContainer.offsetTop;
 
 		if (scrubbing) {
-			setCurrentFrameFromOffset(parentX);
+			setCurrentFrameFromOffset(e.clientX);
 			timelineState.invalidate = true;
 			return;
 		}
 		if (dragging || resizing || scrolling || timelineState.action === 'selecting') {
-			timelineState.dragOffset.x = parentX - timelineState.dragStart.x;
+			timelineState.dragOffset.x = e.clientX - timelineState.dragStart.x;
 			timelineState.dragOffset.y = offsetY - timelineState.dragStart.y;
 		}
 
@@ -313,31 +313,6 @@
 		if (!newClip) return;
 		timelineState.selectedClip = newClip;
 		timelineState.dragStart.x = e.offsetX;
-	};
-
-	const dragOver = (e: MouseEvent) => {
-		console.log('drag over');
-		e.preventDefault();
-		timelineState.dragOffset.x = e.offsetX - timelineState.dragStart.x;
-		moveSelectedClip(e.offsetY);
-		timelineState.invalidateWaveform = true;
-	};
-
-	const dragLeave = () => {
-		if (timelineState.selectedClip) {
-			removeClip(timelineState.selectedClip.id);
-			timelineState.invalidateWaveform = true;
-		}
-	};
-
-	const drop = () => {
-		const clip = timelineState.selectedClip;
-		if (clip) {
-			trimSiblingClips(clip);
-			updateWorkerClip(clip);
-			historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
-			historyManager.finishCommand();
-		}
 	};
 
 	const setCanvasSize = async () => {

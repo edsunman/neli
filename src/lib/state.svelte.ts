@@ -25,7 +25,7 @@ class AppState {
 		active: false,
 		x: 0,
 		y: 0,
-		showIcon: true,
+		showIcon: false,
 		source: null
 	});
 

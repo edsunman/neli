@@ -15,13 +15,13 @@
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { pause } from '$lib/timeline/actions';
 
-	let { mouseMove = $bindable() } = $props();
+	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
 	let startingCursor = { x: 0, y: 0 };
-	let cursorMovedEnough = false;
+	let cursorMovedEnough = $state(false);
 
 	mouseMove = (e: MouseEvent) => {
 		if (appState.dragAndDrop.active) {
@@ -36,6 +36,15 @@
 					appState.dragAndDrop.showIcon = true;
 				}
 			}
+		}
+	};
+
+	mouseUp = () => {
+		if (appState.dragAndDrop.active) {
+			appState.dragAndDrop.showIcon = false;
+			appState.dragAndDrop.active = false;
+			appState.mouseIsDown = false;
+			cursorMovedEnough = false;
 		}
 	};
 
@@ -89,8 +98,12 @@
 			{#each appState.sources as source}
 				<button
 					class={[
+						!appState.mouseIsDown && 'hover:text-zinc-300 hover:bg-hover',
+						appState.dragAndDrop.active &&
+							appState.dragAndDrop.source?.id === source.id &&
+							'bg-hover text-zinc-300',
 						'group h-14 pl-20 select-none text-left relative',
-						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
+						'w-full rounded-lg'
 					]}
 					onmousedown={(e) => {
 						cursorMovedEnough = false;
@@ -137,8 +150,11 @@
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
+							cursorMovedEnough && appState.dragAndDrop.source?.id === source.id
+								? 'opacity-10'
+								: 'opacity-80',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
-							'rounded-lg opacity-60 group-hover:opacity-100 transition-opacity bg-cover bg-center'
+							'rounded-lg transition-opacity bg-cover bg-center'
 						]}
 					>
 						{#if source.type === 'text'}
@@ -159,9 +175,9 @@
 			<div
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
+					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
 					'rounded-lg border-2 select-none flex-1',
-					'border-dashed items-center justify-center flex h-14 mt-2',
-					'hover:border-zinc-500 hover:text-zinc-400'
+					'border-dashed items-center justify-center flex h-14 mt-2'
 				]}
 				ondrop={onDrop}
 				ondragenter={() => (dragHover = true)}
@@ -192,5 +208,3 @@
 		</div>
 	</div>
 </Tooltip.Provider>
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- <div ondrop={onDrop} ondragover={(e) => e.preventDefault()} class="w-full h-full"></div> -->
