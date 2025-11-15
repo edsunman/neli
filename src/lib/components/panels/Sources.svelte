@@ -20,11 +20,15 @@
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
+	let hoverName = $state('');
+	let hoverNameIndex = $state(0);
+	let showHoverName = $state(false);
+
 	let startingCursor = { x: 0, y: 0 };
 	let cursorMovedEnough = $state(false);
 
 	mouseMove = (e: MouseEvent) => {
-		if (appState.dragAndDrop.active) {
+		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.x = e.clientX;
 			appState.dragAndDrop.y = e.clientY;
 			if (!cursorMovedEnough) {
@@ -33,17 +37,20 @@
 				);
 				if (distance > 10) {
 					cursorMovedEnough = true;
+					appState.dragAndDrop.active = true;
 					appState.dragAndDrop.showIcon = true;
+					showHoverName = false;
 				}
 			}
 		}
 	};
 
 	mouseUp = () => {
-		if (appState.dragAndDrop.active) {
+		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.showIcon = false;
 			appState.dragAndDrop.active = false;
-			cursorMovedEnough = false;
+			appState.dragAndDrop.clicked = false;
+			//cursorMovedEnough = false;
 		}
 	};
 
@@ -93,22 +100,46 @@
 				</MyTooltip>
 			</div>
 		</div>
-		<div class="text-zinc-500 text-sm w-full block border-separate border-spacing-y-1">
-			{#each appState.sources as source}
+
+		<div
+			style:top={`${hoverNameIndex * 56}px`}
+			class={[
+				showHoverName ? 'visible' : 'invisible',
+				'absolute bg-hover h-14 ml-20 text-left flex text-zinc-300',
+				'items-center z-10 rounded-lg pointer-events-none text-sm pr-3 text-nowrap'
+			]}
+		>
+			{hoverName}
+		</div>
+		<div class="text-zinc-500 text-sm w-full flex flex-col relative">
+			{#each appState.sources as source, i}
+				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
+					onmouseover={() => {
+						if (appState.mouseIsDown) return;
+						showHoverName = true;
+						hoverName = source.name ?? '';
+						hoverNameIndex = i;
+					}}
+					onmouseout={() => {
+						showHoverName = false;
+						hoverName = '';
+					}}
 					class={[
 						!appState.mouseIsDown && 'hover:text-zinc-300 hover:bg-hover',
-						appState.dragAndDrop.active &&
+						appState.dragAndDrop.clicked &&
 							appState.dragAndDrop.source?.id === source.id &&
 							'bg-hover text-zinc-300',
-						'group h-14 pl-20 select-none text-left relative',
-						'w-full rounded-lg'
+						'group h-14 lg:w-full pl-20 select-none text-left relative',
+						' rounded-lg'
 					]}
 					onmousedown={(e) => {
+						pause();
 						cursorMovedEnough = false;
 						startingCursor = { x: e.clientX, y: e.clientY };
+
 						appState.mouseIsDown = true;
-						appState.dragAndDrop.active = true;
+						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.showIcon = false;
 						appState.dragAndDrop.source = source;
 						timelineState.selectedClip = null;
@@ -116,7 +147,8 @@
 						timelineState.invalidate = true;
 					}}
 					onclick={() => {
-						pause();
+						if (cursorMovedEnough) return;
+
 						timelineState.selectedClips.clear();
 						if (source.type === 'srt') {
 							// TODO: tidy this up
@@ -149,7 +181,7 @@
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
-							cursorMovedEnough && appState.dragAndDrop.source?.id === source.id
+							appState.dragAndDrop.active && appState.dragAndDrop.source?.id === source.id
 								? 'opacity-10'
 								: 'opacity-80',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
@@ -166,7 +198,7 @@
 							{@render audioIcon('w-6 h-6 text-clip-blue-600')}
 						{/if}
 					</span>
-					{source.name}
+					<span class="hidden lg:block truncate">{source.name}</span>
 				</button>
 			{/each}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -175,7 +207,7 @@
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
-					'rounded-lg border-2 select-none flex-1',
+					'rounded-lg border-2 select-none ',
 					'border-dashed items-center justify-center flex h-14 mt-2'
 				]}
 				ondrop={onDrop}
@@ -187,7 +219,8 @@
 					fileInput.click();
 				}}
 			>
-				{@render addIcon('size-5 mr-2 pointer-events-none')} import file
+				{@render addIcon('size-5 mr-2 pointer-events-none')} import
+				<span class="hidden lg:block">&nbsp;file</span>
 			</div>
 			<input
 				onclick={(e) => {

@@ -42,6 +42,7 @@ export type WorkerSource = {
 };
 
 export type DragAndDropState = {
+	clicked: boolean;
 	active: boolean;
 	x: number;
 	y: number;

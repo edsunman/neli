@@ -17,7 +17,7 @@
 			source?.type === 'audio' ? 'bg-clip-blue-500' : '',
 			source?.type === 'video' ? 'border-3 border-clip-green-500' : '',
 			'h-[60px] w-[88px] flex flex-wrap justify-center content-center top-2 left-2 absolute',
-			'rounded-lg pointer-events-none  transition-opacity bg-cover bg-center'
+			'rounded-lg pointer-events-none  transition-opacity bg-cover bg-center z-100'
 		]}
 	>
 		{#if source?.type === 'text'}

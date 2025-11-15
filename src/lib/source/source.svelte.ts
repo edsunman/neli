@@ -21,7 +21,7 @@ export class Source {
 		this.type = type;
 
 		if (type === 'text') this.name = 'Text';
-		if (type === 'test') this.name = 'Test card';
+		if (type === 'test') this.name = 'Test video';
 
 		if (file) {
 			const lastDotIndex = file.name.lastIndexOf('.');

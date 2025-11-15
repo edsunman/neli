@@ -14,6 +14,7 @@ class AppState {
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 	dragAndDrop = $state<DragAndDropState>({
+		clicked: false,
 		active: false,
 		x: 0,
 		y: 0,

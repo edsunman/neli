@@ -5,6 +5,103 @@ import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
 import type { FileInfo, SrtEntry } from '$lib/types';
 
+export const createVideoSource = async (
+	file: File,
+	thumbnailCallback: (source: Source, gap: number) => void,
+	durationSeconds: number,
+	frameRate: number,
+	resolution: { height: number; width: number }
+) => {
+	const maxFrameCount = frameRate * 120;
+	const newSource = new Source('video', file);
+	newSource.frameRate = frameRate;
+	const durationInFrames = Math.floor(durationSeconds * frameRate);
+	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+	newSource.height = resolution.height;
+	newSource.width = resolution.width;
+
+	const input = new Input({
+		formats: ALL_FORMATS,
+		source: new BlobSource(file)
+	});
+
+	const audioTrack = await input.getPrimaryAudioTrack();
+	const audioConfig = await audioTrack?.getDecoderConfig();
+
+	if (audioTrack && audioConfig) {
+		// file has audio track
+		const sink = new EncodedPacketSink(audioTrack);
+		const audioChunks: EncodedAudioChunk[] = [];
+
+		let duration = 0;
+		for await (const packet of sink.packets()) {
+			duration += packet.duration;
+			audioChunks.push(packet.toEncodedAudioChunk());
+			if (duration > 120) break;
+		}
+
+		newSource.audioChunks = audioChunks;
+		newSource.audioConfig = audioConfig;
+	}
+
+	appState.sources.push(newSource);
+	appState.importSuccessCallback = thumbnailCallback;
+	sendFileToWorker(newSource);
+	await generateWaveformData(newSource);
+	return newSource.id;
+};
+
+export const createAudioSource = async (file: File, durationSeconds: number) => {
+	const maxFrameCount = 30 * 120;
+	const newSource = new Source('audio', file);
+	const durationInFrames = Math.floor(durationSeconds * 30);
+	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+
+	const input = new Input({
+		formats: ALL_FORMATS,
+		source: new BlobSource(file)
+	});
+
+	const audioTrack = await input.getPrimaryAudioTrack();
+	const audioConfig = await audioTrack?.getDecoderConfig();
+
+	if (!audioTrack || !audioConfig) return;
+
+	const sink = new EncodedPacketSink(audioTrack);
+	const audioChunks: EncodedAudioChunk[] = [];
+
+	let duration = 0;
+	for await (const packet of sink.packets()) {
+		duration += packet.duration;
+		audioChunks.push(packet.toEncodedAudioChunk());
+		if (duration > 120) break;
+	}
+
+	newSource.audioChunks = audioChunks;
+	newSource.audioConfig = audioConfig;
+
+	appState.sources.push(newSource);
+
+	await generateWaveformData(newSource);
+	return newSource.id;
+};
+
+export const createSrtSource = async (file: File) => {
+	const result = await readFileAsText(file);
+	const srtEntries = parseSrt(result);
+	const newSource = new Source('srt', file);
+	newSource.srtEntries = srtEntries;
+	appState.sources.push(newSource);
+};
+
+export const createTextSource = () => {
+	appState.sources.push(new Source('text'));
+};
+
+export const createTestSource = () => {
+	appState.sources.push(new Source('test'));
+};
+
 export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {
 	console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 	console.log(fileType);
@@ -136,103 +233,6 @@ export const setSourceThumbnail = (sourceId: string, image: string, gap: number)
 			appState.importSuccessCallback(source, gap);
 		}
 	}
-};
-
-export const createVideoSource = async (
-	file: File,
-	thumbnailCallback: (source: Source, gap: number) => void,
-	durationSeconds: number,
-	frameRate: number,
-	resolution: { height: number; width: number }
-) => {
-	const maxFrameCount = frameRate * 120;
-	const newSource = new Source('video', file);
-	newSource.frameRate = frameRate;
-	const durationInFrames = Math.floor(durationSeconds * frameRate);
-	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
-	newSource.height = resolution.height;
-	newSource.width = resolution.width;
-
-	const input = new Input({
-		formats: ALL_FORMATS,
-		source: new BlobSource(file)
-	});
-
-	const audioTrack = await input.getPrimaryAudioTrack();
-	const audioConfig = await audioTrack?.getDecoderConfig();
-
-	if (audioTrack && audioConfig) {
-		// file has audio track
-		const sink = new EncodedPacketSink(audioTrack);
-		const audioChunks: EncodedAudioChunk[] = [];
-
-		let duration = 0;
-		for await (const packet of sink.packets()) {
-			duration += packet.duration;
-			audioChunks.push(packet.toEncodedAudioChunk());
-			if (duration > 120) break;
-		}
-
-		newSource.audioChunks = audioChunks;
-		newSource.audioConfig = audioConfig;
-	}
-
-	appState.sources.push(newSource);
-	appState.importSuccessCallback = thumbnailCallback;
-	sendFileToWorker(newSource);
-	await generateWaveformData(newSource);
-	return newSource.id;
-};
-
-export const createAudioSource = async (file: File, durationSeconds: number) => {
-	const maxFrameCount = 30 * 120;
-	const newSource = new Source('audio', file);
-	const durationInFrames = Math.floor(durationSeconds * 30);
-	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
-
-	const input = new Input({
-		formats: ALL_FORMATS,
-		source: new BlobSource(file)
-	});
-
-	const audioTrack = await input.getPrimaryAudioTrack();
-	const audioConfig = await audioTrack?.getDecoderConfig();
-
-	if (!audioTrack || !audioConfig) return;
-
-	const sink = new EncodedPacketSink(audioTrack);
-	const audioChunks: EncodedAudioChunk[] = [];
-
-	let duration = 0;
-	for await (const packet of sink.packets()) {
-		duration += packet.duration;
-		audioChunks.push(packet.toEncodedAudioChunk());
-		if (duration > 120) break;
-	}
-
-	newSource.audioChunks = audioChunks;
-	newSource.audioConfig = audioConfig;
-
-	appState.sources.push(newSource);
-
-	await generateWaveformData(newSource);
-	return newSource.id;
-};
-
-export const createSrtSource = async (file: File) => {
-	const result = await readFileAsText(file);
-	const srtEntries = parseSrt(result);
-	const newSource = new Source('srt', file);
-	newSource.srtEntries = srtEntries;
-	appState.sources.push(newSource);
-};
-
-export const createTextSource = () => {
-	appState.sources.push(new Source('text'));
-};
-
-export const createTestSource = () => {
-	appState.sources.push(new Source('test'));
 };
 
 export const getSourceFromId = (id: string) => {
