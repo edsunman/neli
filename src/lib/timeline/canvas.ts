@@ -407,6 +407,9 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 	if (clip.source.type === 'text') {
 		clipColor = PURPLE_LIGHT;
 	}
+	if (clip.source.type === 'audio') {
+		clipColor = BLUE_LIGHT;
+	}
 
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;

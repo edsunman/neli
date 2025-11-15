@@ -3,7 +3,28 @@ import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
-import type { FileInfo, SrtEntry } from '$lib/types';
+import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
+
+export const createSource = (type: SourceType, file?: File) => {
+	const newSource = new Source();
+	newSource.id = Math.random().toString(16).slice(2);
+	newSource.type = type;
+
+	if (type === 'text') newSource.name = 'Text';
+	if (type === 'test') newSource.name = 'Test video';
+
+	if (file) {
+		const lastDotIndex = file.name.lastIndexOf('.');
+		const nameNoExt = lastDotIndex === -1 ? file.name : file.name.slice(0, lastDotIndex);
+		newSource.name = nameNoExt;
+		newSource.file = file;
+	}
+
+	if (type === 'audio') {
+		newSource.frameRate = 30;
+	}
+	return newSource;
+};
 
 export const createVideoSource = async (
 	file: File,
@@ -13,7 +34,7 @@ export const createVideoSource = async (
 	resolution: { height: number; width: number }
 ) => {
 	const maxFrameCount = frameRate * 120;
-	const newSource = new Source('video', file);
+	const newSource = createSource('video', file); //new Source('video', file);
 	newSource.frameRate = frameRate;
 	const durationInFrames = Math.floor(durationSeconds * frameRate);
 	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
@@ -53,7 +74,7 @@ export const createVideoSource = async (
 
 export const createAudioSource = async (file: File, durationSeconds: number) => {
 	const maxFrameCount = 30 * 120;
-	const newSource = new Source('audio', file);
+	const newSource = createSource('audio', file); //new Source('audio', file);
 	const durationInFrames = Math.floor(durationSeconds * 30);
 	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
 
@@ -89,17 +110,17 @@ export const createAudioSource = async (file: File, durationSeconds: number) => 
 export const createSrtSource = async (file: File) => {
 	const result = await readFileAsText(file);
 	const srtEntries = parseSrt(result);
-	const newSource = new Source('srt', file);
+	const newSource = createSource('srt', file); //new Source('srt', file);
 	newSource.srtEntries = srtEntries;
 	appState.sources.push(newSource);
 };
 
 export const createTextSource = () => {
-	appState.sources.push(new Source('text'));
+	appState.sources.push(createSource('text'));
 };
 
 export const createTestSource = () => {
-	appState.sources.push(new Source('test'));
+	appState.sources.push(createSource('test'));
 };
 
 export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {

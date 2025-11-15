@@ -1,4 +1,5 @@
 import { createClip } from './clip/actions';
+import { createSource } from './source/actions';
 import { Source } from './source/source.svelte';
 import { appState } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
@@ -24,7 +25,7 @@ const lotsOfClips = () => {
 
 const addSource = (type: SourceType, count = 1, name = 'test') => {
 	for (let i = 0; i < count; i++) {
-		const newSource = new Source(type);
+		const newSource = createSource(type);
 		newSource.name = name;
 		appState.sources.push(newSource);
 	}
