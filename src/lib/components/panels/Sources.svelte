@@ -43,7 +43,6 @@
 		if (appState.dragAndDrop.active) {
 			appState.dragAndDrop.showIcon = false;
 			appState.dragAndDrop.active = false;
-			appState.mouseIsDown = false;
 			cursorMovedEnough = false;
 		}
 	};

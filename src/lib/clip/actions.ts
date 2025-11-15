@@ -4,7 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 import { getClipInitialScaleFactor } from './utils';
-import { addTrack, removeEmptyTracks } from '$lib/timeline/actions';
+import { addTrack, setTrackTypeAndRemoveEmpty } from '$lib/timeline/actions';
 
 export const createClip = (
 	sourceId: string,
@@ -65,7 +65,7 @@ export const createClip = (
 export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
 	timelineState.selectedClip = null;
-	removeEmptyTracks();
+	setTrackTypeAndRemoveEmpty();
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
@@ -201,7 +201,7 @@ export const moveSelectedClip = (mouseY: number) => {
 		}
 
 		// on track
-		if (mouseY >= trackTop && mouseY < trackBottom) {
+		if (mouseY >= trackTop && mouseY < trackBottom && !timelineState.tracks[i].lock) {
 			clip.track = i + 1;
 			timelineState.trackDropZone = -1;
 		}
@@ -518,7 +518,7 @@ export const multiSelectClipsInRange = () => {
 };
 
 /** Call when clip is "dropped" to persist clip state to worker and history */
-export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip' | 'addClip') => {
+export const finaliseClip = (clip: Clip, action: 'trimClip' | 'moveClip' | 'addClip') => {
 	clip.temp = false;
 	trimSiblingClips(clip);
 
@@ -530,10 +530,7 @@ export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip' 
 
 	updateWorkerClip(clip);
 
-	if (
-		historyAction === 'moveClip' &&
-		(clip.start !== clip.savedStart || clip.track !== clip.savedTrack)
-	) {
+	if (action === 'moveClip' && (clip.start !== clip.savedStart || clip.track !== clip.savedTrack)) {
 		historyManager.pushAction({
 			action: 'moveClip',
 			data: {
@@ -546,7 +543,7 @@ export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip' 
 		});
 	}
 	if (
-		historyAction === 'trimClip' &&
+		action === 'trimClip' &&
 		(clip.start !== clip.savedStart || clip.duration !== clip.savedDuration)
 	) {
 		historyManager.pushAction({
@@ -560,7 +557,7 @@ export const finaliseClip = (clip: Clip, historyAction: 'trimClip' | 'moveClip' 
 			}
 		});
 	}
-	if (historyAction === 'addClip') {
+	if (action === 'addClip') {
 		historyManager.pushAction({
 			action: 'addClip',
 			data: { clipId: clip.id }

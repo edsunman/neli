@@ -2,6 +2,7 @@ import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte'
 import { historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
+import type { TrackType } from '$lib/types';
 
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
@@ -24,7 +25,6 @@ export const play = () => {
 export const startPlayLoop = () => {
 	timelineState.playing = true;
 	timelineState.selectedClip = null;
-	//playWorker(timelineState.currentFrame);
 
 	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
 	let accumulator = 0;
@@ -54,7 +54,7 @@ export const startPlayLoop = () => {
 			pause();
 		}
 
-		// the - 1 here is an 'epsilon' to make playback smoother
+		// the - 1 here is an epsilon to make playback smoother
 		while (accumulator >= MS_PER_FRAME - 1) {
 			timelineState.currentFrame++;
 			accumulator -= MS_PER_FRAME;
@@ -89,7 +89,8 @@ export const checkViewBounds = () => {
 	const padding = 0.05 / timelineState.zoom;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
 	const maxPercentAllowed = 1 - percentOfTimelineVisible;
-	if (timelineState.offset < 0) {
+
+	if (timelineState.offset < 0 - padding) {
 		timelineState.offset = 0 - padding;
 	}
 	if (timelineState.offset > maxPercentAllowed + padding)
@@ -115,7 +116,6 @@ export const zoomOut = () => {
 	if (timelineState.zoom < 0.9) timelineState.zoom = 0.9;
 
 	checkViewBounds();
-	//deselectClipIfTooSmall();
 	timelineState.invalidate = true;
 	timelineState.invalidateWaveform = true;
 };
@@ -178,8 +178,6 @@ export const focusTrack = (trackNumber: number) => {
 
 /** Call after changing track heights to recalculate and set positions */
 export const setTrackPositions = () => {
-	//timelineState.trackTops.length = 0;
-
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;
 	const rulerContainerHeight = flexHeight * 0.2;
@@ -212,6 +210,9 @@ export const setTrackPositions = () => {
 };
 
 export const setTrackLocks = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+
 	// count clips on each track
 	const tracksInUse = new Set<number>();
 	for (const clip of timelineState.clips) {
@@ -222,33 +223,34 @@ export const setTrackLocks = () => {
 
 	// lock all tracks
 	for (const track of timelineState.tracks) {
+		track.lock = true;
 		track.lockTop = true;
 		track.lockBottom = true;
 	}
 
-	// if clip is audio and there are already 3 audio or video tracks then lock the others
+	// unlock tracks of clip type
+	let trackType: TrackType = 'graphics';
+	if (clip.source.type === 'audio') trackType = 'audio';
+	if (clip.source.type === 'video' || clip.source.type === 'test') trackType = 'video';
 
-	// if clip is video and there are already 2 video tracks lock the others
-
-	// lock tops and bottoms
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		if (timelineState.tracks[i].type === trackType || timelineState.tracks[i].type === 'none')
+			timelineState.tracks[i].lock = false;
+	}
 
 	// if there are 4 tracks return early
 	if (timelineState.tracks.length >= 4) return;
 
-	// if track is top track unlock the top (unless empty)
-	// for all track not the bottom, unlock the bottom if that track and the one below has someing on it
+	// if track is the top track unlock the top (unless empty)
+	// unlock the bottom if each track and the one below has something on it
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (i === 0) {
-			//const clipCount = countClipsOnTrack(i + 1, false);
 			if (tracksInUse.has(i + 1)) timelineState.tracks[i].lockTop = false;
 		}
 		if (i === timelineState.tracks.length - 1) {
-			//const clipCount = countClipsOnTrack(i + 1, false);
 			if (tracksInUse.has(i + 1)) timelineState.tracks[i].lockBottom = false;
 		}
 		if (i < timelineState.tracks.length - 1) {
-			//const clipCount = countClipsOnTrack(i + 1, false);
-			//const clipCountBelow = countClipsOnTrack(i + 2, false);
 			if (tracksInUse.has(i + 1) && tracksInUse.has(i + 2))
 				timelineState.tracks[i].lockBottom = false;
 		}
@@ -256,11 +258,17 @@ export const setTrackLocks = () => {
 };
 
 export const addTrack = (trackNumber: number) => {
-	timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
-	historyManager.pushAction({ action: 'addTrack', data: { trackNumber } });
+	timelineState.tracks.push({
+		height: 35,
+		top: 0,
+		lockBottom: true,
+		lockTop: true,
+		lock: false,
+		type: 'none'
+	});
+	historyManager.pushAction({ action: 'addTrack', data: { number: trackNumber, type: 'none' } });
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
-			//clip.savedTrack = clip.track;
 			clip.track++;
 			historyManager.pushAction({
 				action: 'moveClip',
@@ -279,11 +287,13 @@ export const addTrack = (trackNumber: number) => {
 };
 
 export const removeTrack = (trackNumber: number) => {
-	timelineState.tracks.splice(trackNumber - 1, 1);
-	historyManager.pushAction({ action: 'removeTrack', data: { trackNumber } });
+	const trackType = timelineState.tracks.splice(trackNumber - 1, 1)[0].type;
+	historyManager.pushAction({
+		action: 'removeTrack',
+		data: { number: trackNumber, type: trackType }
+	});
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
-			//clip.savedTrack = clip.track;
 			clip.track--;
 			historyManager.pushAction({
 				action: 'moveClip',
@@ -301,14 +311,27 @@ export const removeTrack = (trackNumber: number) => {
 	setTrackPositions();
 };
 
-export const removeEmptyTracks = () => {
-	//return;
-	if (timelineState.tracks.length <= 2) return;
-	const usedTracks = new Set<number>();
+export const setTrackTypeAndRemoveEmpty = () => {
+	const usedTracks = new Map<number, TrackType>();
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
-		usedTracks.add(clip.track);
+		let trackType: TrackType = 'graphics';
+		if (clip.source.type === 'audio') trackType = 'audio';
+		if (clip.source.type === 'video' || clip.source.type === 'test') trackType = 'video';
+		usedTracks.set(clip.track, trackType);
 	}
+
+	// set correct track type
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		const trackType = usedTracks.get(i + 1);
+		if (trackType) {
+			timelineState.tracks[i].type = trackType;
+		} else {
+			timelineState.tracks[i].type = 'none';
+		}
+	}
+	// loop backwards and remove unused tracks
+	if (timelineState.tracks.length <= 2) return;
 	for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
 		if (!usedTracks.has(i + 1)) {
 			removeTrack(i + 1);
@@ -329,7 +352,6 @@ export const focusClip = () => {
 	const middleFramePercent = middleFrame / timelineState.duration;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
 	timelineState.offset = middleFramePercent - percentOfTimelineVisible / 2;
-	//checkViewBounds();
 
 	focusTrack(clip.track);
 };

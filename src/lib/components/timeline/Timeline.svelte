@@ -13,10 +13,11 @@
 		focusClip,
 		extendTimeline,
 		setTrackPositions,
-		addTrack,
-		removeEmptyTracks,
+		setTrackTypeAndRemoveEmpty,
 		setTrackLocks,
-		zoomToFit
+		zoomToFit,
+		centerViewOnPlayhead,
+		checkViewBounds
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -24,8 +25,6 @@
 		moveSelectedClip,
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
-		removeInvalidAllClips,
-		trimSiblingClips,
 		splitClip,
 		deleteClip,
 		createClip,
@@ -41,11 +40,11 @@
 		frameToCanvasPixel
 	} from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
+	import { invalidate } from '$app/navigation';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -62,6 +61,7 @@
 	let fontsLoaded = false;
 	let contextMenu: ContextMenu;
 	let clickedFrame = 0;
+	let mainScrollDirection: 'x' | 'y' = 'y';
 
 	const buttons = $state([
 		{
@@ -137,6 +137,8 @@
 			}
 			return;
 		}
+
+		if (dragging) return;
 
 		timelineState.hoverClipId = '';
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
@@ -244,7 +246,7 @@
 					finaliseClip(clip, 'moveClip');
 				}
 				extendTimeline(clip.start + clip.duration);
-				removeEmptyTracks();
+				setTrackTypeAndRemoveEmpty();
 			}
 			if (timelineState.selectedClips.size > 0) {
 				let endPoint = 0;
@@ -273,11 +275,22 @@
 		}
 		timelineState.action = 'none';
 		timelineState.invalidate = true;
-		appState.mouseIsDown = false;
 		timelineState.dragOffset.x = 0;
 		timelineState.dragOffset.y = 0;
 		historyManager.finishCommand();
-		//removeInvalidAllClips();
+	};
+
+	const onWheel = (e: WheelEvent) => {
+		e.preventDefault(); // stop safari browser back swipe
+		if (e.deltaX > 2 || e.deltaX < -2) mainScrollDirection = 'x';
+
+		if (mainScrollDirection === 'x') {
+			timelineState.offset += e.deltaX / 1000 / timelineState.zoom;
+		} else {
+			timelineState.offset += e.deltaY / 1000 / timelineState.zoom;
+		}
+		checkViewBounds();
+		timelineState.invalidateWaveform = true;
 	};
 
 	const mouseEnteredDropZone = (e: MouseEvent) => {
@@ -296,23 +309,11 @@
 	};
 
 	const mouseLeftDropZone = () => {
-		//if (!appState.dragAndDrop.active) return;
 		appState.dragAndDrop.showIcon = true;
 		if (timelineState.selectedClip) {
 			removeClip(timelineState.selectedClip.id);
 			timelineState.invalidateWaveform = true;
 		}
-	};
-
-	const dragEnter = (e: MouseEvent) => {
-		e.preventDefault();
-		const sourceId = appState.dragAndDrop.source?.id;
-		if (!sourceId) return;
-		const start = canvasPixelToFrame(e.offsetX);
-		const newClip = createClip(sourceId, 0, start, 0, 0, true);
-		if (!newClip) return;
-		timelineState.selectedClip = newClip;
-		timelineState.dragStart.x = e.offsetX;
 	};
 
 	const setCanvasSize = async () => {
@@ -351,7 +352,6 @@
 	requestAnimationFrame(step);
 
 	onMount(() => {
-		//await tick();
 		if (!canvas || !canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
 		timelineState.height = canvasContainer.clientHeight;
@@ -360,26 +360,28 @@
 
 		context = canvas.getContext('2d', { alpha: false });
 
-		timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
-		timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+		timelineState.tracks.push({
+			height: 35,
+			top: 0,
+			lock: true,
+			lockBottom: true,
+			lockTop: true,
+			type: 'none'
+		});
+		timelineState.tracks.push({
+			height: 35,
+			top: 0,
+			lock: true,
+			lockBottom: true,
+			lockTop: true,
+			type: 'none'
+		});
 		setCanvasSize();
 
 		document.fonts.ready.then(() => {
 			fontsLoaded = true;
 			timelineState.invalidate = true;
 		});
-
-		// Can't add passive listeners in svelte
-		canvasContainer?.addEventListener(
-			'wheel',
-			(e) => {
-				e.preventDefault();
-				if (!e.ctrlKey) return;
-				if (e.deltaY > 50) zoomOut();
-				if (e.deltaY < -50) zoomIn();
-			},
-			{ passive: false }
-		);
 	});
 </script>
 
@@ -391,6 +393,7 @@
 		class="flex-1"
 		role="navigation"
 		onmousedown={mouseDown}
+		onwheel={onWheel}
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			timelineState.hoverClipId = '';
@@ -426,6 +429,7 @@
 			case 'Home':
 				if (timelineState.playing) pause();
 				setCurrentFrame(0);
+				centerViewOnPlayhead();
 				break;
 			case 'ArrowLeft':
 				setCurrentFrame(timelineState.currentFrame - 1);
@@ -446,7 +450,6 @@
 				if (timelineState.zoom < maxZoom) {
 					setZoom(maxZoom);
 				} else {
-					//setZoom(0.9);
 					zoomToFit();
 				}
 				break;

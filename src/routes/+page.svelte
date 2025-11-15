@@ -30,6 +30,7 @@
 		if (timelineMouseUp) timelineMouseUp(e);
 		if (programMouseUp) programMouseUp(e);
 		if (sourcesMouseUp) sourcesMouseUp(e);
+		appState.mouseIsDown = false;
 	};
 
 	onMount(async () => {
@@ -74,8 +75,23 @@
 {/if}
 
 <svelte:window
-	onkeyup={(event) => {
-		switch (event.code) {
+	onkeydown={(e) => {
+		switch (e.code) {
+			case 'KeyZ':
+				e.preventDefault();
+				if (!e.ctrlKey && !e.metaKey) break;
+				focusTrack(0);
+				if (e.shiftKey) {
+					historyManager.redo();
+				} else {
+					historyManager.undo();
+				}
+
+				break;
+		}
+	}}
+	onkeyup={(e) => {
+		switch (e.code) {
 			case 'KeyP':
 				if (appState.disableKeyboardShortcuts) break;
 				if (!appState.showPalette) appState.showPalette = true;
@@ -93,16 +109,6 @@
 					appState.palettePage = 'export';
 					appState.showPalette = true;
 				}
-				break;
-			case 'KeyZ':
-				if (!event.ctrlKey) break;
-				focusTrack(0);
-				if (event.shiftKey) {
-					historyManager.redo();
-				} else {
-					historyManager.undo();
-				}
-
 				break;
 		}
 	}}

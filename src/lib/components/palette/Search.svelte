@@ -338,10 +338,10 @@
 						{@render command.icon('size-5 inline mr-3')}
 						<p class="flex-1">{@html formatString(command.text)}</p>
 						{#each command.shortcuts as key, i}
-							{#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if}
+							<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
 							<div
 								class={[
-									'text-sm  px-1.5 py-0.5 rounded-sm ',
+									'text-sm px-1.5 py-0.5 rounded-sm mx-1',
 									command.selected ? 'bg-zinc-700' : ' bg-zinc-800'
 								]}
 							>

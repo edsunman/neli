@@ -2,15 +2,7 @@ import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { Font, Track } from './types';
-
-type DragAndDropState = {
-	active: boolean;
-	x: number;
-	y: number;
-	showIcon: boolean;
-	source: Source | null;
-};
+import type { DragAndDropState, Font, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
@@ -33,6 +25,7 @@ class AppState {
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};
+	exportSuccessCallback: () => void = () => {};
 	fileToImport: File | null = null;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
@@ -52,15 +45,13 @@ class TimelineState {
 
 	action: 'none' | 'selecting' = 'none';
 	zoom = 0.9;
-	offset = -0.055; // percentage, 0...1
+	offset = -1 / 18; // (-0.055) percentage, 0...1
 	offsetStart = 0; // percentage, 0...1
 	dragOffset = { x: 0, y: 0 }; // pixels
 	dragStart = { x: 0, y: 0 }; // pixels
 	hoverClipId = '';
 	focusedTrack = 0;
 	padding = 100;
-	//trackTops = [0, 50, 100, 150];
-	//trackHeights = [35, 35];
 	trackDropZone = -1;
 	invalidate = false;
 	invalidateWaveform = false;

@@ -72,7 +72,6 @@
 
 	mouseUp = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'program') return;
-		appState.mouseIsDown = false;
 		appState.mouseMoveOwner = 'timeline';
 
 		if (dragging) {

@@ -2,13 +2,14 @@ import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
 import { setTrackPositions } from '$lib/timeline/actions';
+import type { TrackType } from '$lib/types';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 type Command =
 	| { action: 'addClip'; data: { clipId: string } }
 	| { action: 'deleteClip'; data: { clipId: string } }
-	| { action: 'addTrack'; data: { trackNumber: number } }
-	| { action: 'removeTrack'; data: { trackNumber: number } }
+	| { action: 'addTrack'; data: { number: number; type: TrackType } }
+	| { action: 'removeTrack'; data: { number: number; type: TrackType } }
 	| {
 			action: 'moveClip';
 			data: {
@@ -119,12 +120,19 @@ export class HistoryManager {
 					break;
 				}
 				case 'addTrack': {
-					timelineState.tracks.splice(command.data.trackNumber - 1, 1);
+					timelineState.tracks.splice(command.data.number - 1, 1);
 					setTrackPositions();
 					break;
 				}
 				case 'removeTrack': {
-					timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+					timelineState.tracks.push({
+						height: 35,
+						top: 0,
+						lock: true,
+						lockBottom: true,
+						lockTop: true,
+						type: command.data.type
+					});
 					setTrackPositions();
 					break;
 				}
@@ -195,12 +203,19 @@ export class HistoryManager {
 					break;
 				}
 				case 'addTrack': {
-					timelineState.tracks.push({ height: 35, top: 0, lockBottom: true, lockTop: true });
+					timelineState.tracks.push({
+						height: 35,
+						top: 0,
+						lock: true,
+						lockBottom: true,
+						lockTop: true,
+						type: command.data.type
+					});
 					setTrackPositions();
 					break;
 				}
 				case 'removeTrack': {
-					timelineState.tracks.splice(command.data.trackNumber - 1, 1);
+					timelineState.tracks.splice(command.data.number - 1, 1);
 					setTrackPositions();
 					break;
 				}
