@@ -26,6 +26,7 @@ export const frameToCanvasPixel = (frame: number, includeOffset = true) => {
 	return Math.floor(percentOfDuration * timelineState.width * timelineState.zoom);
 };
 
+/** Returns format MM:SS */
 export const secondsToTimecode = (seconds: number) => {
 	const SS = seconds % 60;
 	const minutes = (seconds - SS) / 60;
@@ -33,9 +34,10 @@ export const secondsToTimecode = (seconds: number) => {
 	return String(MM).padStart(2, '0') + ':' + String(SS).padStart(2, '0');
 };
 
+/** Returns format MM:SS:FF */
 export const framesToTimecode = (frames: number) => {
 	const FF = frames % 30;
-	const seconds = (timelineState.currentFrame - FF) / 30;
+	const seconds = (frames - FF) / 30;
 	const SS = seconds % 60;
 	const minutes = (seconds - SS) / 60;
 	const MM = minutes % 60;
@@ -94,4 +96,10 @@ export const stringToFramesAndSynopsis = (
 	}
 
 	return { frames, synopsis };
+};
+
+export const calculateMaxZoomLevel = () => {
+	const framePixelWidth = 50;
+	const basePixelsPerFrame = timelineState.width / timelineState.duration;
+	return framePixelWidth / basePixelsPerFrame;
 };

@@ -1,4 +1,17 @@
+import type { Source } from './source/source.svelte';
+
 export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt';
+
+export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
+
+export type Track = {
+	height: number;
+	top: number;
+	lock: boolean;
+	lockBottom: boolean;
+	lockTop: boolean;
+	type: TrackType;
+};
 
 export type SrtEntry = {
 	inPoint: number;
@@ -26,6 +39,15 @@ export type WorkerSource = {
 	videoChunks: EncodedVideoChunk[];
 	videoConfig: VideoDecoderConfig;
 	gap: number;
+};
+
+export type DragAndDropState = {
+	clicked: boolean;
+	active: boolean;
+	x: number;
+	y: number;
+	showIcon: boolean;
+	source: Source | null;
 };
 
 export type FileInfo =

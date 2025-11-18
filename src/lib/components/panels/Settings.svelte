@@ -18,7 +18,7 @@
 	type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text';
 	let previousSelected: Section;
 	let selected: Section = $derived.by<Section>(() => {
-		if (timelineState.selectedClip) {
+		if (timelineState.selectedClip && !timelineState.selectedClip.temp) {
 			const type = timelineState.selectedClip.source.type;
 			if (type === 'audio') {
 				return 'audio';
@@ -68,7 +68,7 @@
 				<SettingsIcon class="w-6 h-6" />
 			</button> -->
 		</div>
-		{#if timelineState.selectedClip}
+		{#if timelineState.selectedClip && !timelineState.selectedClip.temp}
 			{@const source = timelineState.selectedClip.source}
 			<div class=" bg-zinc-950 rounded flex flex-col">
 				{#if source.type !== 'audio'}

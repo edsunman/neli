@@ -5,6 +5,8 @@
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
+	import { tick } from 'svelte';
+	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
 
 	let { shrinkBox } = $props();
 
@@ -12,17 +14,27 @@
 	let encodingStarted = $state(false);
 	let startFrame = $state(0);
 	let endFrame = $state(getUsedTimelineDuration());
+	let closeButton = $state<HTMLButtonElement>();
 
 	const labelId = useId();
 
 	const exportFile = async () => {
+		if (startFrame >= endFrame) return;
 		encodingStarted = true;
 		shrinkBox();
 		appState.lockPalette = true;
 		appState.encoderProgress.message = 'preparing audio...';
 		appState.encoderProgress.percentage = 0;
+		appState.exportSuccessCallback = exportSuccess;
 		const fileName = inputValue ? inputValue : 'video';
 		encode(fileName, startFrame, endFrame);
+	};
+
+	const exportSuccess = async () => {
+		await tick();
+		if (closeButton) {
+			closeButton.focus();
+		}
 	};
 </script>
 
@@ -47,11 +59,15 @@
 				</div>
 				<!-- svelte-ignore a11y_autofocus -->
 				<Input
-					value={startFrame}
+					value={framesToTimecode(0)}
 					oninput={(e) => {
 						const target = e.target as HTMLInputElement;
-						const num = Number(target.value);
-						startFrame = isNaN(num) ? 0 : num;
+						const { frames } = stringToFramesAndSynopsis(target.value);
+						startFrame = frames;
+					}}
+					onblur={(e) => {
+						const target = e.target as HTMLInputElement;
+						if (!target.value) target.value = framesToTimecode(0);
 					}}
 				/>
 			</div>
@@ -61,11 +77,15 @@
 				</div>
 				<!-- svelte-ignore a11y_autofocus -->
 				<Input
-					value={endFrame}
+					value={framesToTimecode(getUsedTimelineDuration())}
 					oninput={(e) => {
 						const target = e.target as HTMLInputElement;
-						const num = Number(target.value);
-						endFrame = isNaN(num) ? 0 : num;
+						const { frames } = stringToFramesAndSynopsis(target.value);
+						endFrame = frames;
+					}}
+					onblur={(e) => {
+						const target = e.target as HTMLInputElement;
+						if (!target.value) target.value = framesToTimecode(getUsedTimelineDuration());
 					}}
 				/>
 			</div>
@@ -93,9 +113,10 @@
 
 <div class="mx-8 flex-none pt-5 pb-7 text-right">
 	{#if !encodingStarted}
-		<Button onclick={() => exportFile()} text={'Export'} />
+		<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text={'Export'} />
 	{:else}
 		<Button
+			bind:ref={closeButton}
 			onclick={() => (appState.showPalette = false)}
 			text={'close'}
 			disabled={!(appState.encoderProgress.fail || appState.encoderProgress.percentage === 100)}

@@ -72,7 +72,6 @@
 
 	mouseUp = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'program') return;
-		appState.mouseIsDown = false;
 		appState.mouseMoveOwner = 'timeline';
 
 		if (dragging) {
@@ -223,7 +222,7 @@
 			}}
 		></canvas>
 	</div>
-	{#if timelineState.selectedClip && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
+	{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 		{@const clip = timelineState.selectedClip}
 		{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
 		{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}

@@ -43,6 +43,7 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 			case 'encode-progress': {
 				if (event.data.percentComplete > -1) {
 					appState.encoderProgress.percentage = event.data.percentComplete;
+					if (event.data.percentComplete === 100) appState.exportSuccessCallback();
 				} else {
 					appState.encoderProgress.percentage = 0;
 					appState.encoderProgress.message = 'encoding failed';

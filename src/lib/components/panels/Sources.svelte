@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createClip, setTrackClipJoins } from '$lib/clip/actions';
+	import { createClip, finaliseClip, setTrackClipJoins } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
 	import {
 		addIcon,
@@ -13,9 +13,87 @@
 
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import {
+		getTopTrackOfType,
+		getTrackTypeFromSourceType,
+		pause,
+		setAllTrackTypes
+	} from '$lib/timeline/actions';
+	import type { Source } from '$lib/source/source.svelte';
+
+	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
+
+	let hoverName = $state('');
+	let hoverNameIndex = $state(0);
+	let showHoverName = $state(false);
+
+	let startingCursor = { x: 0, y: 0 };
+	let cursorMovedEnough = $state(false);
+
+	mouseMove = (e: MouseEvent) => {
+		if (appState.dragAndDrop.clicked) {
+			appState.dragAndDrop.x = e.clientX;
+			appState.dragAndDrop.y = e.clientY;
+			if (!cursorMovedEnough) {
+				const distance = Math.sqrt(
+					Math.pow(startingCursor.y - e.clientY, 2) + Math.pow(startingCursor.x - e.clientX, 2)
+				);
+				if (distance > 10) {
+					cursorMovedEnough = true;
+					appState.dragAndDrop.active = true;
+					appState.dragAndDrop.showIcon = true;
+					showHoverName = false;
+				}
+			}
+		}
+	};
+
+	mouseUp = () => {
+		if (appState.dragAndDrop.clicked) {
+			appState.dragAndDrop.showIcon = false;
+			appState.dragAndDrop.active = false;
+			appState.dragAndDrop.clicked = false;
+			//cursorMovedEnough = false;
+		}
+	};
+
+	const onClick = (source: Source) => {
+		if (cursorMovedEnough) return;
+
+		timelineState.selectedClips.clear();
+		if (source.type === 'srt') {
+			// TODO: tidy this up
+			for (const entry of source.srtEntries) {
+				//console.log(entry.text);
+				const clip = createClip(
+					appState.sources[0].id,
+					1,
+					entry.inPoint,
+					entry.outPoint - entry.inPoint
+				);
+				if (!clip) continue;
+				clip.text = entry.text;
+				clip.params[3] = -0.75;
+				clip.params[6] = 12;
+				clip.params[7] = 1.5;
+				updateWorkerClip(clip);
+			}
+			setTrackClipJoins(1);
+		} else {
+			const trackType = getTrackTypeFromSourceType(source.type);
+			const track = getTopTrackOfType(trackType);
+			if (track < 1) return;
+			const clip = createClip(source.id, track, timelineState.currentFrame);
+			if (!clip) return;
+			if (clip) timelineState.selectedClip = clip;
+			finaliseClip(clip, 'addClip');
+			setAllTrackTypes();
+		}
+		historyManager.finishCommand();
+	};
 
 	const onDrop = (e: DragEvent) => {
 		e.preventDefault();
@@ -63,43 +141,53 @@
 				</MyTooltip>
 			</div>
 		</div>
-		<div class="text-zinc-500 text-sm w-full block border-separate border-spacing-y-1">
-			{#each appState.sources as source}
+
+		<div
+			style:top={`${hoverNameIndex * 56}px`}
+			class={[
+				showHoverName ? 'visible' : 'invisible',
+				'absolute bg-hover h-14 ml-20 text-left flex text-zinc-300',
+				'items-center z-10 rounded-lg pointer-events-none text-sm pr-3 text-nowrap'
+			]}
+		>
+			{hoverName}
+		</div>
+		<div class="text-zinc-500 text-sm w-full flex flex-col relative">
+			{#each appState.sources as source, i}
+				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
-					draggable="true"
+					onmouseover={() => {
+						if (appState.mouseIsDown) return;
+						showHoverName = true;
+						hoverName = source.name ?? '';
+						hoverNameIndex = i;
+					}}
+					onmouseout={() => {
+						showHoverName = false;
+						hoverName = '';
+					}}
 					class={[
-						'group h-14 pl-20 select-none text-left relative',
-						'hover:bg-hover w-full hover:text-zinc-300 rounded-lg '
+						!appState.mouseIsDown && 'hover:text-zinc-300 hover:bg-hover',
+						appState.dragAndDrop.clicked &&
+							appState.dragAndDrop.source?.id === source.id &&
+							'bg-hover text-zinc-300',
+						'group h-14 lg:w-full pl-20 select-none text-left relative',
+						' rounded-lg'
 					]}
-					onclick={() => {
-						if (source.type === 'srt') {
-							for (const entry of source.srtEntries) {
-								//console.log(entry.text);
-								const clip = createClip(
-									appState.sources[0].id,
-									1,
-									entry.inPoint,
-									entry.outPoint - entry.inPoint
-								);
-								if (!clip) continue;
-								clip.text = entry.text;
-								clip.params[3] = -0.75;
-								clip.params[6] = 12;
-								clip.params[7] = 1.5;
-								updateWorkerClip(clip);
-							}
-							setTrackClipJoins(1);
-						} else {
-							createClip(source.id, 0, timelineState.currentFrame);
-						}
-						historyManager.finishCommand();
+					onmousedown={(e) => {
+						pause();
+						cursorMovedEnough = false;
+						startingCursor = { x: e.clientX, y: e.clientY };
+
+						appState.mouseIsDown = true;
+						appState.dragAndDrop.clicked = true;
+						appState.dragAndDrop.showIcon = false;
+						appState.dragAndDrop.source = source;
+						timelineState.selectedClip = null;
+						timelineState.selectedClips.clear();
+						timelineState.invalidate = true;
 					}}
-					ondragstart={(e) => {
-						appState.dragAndDropSourceId = source.id;
-						if (!e.dataTransfer) return;
-						const el = document.createElement('div');
-						e.dataTransfer.setDragImage(el, 0, 0);
-					}}
+					onclick={() => onClick(source)}
 				>
 					<span
 						style:background-image={`url(${source.thumbnail})`}
@@ -107,8 +195,11 @@
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
+							appState.dragAndDrop.active && appState.dragAndDrop.source?.id === source.id
+								? 'opacity-10'
+								: 'opacity-80',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
-							'rounded-lg opacity-60 group-hover:opacity-100 transition-opacity bg-cover bg-center'
+							'rounded-lg transition-opacity bg-cover bg-center'
 						]}
 					>
 						{#if source.type === 'text'}
@@ -121,7 +212,7 @@
 							{@render audioIcon('w-6 h-6 text-clip-blue-600')}
 						{/if}
 					</span>
-					{source.name}
+					<span class="hidden lg:block truncate">{source.name}</span>
 				</button>
 			{/each}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -129,9 +220,9 @@
 			<div
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
-					'rounded-lg border-2 select-none flex-1',
-					'border-dashed items-center justify-center flex h-14 mt-2',
-					'hover:border-zinc-500 hover:text-zinc-400'
+					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
+					'rounded-lg border-2 select-none ',
+					'border-dashed items-center justify-center flex h-14 mt-2'
 				]}
 				ondrop={onDrop}
 				ondragenter={() => (dragHover = true)}
@@ -142,7 +233,8 @@
 					fileInput.click();
 				}}
 			>
-				{@render addIcon('size-5 mr-2 pointer-events-none')} import file
+				{@render addIcon('size-5 mr-2 pointer-events-none')} import
+				<span class="hidden lg:block">&nbsp;file</span>
 			</div>
 			<input
 				onclick={(e) => {
@@ -162,5 +254,3 @@
 		</div>
 	</div>
 </Tooltip.Provider>
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- <div ondrop={onDrop} ondragover={(e) => e.preventDefault()} class="w-full h-full"></div> -->

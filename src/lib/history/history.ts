@@ -1,11 +1,15 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
+import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
+import type { TrackType } from '$lib/types';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 type Command =
 	| { action: 'addClip'; data: { clipId: string } }
 	| { action: 'deleteClip'; data: { clipId: string } }
+	| { action: 'addTrack'; data: { number: number; type: TrackType } }
+	| { action: 'removeTrack'; data: { number: number; type: TrackType } }
 	| {
 			action: 'moveClip';
 			data: {
@@ -68,7 +72,8 @@ export class HistoryManager {
 		if (this.#debug) console.debug('added to redo stack ', commands);
 
 		const updatedClips = new Set<Clip>();
-		for (const command of commands) {
+		const reversed = commands.toReversed();
+		for (const command of reversed) {
 			switch (command.action) {
 				case 'addClip':
 					for (const clip of timelineState.clips) {
@@ -114,6 +119,23 @@ export class HistoryManager {
 					updatedClips.add(clip);
 					break;
 				}
+				case 'addTrack': {
+					timelineState.tracks.splice(command.data.number - 1, 1);
+					setTrackPositions();
+					break;
+				}
+				case 'removeTrack': {
+					timelineState.tracks.push({
+						height: 35,
+						top: 0,
+						lock: true,
+						lockBottom: true,
+						lockTop: true,
+						type: command.data.type
+					});
+					setTrackPositions();
+					break;
+				}
 			}
 		}
 
@@ -121,6 +143,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
+		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
 	}
 
@@ -177,8 +200,24 @@ export class HistoryManager {
 					for (let i = 0; i < command.data.paramIndex.length; i++) {
 						clip.params[command.data.paramIndex[i]] = command.data.newValue[i];
 					}
-					//clip.params[command.data.paramIndex] = command.data.newValue;
 					updatedClips.add(clip);
+					break;
+				}
+				case 'addTrack': {
+					timelineState.tracks.push({
+						height: 35,
+						top: 0,
+						lock: true,
+						lockBottom: true,
+						lockTop: true,
+						type: command.data.type
+					});
+					setTrackPositions();
+					break;
+				}
+				case 'removeTrack': {
+					timelineState.tracks.splice(command.data.number - 1, 1);
+					setTrackPositions();
 					break;
 				}
 			}
@@ -188,6 +227,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
+		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
 	}
 }

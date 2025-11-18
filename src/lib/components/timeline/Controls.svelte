@@ -42,8 +42,8 @@
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
 	<button
 		class={[
-			!appState.mouseIsDown && 'hover:bg-hover group',
-			'text-white select-non pl-9 pr-3 py-1 mr-6 rounded-lg relative',
+			!appState.mouseIsDown && 'hover:bg-zinc-700 group',
+			'text-white pl-9 pr-3 py-1 mr-6 bg-hover rounded-lg relative',
 			'transition-colors duration-200 hover:duration-0 select-none'
 		]}
 		oncontextmenu={(e) => {
