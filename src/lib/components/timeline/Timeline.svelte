@@ -13,11 +13,13 @@
 		focusClip,
 		extendTimeline,
 		setTrackPositions,
-		setTrackTypeAndRemoveEmpty,
+		setAllTrackTypes,
 		setTrackLocks,
 		zoomToFit,
 		centerViewOnPlayhead,
-		checkViewBounds
+		checkViewBounds,
+		getTopTrackOfType,
+		getTrackTypeFromSourceType
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -33,7 +35,7 @@
 		multiSelectClipsInRange,
 		finaliseClip
 	} from '$lib/clip/actions';
-	import { drawCanvas, drawWaveform } from '$lib/timeline/canvas';
+	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
 	import {
 		calculateMaxZoomLevel,
 		canvasPixelToFrame,
@@ -44,7 +46,6 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
-	import { invalidate } from '$app/navigation';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -197,6 +198,7 @@
 				// clicked a multi-selected clip
 				for (const selectedClip of timelineState.selectedClips) {
 					selectedClip.savedStart = selectedClip.start;
+					selectedClip.savedTrack = selectedClip.track;
 				}
 				dragging = true;
 				return;
@@ -246,7 +248,7 @@
 					finaliseClip(clip, 'moveClip');
 				}
 				extendTimeline(clip.start + clip.duration);
-				setTrackTypeAndRemoveEmpty();
+				setAllTrackTypes();
 			}
 			if (timelineState.selectedClips.size > 0) {
 				let endPoint = 0;
@@ -296,15 +298,20 @@
 	const mouseEnteredDropZone = (e: MouseEvent) => {
 		if (!appState.dragAndDrop.active) return;
 		appState.dragAndDrop.showIcon = false;
+
 		const sourceId = appState.dragAndDrop.source?.id;
 		if (!sourceId) return;
+
 		const start = canvasPixelToFrame(e.offsetX - 50);
-		const newClip = createClip(sourceId, 0, start, 0, 0, true);
+		const newClip = createClip(sourceId, -1, start, 0, 0, true);
 		if (!newClip) return;
+
+		newClip.savedTrack = 0;
 		newClip.temp = true;
 		timelineState.selectedClip = newClip;
 		timelineState.dragStart.x = e.offsetX;
 		setTrackLocks();
+		moveSelectedClip(e.offsetY);
 		dragging = true;
 	};
 
@@ -339,7 +346,7 @@
 
 	const step = () => {
 		if (timelineState.invalidateWaveform) {
-			if (waveContext) drawWaveform(waveContext, timelineState.width);
+			if (waveContext) drawWaveforms(waveContext, timelineState.width);
 			timelineState.invalidateWaveform = false;
 			timelineState.invalidate = true;
 		}
@@ -359,6 +366,15 @@
 		waveContext = waveCanvas.getContext('2d');
 
 		context = canvas.getContext('2d', { alpha: false });
+
+		const img = new Image();
+		img.src = 'pattern.png';
+		img.onload = () => {
+			if (!context) return;
+			const pattern = context.createPattern(img, 'repeat');
+			if (!pattern) return;
+			setPattern(pattern);
+		};
 
 		timelineState.tracks.push({
 			height: 35,
@@ -419,7 +435,7 @@
 		timelineState.height = canvasContainer?.clientHeight;
 		setCanvasSize();
 
-		if (waveContext) drawWaveform(waveContext, timelineState.width);
+		if (waveContext) drawWaveforms(waveContext, timelineState.width);
 		if (context) drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 	}}
 	onkeydown={(event) => {

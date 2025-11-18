@@ -1,7 +1,7 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { timelineState } from '$lib/state.svelte';
-import { setTrackPositions } from '$lib/timeline/actions';
+import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { TrackType } from '$lib/types';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
@@ -143,6 +143,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
+		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
 	}
 
@@ -226,6 +227,7 @@ export class HistoryManager {
 			updateWorkerClip(clip);
 		}
 		setAllJoins();
+		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
 	}
 }

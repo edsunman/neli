@@ -2,7 +2,7 @@ import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte'
 import { historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
-import type { TrackType } from '$lib/types';
+import type { SourceType, TrackType } from '$lib/types';
 
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
@@ -213,13 +213,20 @@ export const setTrackLocks = () => {
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
-	// count clips on each track
 	const tracksInUse = new Set<number>();
+	const audioTracksInUse = new Set<number>();
+	const videoTracksInUse = new Set<number>();
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (timelineState.selectedClip && clip.id === timelineState.selectedClip.id) continue;
+
 		tracksInUse.add(clip.track);
+		if (clip.source.type === 'audio') audioTracksInUse.add(clip.track);
+		if (clip.source.type === 'video' || clip.source.type === 'test')
+			videoTracksInUse.add(clip.track);
 	}
+
+	const trackType = getTrackTypeFromSourceType(clip.source.type);
 
 	// lock all tracks
 	for (const track of timelineState.tracks) {
@@ -229,17 +236,21 @@ export const setTrackLocks = () => {
 	}
 
 	// unlock tracks of clip type
-	let trackType: TrackType = 'graphics';
-	if (clip.source.type === 'audio') trackType = 'audio';
-	if (clip.source.type === 'video' || clip.source.type === 'test') trackType = 'video';
-
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (timelineState.tracks[i].type === trackType || timelineState.tracks[i].type === 'none')
 			timelineState.tracks[i].lock = false;
 	}
 
+	// if track limits met return early
+	if (
+		trackType === 'video' &&
+		(videoTracksInUse.size >= 2 || audioTracksInUse.size + videoTracksInUse.size >= 3)
+	)
+		return;
+	if (trackType === 'audio' && audioTracksInUse.size + videoTracksInUse.size >= 3) return;
+
 	// if there are 4 tracks return early
-	if (timelineState.tracks.length >= 4) return;
+	if (tracksInUse.size >= 4) return;
 
 	// if track is the top track unlock the top (unless empty)
 	// unlock the bottom if each track and the one below has something on it
@@ -311,13 +322,12 @@ export const removeTrack = (trackNumber: number) => {
 	setTrackPositions();
 };
 
-export const setTrackTypeAndRemoveEmpty = () => {
+/** Calculate and set all track types and remove empty tracks */
+export const setAllTrackTypes = () => {
 	const usedTracks = new Map<number, TrackType>();
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
-		let trackType: TrackType = 'graphics';
-		if (clip.source.type === 'audio') trackType = 'audio';
-		if (clip.source.type === 'video' || clip.source.type === 'test') trackType = 'video';
+		const trackType = getTrackTypeFromSourceType(clip.source.type);
 		usedTracks.set(clip.track, trackType);
 	}
 
@@ -328,8 +338,12 @@ export const setTrackTypeAndRemoveEmpty = () => {
 			timelineState.tracks[i].type = trackType;
 		} else {
 			timelineState.tracks[i].type = 'none';
+			if (timelineState.focusedTrack === i + 1) {
+				focusTrack(0);
+			}
 		}
 	}
+
 	// loop backwards and remove unused tracks
 	if (timelineState.tracks.length <= 2) return;
 	for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
@@ -337,8 +351,24 @@ export const setTrackTypeAndRemoveEmpty = () => {
 			removeTrack(i + 1);
 		}
 	}
-
 	setTrackPositions();
+};
+
+export const getTopTrackOfType = (type: TrackType) => {
+	let trackNumber = 0;
+	for (let i = 0; i < timelineState.tracks.length; i++) {
+		if (timelineState.tracks[i].type === type || timelineState.tracks[i].type === 'none') {
+			trackNumber = i + 1;
+			break;
+		}
+	}
+	return trackNumber;
+};
+
+export const getTrackTypeFromSourceType = (sourceType: SourceType): TrackType => {
+	if (sourceType === 'test' || sourceType === 'video') return 'video';
+	if (sourceType === 'audio') return 'audio';
+	return 'graphics';
 };
 
 export const focusClip = () => {

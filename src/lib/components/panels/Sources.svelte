@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createClip, setTrackClipJoins } from '$lib/clip/actions';
+	import { createClip, finaliseClip, setTrackClipJoins } from '$lib/clip/actions';
 	import { Tooltip } from 'bits-ui';
 	import {
 		addIcon,
@@ -13,7 +13,13 @@
 
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
-	import { pause } from '$lib/timeline/actions';
+	import {
+		getTopTrackOfType,
+		getTrackTypeFromSourceType,
+		pause,
+		setAllTrackTypes
+	} from '$lib/timeline/actions';
+	import type { Source } from '$lib/source/source.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -52,6 +58,41 @@
 			appState.dragAndDrop.clicked = false;
 			//cursorMovedEnough = false;
 		}
+	};
+
+	const onClick = (source: Source) => {
+		if (cursorMovedEnough) return;
+
+		timelineState.selectedClips.clear();
+		if (source.type === 'srt') {
+			// TODO: tidy this up
+			for (const entry of source.srtEntries) {
+				//console.log(entry.text);
+				const clip = createClip(
+					appState.sources[0].id,
+					1,
+					entry.inPoint,
+					entry.outPoint - entry.inPoint
+				);
+				if (!clip) continue;
+				clip.text = entry.text;
+				clip.params[3] = -0.75;
+				clip.params[6] = 12;
+				clip.params[7] = 1.5;
+				updateWorkerClip(clip);
+			}
+			setTrackClipJoins(1);
+		} else {
+			const trackType = getTrackTypeFromSourceType(source.type);
+			const track = getTopTrackOfType(trackType);
+			if (track < 1) return;
+			const clip = createClip(source.id, track, timelineState.currentFrame);
+			if (!clip) return;
+			if (clip) timelineState.selectedClip = clip;
+			finaliseClip(clip, 'addClip');
+			setAllTrackTypes();
+		}
+		historyManager.finishCommand();
 	};
 
 	const onDrop = (e: DragEvent) => {
@@ -146,34 +187,7 @@
 						timelineState.selectedClips.clear();
 						timelineState.invalidate = true;
 					}}
-					onclick={() => {
-						if (cursorMovedEnough) return;
-
-						timelineState.selectedClips.clear();
-						if (source.type === 'srt') {
-							// TODO: tidy this up
-							for (const entry of source.srtEntries) {
-								//console.log(entry.text);
-								const clip = createClip(
-									appState.sources[0].id,
-									1,
-									entry.inPoint,
-									entry.outPoint - entry.inPoint
-								);
-								if (!clip) continue;
-								clip.text = entry.text;
-								clip.params[3] = -0.75;
-								clip.params[6] = 12;
-								clip.params[7] = 1.5;
-								updateWorkerClip(clip);
-							}
-							setTrackClipJoins(1);
-						} else {
-							const clip = createClip(source.id, 0, timelineState.currentFrame);
-							if (clip) timelineState.selectedClip = clip;
-						}
-						historyManager.finishCommand();
-					}}
+					onclick={() => onClick(source)}
 				>
 					<span
 						style:background-image={`url(${source.thumbnail})`}

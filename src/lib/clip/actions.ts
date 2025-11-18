@@ -4,7 +4,7 @@ import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
 import { getClipInitialScaleFactor } from './utils';
-import { addTrack, setTrackTypeAndRemoveEmpty } from '$lib/timeline/actions';
+import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
 
 export const createClip = (
 	sourceId: string,
@@ -40,8 +40,6 @@ export const createClip = (
 		duration = timelineState.duration - start;
 	}
 
-	if (track < 1) track = 1;
-
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
 	if (source.type === 'video') {
@@ -65,7 +63,7 @@ export const createClip = (
 export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
 	timelineState.selectedClip = null;
-	setTrackTypeAndRemoveEmpty();
+	setAllTrackTypes();
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
@@ -135,37 +133,39 @@ export const moveSelectedClip = (mouseY: number) => {
 
 	clip.start = clip.savedStart + frame;
 
-	// playhead snap
-	const snapRange = canvasPixelToFrame(10, false);
-	if (isFrameInSnapRange(clip.start, timelineState.currentFrame, snapRange)) {
-		clip.start = timelineState.currentFrame;
-	}
-	if (isFrameInSnapRange(clip.start + clip.duration, timelineState.currentFrame, snapRange)) {
-		clip.start = timelineState.currentFrame - clip.duration;
-	}
-
-	// sibling clips snap
-	for (const siblingClip of timelineState.clips) {
-		const clipEnd = clip.start + clip.duration;
-		const siblingClipEnd = siblingClip.start + siblingClip.duration;
-
-		if (clip.id === siblingClip.id || siblingClip.deleted) continue;
-		// check start to end
-		if (isFrameInSnapRange(clip.start, siblingClipEnd, snapRange)) {
-			clip.start = siblingClipEnd;
+	if (!clip.invalid) {
+		// playhead snap
+		const snapRange = canvasPixelToFrame(10, false);
+		if (isFrameInSnapRange(clip.start, timelineState.currentFrame, snapRange)) {
+			clip.start = timelineState.currentFrame;
 		}
-		// check end to start
-		if (isFrameInSnapRange(clipEnd, siblingClip.start, snapRange)) {
-			clip.start = siblingClip.start - clip.duration;
+		if (isFrameInSnapRange(clip.start + clip.duration, timelineState.currentFrame, snapRange)) {
+			clip.start = timelineState.currentFrame - clip.duration;
 		}
-		if (clip.track !== siblingClip.track) {
-			// check end to end
-			if (isFrameInSnapRange(clipEnd, siblingClipEnd, snapRange)) {
-				clip.start = siblingClipEnd - clip.duration;
+
+		// sibling clips snap
+		for (const siblingClip of timelineState.clips) {
+			const clipEnd = clip.start + clip.duration;
+			const siblingClipEnd = siblingClip.start + siblingClip.duration;
+
+			if (clip.id === siblingClip.id || siblingClip.deleted) continue;
+			// check start to end
+			if (isFrameInSnapRange(clip.start, siblingClipEnd, snapRange)) {
+				clip.start = siblingClipEnd;
 			}
-			// check start to start
-			if (isFrameInSnapRange(clip.start, siblingClip.start, snapRange)) {
-				clip.start = siblingClip.start;
+			// check end to start
+			if (isFrameInSnapRange(clipEnd, siblingClip.start, snapRange)) {
+				clip.start = siblingClip.start - clip.duration;
+			}
+			if (clip.track !== siblingClip.track) {
+				// check end to end
+				if (isFrameInSnapRange(clipEnd, siblingClipEnd, snapRange)) {
+					clip.start = siblingClipEnd - clip.duration;
+				}
+				// check start to start
+				if (isFrameInSnapRange(clip.start, siblingClip.start, snapRange)) {
+					clip.start = siblingClip.start;
+				}
 			}
 		}
 	}
@@ -184,24 +184,25 @@ export const moveSelectedClip = (mouseY: number) => {
 	const trackContainerHeight = flexHeight * 0.8;
 	const currentTrack = clip.track;
 	const padding = trackContainerHeight < 220 ? 0 : 5; // expand track hitbox vertically
+
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		const trackTop = timelineState.tracks[i].top - padding;
 		const trackHeight = timelineState.tracks[i].height;
 		const trackBottom = trackTop + trackHeight + padding * 2;
 
 		// above track 1
-		if (
-			i === 0 &&
-			mouseY < trackTop &&
-			timelineState.focusedTrack === 0 &&
-			!timelineState.tracks[i].lockTop
-		) {
-			timelineState.trackDropZone = 0;
-			clip.track = 0;
+		if (i === 0 && mouseY < trackTop && timelineState.focusedTrack === 0) {
+			if (timelineState.tracks[i].lockTop) {
+				timelineState.trackDropZone = -1;
+				clip.track = 1;
+			} else {
+				timelineState.trackDropZone = 0;
+				clip.track = 0;
+			}
 		}
 
 		// on track
-		if (mouseY >= trackTop && mouseY < trackBottom && !timelineState.tracks[i].lock) {
+		if (mouseY >= trackTop && mouseY < trackBottom) {
 			clip.track = i + 1;
 			timelineState.trackDropZone = -1;
 		}
@@ -221,10 +222,17 @@ export const moveSelectedClip = (mouseY: number) => {
 	if (clip.track !== currentTrack) {
 		// moved between tracks this frame
 		setTrackClipJoins(currentTrack);
+		if (clip.track > 0) {
+			if (timelineState.tracks[clip.track - 1].lock) {
+				clip.invalid = true;
+			} else {
+				clip.invalid = false;
+			}
+		} else {
+			clip.invalid = false;
+		}
 	}
-	//}
 	setTrackClipJoins(clip.track);
-	//setClipJoins(clip);
 };
 
 export const resizeSelctedClip = () => {
@@ -424,7 +432,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	timelineState.clips.push(newClip);
 	updateWorkerClip(newClip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
-	//historyManager.finishCommand();
 	setTrackClipJoins(newClip.track);
 };
 
@@ -519,6 +526,20 @@ export const multiSelectClipsInRange = () => {
 
 /** Call when clip is "dropped" to persist clip state to worker and history */
 export const finaliseClip = (clip: Clip, action: 'trimClip' | 'moveClip' | 'addClip') => {
+	// revert state for invalid clips
+	if (action === 'moveClip' && clip.invalid) {
+		clip.track = clip.savedTrack;
+		clip.start = clip.savedStart;
+		clip.invalid = false;
+		setTrackClipJoins(clip.track);
+		return;
+	}
+	if (action === 'addClip' && clip.invalid) {
+		setTrackClipJoins(clip.track);
+		removeClip(clip.id);
+		return;
+	}
+
 	clip.temp = false;
 	trimSiblingClips(clip);
 
@@ -589,18 +610,19 @@ const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: numbe
 	return false;
 };
 
+// TODO: rename to seTrackJoins
 export const setTrackClipJoins = (track: number) => {
 	const startPoints = new Set();
 	const endPoints = new Set();
 	for (const clip of timelineState.clips) {
-		if (clip.track !== track || clip.deleted) continue;
+		if (clip.track !== track || clip.deleted || clip.invalid) continue;
 		clip.joinLeft = false;
 		clip.joinRight = false;
 		startPoints.add(clip.start);
 		endPoints.add(clip.start + clip.duration);
 	}
 	for (const clip of timelineState.clips) {
-		if (clip.track !== track || clip.deleted) continue;
+		if (clip.track !== track || clip.deleted || clip.invalid) continue;
 		if (endPoints.has(clip.start)) clip.joinLeft = true;
 		if (startPoints.has(clip.start + clip.duration)) clip.joinRight = true;
 	}

@@ -81,6 +81,8 @@
 				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;
 				focusTrack(0);
+				timelineState.selectedClip = null;
+				timelineState.selectedClips.clear();
 				if (e.shiftKey) {
 					historyManager.redo();
 				} else {

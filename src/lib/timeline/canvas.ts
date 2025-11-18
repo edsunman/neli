@@ -16,6 +16,12 @@ const PLAYHEAD_PATH = new Path2D(
 	'M 10.259 0.2125 h -6.3285 C 1.9385 0.2125 0.3235 1.828 0.3235 3.82 v 6.4675 c 0 1.694 0.408 3.3635 1.189 4.8665 l 2.381 4.5815 c 1.347 2.592 5.0555 2.592 6.402 0 l 2.3825 -4.5865 c 0.7805 -1.503 1.1885 -3.1715 1.1885 -4.865 V 3.82 c 0 -1.992 -1.615 -3.6075 -3.6075 -3.6075 Z M 10.917 6.0255 c 0 1.129 -0.2715 2.215 -0.792 3.217 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.0885 -0.7925 -3.2175 v -0.6305 c 0 -1.1245 0.9115 -2.036 2.036 -2.036 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 0.628 Z'
 );
 
+let pattern: CanvasPattern;
+
+export const setPattern = (p: CanvasPattern) => {
+	pattern = p;
+};
+
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
 	width: number,
@@ -49,12 +55,20 @@ export const drawCanvas = (
 	// clips
 	for (const clip of timelineState.clips) {
 		const selected = timelineState.selectedClip?.id === clip.id;
-		if (selected || clip.deleted || clip.temp || timelineState.selectedClips.has(clip)) continue;
+		if (
+			selected ||
+			clip.deleted ||
+			clip.temp ||
+			timelineState.selectedClips.has(clip) ||
+			clip.track < 1
+		)
+			continue;
 		drawClip(context, clip, width, false, false);
 	}
 
 	// draw base for selected clips
 	for (const clip of timelineState.selectedClips) {
+		if (clip.deleted) return;
 		drawBaseShape(context, clip, width);
 	}
 
@@ -63,8 +77,14 @@ export const drawCanvas = (
 		drawClip(context, clip, width, false, true);
 	}
 
-	if (timelineState.selectedClip && timelineState.trackDropZone < 0) {
-		drawBaseShape(context, timelineState.selectedClip, width);
+	if (
+		timelineState.selectedClip &&
+		timelineState.trackDropZone < 0 &&
+		timelineState.selectedClip.track > 0
+	) {
+		if (!timelineState.selectedClip.invalid) {
+			drawBaseShape(context, timelineState.selectedClip, width);
+		}
 		drawClip(context, timelineState.selectedClip, width, true);
 	}
 
@@ -129,83 +149,7 @@ export const drawCanvas = (
 	context.fillRect(0, flexHeight * 0.2, 200, flexHeight * 0.8); */
 };
 
-export const drawWaveform = (context: OffscreenCanvasRenderingContext2D, width: number) => {
-	if (timelineState.focusedTrack === 0) return;
-	context.clearRect(0, 0, width, 100);
-	context.fillStyle = '#131315';
-
-	for (const clip of timelineState.clips) {
-		if (clip.track !== timelineState.focusedTrack || clip.deleted || clip.source.type === 'text')
-			continue;
-
-		const clipWidth = frameToCanvasPixel(clip.duration, false);
-		const clipStartPixel = frameToCanvasPixel(clip.start);
-
-		const fps = 30;
-		const startTimeInSeconds = clip.source.type === 'test' ? 0 : clip.sourceOffset / fps;
-		const durationInSeconds = clip.duration / fps;
-
-		// 3333.33 is assuming we samples at a rate of 300 per second
-		const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3333.33);
-		const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3333.33);
-
-		const scaleFactor = audioDataLength / clipWidth;
-		const lineWidth = scaleFactor < 0.3 ? 5 : scaleFactor < 0.5 ? 3 : scaleFactor < 1 ? 2 : 1;
-
-		const canvasHeight = 100;
-		const waveHeight = 50;
-
-		const testWave = [];
-		for (let i = 0; i <= 20; i++) {
-			const scaledPosition = i + 1;
-			const height = (Math.log(21) - Math.log(scaledPosition)) / Math.log(21);
-			testWave.push(Math.max(0, height));
-		}
-
-		const maxLines = new Map();
-		// Calculate the longest line for each position
-		if (clip.source.audioWaveform) {
-			for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
-				const position = Math.floor(j / scaleFactor + clipStartPixel);
-				if (position < 0 || position > width) continue;
-
-				const value = clip.source.audioWaveform[i];
-				if (!maxLines.has(position) || value > maxLines.get(position)) {
-					maxLines.set(position, value);
-				}
-			}
-		} else if (clip.source.type === 'test') {
-			// test card waveform
-			for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
-				const position = Math.floor(j / scaleFactor + clipStartPixel);
-				if (position < 0 || position > width) continue;
-				let value = 0;
-				if ((i - 150) % 300 >= 0 && (i - 150) % 300 <= 20) {
-					const relativePosition = (i - 150) % 300;
-					value = testWave[relativePosition];
-				}
-				if (!maxLines.has(position) || value > maxLines.get(position)) {
-					maxLines.set(position, value);
-				}
-			}
-		}
-
-		context.beginPath();
-		for (const [position, value] of maxLines) {
-			context.rect(
-				position,
-				canvasHeight / 2 - (value * waveHeight) / 2,
-				lineWidth,
-				value * waveHeight
-			);
-		}
-		context.fill();
-		context.closePath();
-	}
-};
-
 const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) => {
-	//const rulerPosition = (containerHeight - 22) / 2;
 	const rulerPosition = (containerHeight - 22) / 1.5;
 	const durationInSeconds = timelineState.duration / 30;
 	const durationInMinutes = durationInSeconds / 60;
@@ -312,6 +256,10 @@ const drawClip = (
 		clipBaseColor = BLUE;
 		clipDarkColor = BLUE_DARK;
 	}
+	if (clip.invalid) {
+		clipColor = '#2b2d30';
+		clipBaseColor = '#222223';
+	}
 
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;
@@ -338,7 +286,7 @@ const drawClip = (
 	// TODO:  clip should not be a seperate draw call
 
 	// focus shapes
-	if (clip.track === timelineState.focusedTrack) {
+	if (clip.track === timelineState.focusedTrack && !clip.invalid) {
 		context.fillStyle = clipDarkColor;
 		context.beginPath();
 		context.roundRect(clipStart, trackTop, clipWidth, clipHeight + 75, 8);
@@ -372,14 +320,13 @@ const drawClip = (
 			clip.joinRight ? 0 : 5,
 			clip.joinLeft ? 0 : 5
 		]);
-		if (!selected) context.fillStyle = clipBaseColor;
+
+		if (!selected || clip.invalid) context.fillStyle = clipBaseColor;
+		if (clip.invalid && pattern) context.fillStyle = pattern;
 		context.fill();
 		context.stroke();
-
-		//context.fillRect(clipStart + 14, trackTop + 3, clipWidth - 20, 3);
-		//context.fillRect(clipStart + 14, trackTop + clipHeight - 6, clipWidth - 20, 3);
 	}
-	if (clipWidth < 32) return;
+	if (clipWidth < 32 || clip.invalid) return;
 	if (selected || (clip.hovered && !multiSelected)) {
 		// handles
 		context.save();
@@ -437,10 +384,12 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: number) => {
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;
-	const clipHeight =
+	let clipHeight =
 		timelineState.tracks[clip.track - 1].height > 35
 			? 35
 			: timelineState.tracks[clip.track - 1].height;
+
+	if (clip.track === timelineState.focusedTrack && !clip.invalid) clipHeight += 75;
 
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
@@ -454,4 +403,101 @@ const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: num
 	context.beginPath();
 	context.roundRect(clipStart - 3, trackTop - 3, clipWidth + 6, clipHeight + 6, 11);
 	context.fill();
+};
+
+export const drawWaveforms = (context: OffscreenCanvasRenderingContext2D, width: number) => {
+	if (timelineState.focusedTrack === 0) return;
+	context.clearRect(0, 0, width, 100);
+	context.fillStyle = '#131315';
+
+	for (const clip of timelineState.clips) {
+		if (
+			(timelineState.selectedClip && clip.id === timelineState.selectedClip.id) ||
+			clip.track !== timelineState.focusedTrack ||
+			clip.deleted ||
+			clip.invalid ||
+			clip.source.type === 'text'
+		)
+			continue;
+		drawClipWaveform(context, clip, width);
+	}
+
+	if (timelineState.selectedClip) {
+		const clip = timelineState.selectedClip;
+		if (clip.track !== timelineState.focusedTrack || clip.source.type === 'text' || clip.invalid)
+			return;
+		drawClipWaveform(context, clip, width);
+	}
+};
+
+const drawClipWaveform = (
+	context: OffscreenCanvasRenderingContext2D,
+	clip: Clip,
+	width: number
+) => {
+	const clipWidth = frameToCanvasPixel(clip.duration, false);
+	const clipStartPixel = frameToCanvasPixel(clip.start);
+
+	context.clearRect(clipStartPixel, 0, clipWidth, 100);
+
+	const fps = 30;
+	const startTimeInSeconds = clip.source.type === 'test' ? 0 : clip.sourceOffset / fps;
+	const durationInSeconds = clip.duration / fps;
+
+	// 3333.33 is assuming we samples at a rate of 300 per second
+	const audioDataLength = Math.floor((durationInSeconds * 1e6) / 3333.33);
+	const audioDataOffset = Math.floor((startTimeInSeconds * 1e6) / 3333.33);
+
+	const scaleFactor = audioDataLength / clipWidth;
+	const lineWidth = scaleFactor < 0.3 ? 5 : scaleFactor < 0.5 ? 3 : scaleFactor < 1 ? 2 : 1;
+
+	const canvasHeight = 100;
+	const waveHeight = 50;
+
+	const testWave = [];
+	for (let i = 0; i <= 20; i++) {
+		const scaledPosition = i + 1;
+		const height = (Math.log(21) - Math.log(scaledPosition)) / Math.log(21);
+		testWave.push(Math.max(0, height));
+	}
+
+	const maxLines = new Map();
+	// Calculate the longest line for each position
+	if (clip.source.audioWaveform) {
+		for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
+			const position = Math.floor(j / scaleFactor + clipStartPixel);
+			if (position < 0 || position > width) continue;
+
+			const value = clip.source.audioWaveform[i];
+			if (!maxLines.has(position) || value > maxLines.get(position)) {
+				maxLines.set(position, value);
+			}
+		}
+	} else if (clip.source.type === 'test') {
+		// test card waveform
+		for (let i = audioDataOffset, j = 0; i < audioDataOffset + audioDataLength; i++, j++) {
+			const position = Math.floor(j / scaleFactor + clipStartPixel);
+			if (position < 0 || position > width) continue;
+			let value = 0;
+			if ((i - 150) % 300 >= 0 && (i - 150) % 300 <= 20) {
+				const relativePosition = (i - 150) % 300;
+				value = testWave[relativePosition];
+			}
+			if (!maxLines.has(position) || value > maxLines.get(position)) {
+				maxLines.set(position, value);
+			}
+		}
+	}
+
+	context.beginPath();
+	for (const [position, value] of maxLines) {
+		context.rect(
+			position,
+			canvasHeight / 2 - (value * waveHeight) / 2,
+			lineWidth,
+			value * waveHeight
+		);
+	}
+	context.fill();
+	context.closePath();
 };
