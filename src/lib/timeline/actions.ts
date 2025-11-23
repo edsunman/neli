@@ -228,20 +228,20 @@ export const setTrackLocks = () => {
 
 	const trackType = getTrackTypeFromSourceType(clip.source.type);
 
-	// lock all tracks
+	// Lock all tracks
 	for (const track of timelineState.tracks) {
 		track.lock = true;
 		track.lockTop = true;
 		track.lockBottom = true;
 	}
 
-	// unlock tracks of clip type
+	// Unlock tracks of clip type
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (timelineState.tracks[i].type === trackType || timelineState.tracks[i].type === 'none')
 			timelineState.tracks[i].lock = false;
 	}
 
-	// if track limits met return early
+	// If track limits met return early
 	if (
 		trackType === 'video' &&
 		(videoTracksInUse.size >= 2 || audioTracksInUse.size + videoTracksInUse.size >= 3)
@@ -249,10 +249,10 @@ export const setTrackLocks = () => {
 		return;
 	if (trackType === 'audio' && audioTracksInUse.size + videoTracksInUse.size >= 3) return;
 
-	// if there are 4 tracks return early
+	// If there are 4 tracks return early
 	if (tracksInUse.size >= 4) return;
 
-	// if track is the top track unlock the top (unless empty)
+	// If track is the top track unlock the top (unless empty)
 	// unlock the bottom if each track and the one below has something on it
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		if (i === 0) {

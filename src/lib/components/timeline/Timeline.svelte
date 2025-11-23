@@ -17,9 +17,7 @@
 		setTrackLocks,
 		zoomToFit,
 		centerViewOnPlayhead,
-		checkViewBounds,
-		getTopTrackOfType,
-		getTrackTypeFromSourceType
+		checkViewBounds
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -189,13 +187,17 @@
 			return;
 		}
 		if (timelineState.hoverClipId) {
-			// clicked a clip
+			// Clicked a clip
 			if (timelineState.playing) pause();
 			const clip = getClip(timelineState.hoverClipId);
 			if (!clip) return;
 
 			if (timelineState.selectedClips.has(clip)) {
-				// clicked a multi-selected clip
+				// Clicked a multi-selected clip
+				if (e.shiftKey) {
+					timelineState.selectedClips.delete(clip);
+					return;
+				}
 				for (const selectedClip of timelineState.selectedClips) {
 					selectedClip.savedStart = selectedClip.start;
 					selectedClip.savedTrack = selectedClip.track;
@@ -205,9 +207,15 @@
 			}
 
 			if (e.shiftKey) {
-				// if there is a clip selected check we have not clicked it
+				// If there is a clip selected check we have not clicked it
 				if (timelineState.selectedClip === clip) return;
 				multiSelectClip(timelineState.hoverClipId);
+				return;
+			}
+			if (e.ctrlKey || e.metaKey) {
+				splitClip(clip.id, canvasPixelToFrame(e.offsetX));
+				//historyManager.finishCommand();
+				timelineState.invalidateWaveform = true;
 				return;
 			}
 			timelineState.selectedClip = clip;
@@ -247,7 +255,7 @@
 				} else {
 					finaliseClip(clip, 'moveClip');
 				}
-				extendTimeline(clip.start + clip.duration);
+				if (!clip.invalid) extendTimeline(clip.start + clip.duration);
 				setAllTrackTypes();
 			}
 			if (timelineState.selectedClips.size > 0) {
