@@ -51,17 +51,14 @@ const assignSourcesToFolders = () => {
 		for (let i = 0; i < count / 7; i++) {
 			id++;
 			newFolderGroup.folders.push({ id, selected: false });
-			console.log('set folder to: ', id);
 		}
 
 		let i = 0;
 		for (const source of appState.sources) {
-			console.log(`source name ${source.name} is preset ${source.preset ? 'true' : 'false'}`);
 			if (source.preset) continue;
 			const sourceType = getTrackTypeFromSourceType(source.type);
 			if (type !== sourceType) continue;
 			source.folderId = Math.floor(i / 7) + startingId + 1;
-			//console.log(`set source ${source.name} to ${source.folderId}`);
 			i++;
 		}
 

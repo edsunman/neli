@@ -8,7 +8,8 @@
 		textIcon,
 		paletteIcon,
 		filmIcon,
-		folderIcon
+		folderIcon,
+		presetsIcon
 	} from '../icons/Icons.svelte';
 
 	import MyTooltip from '../ui/Tooltip.svelte';
@@ -120,8 +121,8 @@
 	};
 </script>
 
-<Tooltip.Provider delayDuration={1000}>
-	<div class="mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
+<Tooltip.Provider delayDuration={500}>
+	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
 			<div class="mb-5 bg-zinc-900 border-zinc-900 border-2 rounded">
 				<div class=" flex flex-col bg-zinc-950 rounded">
@@ -141,22 +142,30 @@
 			</div>
 			<div class="mb-5 bg-zinc-900 border-zinc-900 border-2 rounded">
 				<div class=" flex flex-col bg-zinc-950 rounded">
-					<button
-						onclick={() => {
-							appState.folderGroups.forEach((group) => {
-								group.folders.forEach((folder) => {
-									folder.selected = false;
+					<MyTooltip
+						contentProps={{ side: 'right' }}
+						triggerProps={{
+							onclick: () => {
+								appState.folderGroups.forEach((group) => {
+									group.folders.forEach((folder) => {
+										folder.selected = false;
+									});
 								});
-							});
-							selectedFolder = 0;
+								selectedFolder = 0;
+							}
 						}}
-						class={[
-							selectedFolder === 0 ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
-							'p-2'
-						]}
-					>
-						{@render folderIcon('w-6 h-6')}
-					</button>
+						>{#snippet trigger()}
+							<div
+								class={[
+									selectedFolder === 0 ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+									'p-2'
+								]}
+							>
+								{@render presetsIcon('w-6 h-6')}
+							</div>
+						{/snippet}
+						{appState.sources.length < 5 ? 'sources' : 'presets'}
+					</MyTooltip>
 				</div>
 			</div>
 			{#each appState.folderGroups as group}
@@ -273,7 +282,7 @@
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
 					'rounded-lg border-2 select-none ',
-					'border-dashed items-center justify-center flex h-14 mt-2'
+					'border-dashed items-center justify-center flex h-14 mt-2 ml-2'
 				]}
 				ondrop={onDrop}
 				ondragenter={() => (dragHover = true)}

@@ -37,7 +37,9 @@
 </script>
 
 <!-- <Tooltip.Provider> -->
-<div class="flex mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative">
+<div
+	class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative"
+>
 	<div class="absolute -right-13">
 		<div class=" bg-zinc-950 rounded flex flex-col mb-5">
 			<!-- svelte-ignore a11y_consider_explicit_label -->
