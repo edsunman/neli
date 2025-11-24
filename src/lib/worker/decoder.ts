@@ -6,18 +6,18 @@ export class VDecoder {
 	#ready = false;
 	#running = false;
 
-	/** all chunks */
+	/** All chunks */
 	#chunks: EncodedVideoChunk[] = [];
-	/** chunks waiting to be decoded */
+	/** Chunks waiting to be decoded */
 	#chunkBuffer: EncodedVideoChunk[] = [];
-	/** decoded frames waiting to be returned */
+	/** Decoded frames waiting to be returned */
 	#frameQueue: VideoFrame[] = [];
 	#lastFrame?: VideoFrame;
 	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
-	/** used when seeking */
+	/** Used when seeking */
 	#targetFrameTimestamp = 0;
-	/** used when playing */
+	/** Used when running */
 	#startingFrameTimeStamp = 0;
 	#lastChunkIndex = 0;
 	#startToQueueFrames = false;
@@ -60,7 +60,7 @@ export class VDecoder {
 		}
 
 		if (maxTimestamp && maxTimestamp + 33333 < frameTimestamp) {
-			// out of bounds
+			// Out of bounds
 			return Promise.resolve(null);
 		}
 
@@ -96,6 +96,17 @@ export class VDecoder {
 
 	/** Called quickly during playback and encoding to keep frame queue full */
 	run(elapsedTimeMs: number, encoding = false) {
+		// Keep chunk buffer full
+		if (this.#chunkBuffer.length < 5) {
+			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
+
+			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
+				this.#chunkBuffer.push(this.#chunks[i]);
+				this.#lastChunkIndex = i;
+			}
+			this.#feedDecoder();
+		}
+
 		const frameTime = Math.floor(elapsedTimeMs * 1000);
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
@@ -109,23 +120,22 @@ export class VDecoder {
 			}
 		}
 
+		// If source has lower framerate than timeline we may need to return
+		// previous frame rather than grabbing a frame from framequeue
+		if (this.#lastFrame) {
+			const lastFrameDelta = Math.abs(frameTime - this.#lastFrame.timestamp);
+			if (lastFrameDelta < minTimeDelta) {
+				if (DEBUG) console.log(`last frame is closer, returning ${this.#lastFrame.timestamp}`);
+				return this.#lastFrame;
+			}
+		}
+
 		for (let i = 0; i < frameIndex; i++) {
 			const staleFrame = this.#frameQueue.shift();
 			staleFrame?.close();
 		}
 
-		if (this.#chunkBuffer.length < 5) {
-			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
-
-			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
-				this.#chunkBuffer.push(this.#chunks[i]);
-				this.#lastChunkIndex = i;
-			}
-			this.#feedDecoder();
-		}
-
 		const chosenFrame = this.#frameQueue.shift();
-		//console.log(this.#frameQueue.length);
 		if (chosenFrame && chosenFrame.format) {
 			if (this.#lastFrame) this.#lastFrame.close();
 			this.#lastFrame = chosenFrame;
@@ -163,10 +173,9 @@ export class VDecoder {
 		return this.#running;
 	}
 
-	// runs in a loop until chunk buffer is empty
+	// Runs in a loop until chunk buffer is empty
 	#feedDecoder() {
 		if (this.#decoder.decodeQueueSize >= 5) {
-			//	this.#feedingPaused = true;
 			if (DEBUG)
 				console.log(
 					'Skip feeding. #frameQueue:',
@@ -179,7 +188,7 @@ export class VDecoder {
 		if (this.#chunkBuffer.length > 0) {
 			const chunk = this.#chunkBuffer.shift();
 			if (!chunk) {
-				// undefined chunks in the buffer mean we are at the end of the video file,
+				// Undefined chunks in the buffer mean we are at the end of the video file,
 				// so flush the encoder to make sure last few chunks make it through
 				this.#decoder.flush();
 				return;

@@ -4,6 +4,8 @@ export class Source {
 	id: string = '';
 	type: SourceType = 'audio';
 	name?: string;
+	folderId = 0;
+	preset = false;
 	duration?: number;
 	frameRate?: number;
 	file?: File;

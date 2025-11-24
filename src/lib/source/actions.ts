@@ -3,7 +3,8 @@ import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
-import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
+import type { FileInfo, FolderGroup, SourceType, SrtEntry, TrackType } from '$lib/types';
+import { getTrackTypeFromSourceType } from '$lib/timeline/actions';
 
 export const createSource = (type: SourceType, file?: File) => {
 	const newSource = new Source();
@@ -23,7 +24,46 @@ export const createSource = (type: SourceType, file?: File) => {
 	if (type === 'audio') {
 		newSource.frameRate = 30;
 	}
+
+	appState.sources.push(newSource);
+
+	assignSourcesToFolders();
+
 	return newSource;
+};
+
+const assignSourcesToFolders = () => {
+	if (appState.sources.length < 5) return;
+	appState.folderGroups.length = 0;
+
+	const sourceTypes = new Map<TrackType, number>();
+	for (const source of appState.sources) {
+		if (source.preset) continue;
+		const type = getTrackTypeFromSourceType(source.type);
+		const currentCount = sourceTypes.get(type) || 0;
+		sourceTypes.set(type, currentCount + 1);
+	}
+
+	let id = 0;
+	for (const [type, count] of sourceTypes) {
+		const startingId = id;
+		const newFolderGroup: FolderGroup = { type, folders: [] };
+		for (let i = 0; i < count / 7; i++) {
+			id++;
+			newFolderGroup.folders.push({ id, selected: false });
+		}
+
+		let i = 0;
+		for (const source of appState.sources) {
+			if (source.preset) continue;
+			const sourceType = getTrackTypeFromSourceType(source.type);
+			if (type !== sourceType) continue;
+			source.folderId = Math.floor(i / 7) + startingId + 1;
+			i++;
+		}
+
+		appState.folderGroups.push(newFolderGroup);
+	}
 };
 
 export const createVideoSource = async (
@@ -65,7 +105,7 @@ export const createVideoSource = async (
 		newSource.audioConfig = audioConfig;
 	}
 
-	appState.sources.push(newSource);
+	//appState.sources.push(newSource);
 	appState.importSuccessCallback = thumbnailCallback;
 	sendFileToWorker(newSource);
 	await generateWaveformData(newSource);
@@ -101,7 +141,7 @@ export const createAudioSource = async (file: File, durationSeconds: number) => 
 	newSource.audioChunks = audioChunks;
 	newSource.audioConfig = audioConfig;
 
-	appState.sources.push(newSource);
+	//appState.sources.push(newSource);
 
 	await generateWaveformData(newSource);
 	return newSource.id;
@@ -112,15 +152,19 @@ export const createSrtSource = async (file: File) => {
 	const srtEntries = parseSrt(result);
 	const newSource = createSource('srt', file); //new Source('srt', file);
 	newSource.srtEntries = srtEntries;
-	appState.sources.push(newSource);
+	//appState.sources.push(newSource);
 };
 
 export const createTextSource = () => {
-	appState.sources.push(createSource('text'));
+	const source = createSource('text');
+	//appState.sources.push(source);
+	return source;
 };
 
 export const createTestSource = () => {
-	appState.sources.push(createSource('test'));
+	const source = createSource('test');
+	//appState.sources.push(source);
+	return source;
 };
 
 export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {

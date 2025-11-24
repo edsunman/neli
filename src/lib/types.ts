@@ -13,6 +13,11 @@ export type Track = {
 	type: TrackType;
 };
 
+export type FolderGroup = {
+	type: TrackType;
+	folders: { id: number; selected: boolean }[];
+};
+
 export type SrtEntry = {
 	inPoint: number;
 	outPoint: number;

@@ -18,7 +18,7 @@
 	});
 </script>
 
-<div class="bg-hover rounded-sm relative">
+<div style:min-width={`${36 * items.length}px`} class="bg-hover rounded-sm relative">
 	{#each items as item}
 		<button
 			class={[

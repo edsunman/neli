@@ -2,7 +2,7 @@
 @theme {
 	--font-sans: 'Sen', ui-sans-serif, system-ui, sans-serif;
 	--color-clip-green-500: #50cfaf;
-	--color-clip-green-600: #00896e;
+	--color-clip-green-600: #218477;
 	--color-clip-purple-500: #8b4fcf;
 	--color-clip-purple-600: #6524ad;
 	--color-clip-blue-500: #419fda;
@@ -12,6 +12,7 @@
 	--color-zinc-370: #b6b6bb;
 }
 @custom-variant height-xl (@media (height >= 1000px));
+@custom-variant height-lg (@media (height >= 750px));
 @font-face {
 	font-family: Sen;
 	font-style: normal;
