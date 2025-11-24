@@ -44,8 +44,10 @@
 			localStorage.setItem('alreadyVisited', 'true');
 		}
 
-		createTextSource();
-		createTestSource();
+		/* 	const textSource = createTextSource();
+		textSource.preset = true;
+		const testSource = createTestSource();
+		testSource.preset = true; */
 
 		const font = await loadFont('/text.json');
 		appState.fonts.push(font);

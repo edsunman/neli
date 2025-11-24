@@ -2,7 +2,7 @@ import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { DragAndDropState, Font, Track } from './types';
+import type { DragAndDropState, FolderGroup, Font, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
@@ -21,6 +21,7 @@ class AppState {
 		showIcon: false,
 		source: null
 	});
+	folderGroups: FolderGroup[] = $state([]);
 
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;

@@ -33,6 +33,14 @@
 	let startingCursor = { x: 0, y: 0 };
 	let cursorMovedEnough = $state(false);
 
+	let selectedFolder = $state(0);
+	let filteredSources = $derived.by(() => {
+		appState.folderGroups;
+		return appState.sources.filter((source) => {
+			return source.folderId === selectedFolder;
+		});
+	});
+
 	mouseMove = (e: MouseEvent) => {
 		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.x = e.clientX;
@@ -56,7 +64,6 @@
 			appState.dragAndDrop.showIcon = false;
 			appState.dragAndDrop.active = false;
 			appState.dragAndDrop.clicked = false;
-			//cursorMovedEnough = false;
 		}
 	};
 
@@ -116,30 +123,74 @@
 <Tooltip.Provider delayDuration={1000}>
 	<div class="mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
-			<div class=" flex flex-col bg-zinc-950 rounded mb-5">
-				<MyTooltip
-					contentProps={{ side: 'right' }}
-					triggerProps={{ onclick: () => (appState.showPalette = true) }}
-				>
-					{#snippet trigger()}
-						<div class="p-2 text-zinc-600 hover:text-zinc-400">
-							{@render paletteIcon('w-6 h-6')}
-						</div>
-					{/snippet}
-					command palette
-					<span class="ml-1 px-1.5 py-0.5 rounded-sm bg-zinc-350">P</span>
-				</MyTooltip>
+			<div class="mb-5 bg-zinc-900 border-zinc-900 border-2 rounded">
+				<div class=" flex flex-col bg-zinc-950 rounded">
+					<MyTooltip
+						contentProps={{ side: 'right' }}
+						triggerProps={{ onclick: () => (appState.showPalette = true) }}
+					>
+						{#snippet trigger()}
+							<div class="p-2 text-zinc-600 hover:text-zinc-400">
+								{@render paletteIcon('w-6 h-6')}
+							</div>
+						{/snippet}
+						command palette
+						<span class="ml-1 px-1.5 py-0.5 rounded-sm bg-zinc-350">P</span>
+					</MyTooltip>
+				</div>
 			</div>
-			<div class=" flex flex-col bg-zinc-950 rounded">
-				<MyTooltip contentProps={{ side: 'right' }}>
-					{#snippet trigger()}
-						<div class="p-2 text-zinc-200">
-							{@render folderIcon('w-6 h-6')}
-						</div>
-					{/snippet}
-					sources folder
-				</MyTooltip>
+			<div class="mb-5 bg-zinc-900 border-zinc-900 border-2 rounded">
+				<div class=" flex flex-col bg-zinc-950 rounded">
+					<button
+						onclick={() => {
+							appState.folderGroups.forEach((group) => {
+								group.folders.forEach((folder) => {
+									folder.selected = false;
+								});
+							});
+							selectedFolder = 0;
+						}}
+						class={[
+							selectedFolder === 0 ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							'p-2'
+						]}
+					>
+						{@render folderIcon('w-6 h-6')}
+					</button>
+				</div>
 			</div>
+			{#each appState.folderGroups as group}
+				<div class="mb-5 bg-hover rounded border-hover border-2">
+					<div class="flex flex-col bg-zinc-950 rounded">
+						{#each group.folders as folder}
+							<button
+								onclick={() => {
+									appState.folderGroups.forEach((group) => {
+										group.folders.forEach((folder) => {
+											folder.selected = false;
+										});
+									});
+									folder.selected = true;
+									selectedFolder = folder.id;
+								}}
+								class={[
+									folder.selected ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+									'p-2'
+								]}
+							>
+								{@render folderIcon('w-6 h-6')}
+							</button>
+						{/each}
+					</div>
+					{#if group.type === 'graphics'}
+						{@render textIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
+					{:else if group.type === 'video'}
+						{@render filmIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
+					{:else if group.type === 'audio'}
+						{@render audioIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
+					{/if}
+				</div>
+			{/each}
 		</div>
 
 		<div
@@ -153,7 +204,7 @@
 			{hoverName}
 		</div>
 		<div class="text-zinc-500 text-sm w-full flex flex-col relative">
-			{#each appState.sources as source, i}
+			{#each filteredSources as source, i}
 				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
 					onmouseover={() => {
