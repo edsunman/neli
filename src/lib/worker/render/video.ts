@@ -1,13 +1,13 @@
 import videoShader from '../shaders/video.wgsl?raw';
 
 export class VideoRenderer {
-	#device: GPUDevice;
-	#sampler: GPUSampler;
-	#pipeline: GPURenderPipeline;
+	private device: GPUDevice;
+	private sampler: GPUSampler;
+	private pipeline: GPURenderPipeline;
 
 	constructor(device: GPUDevice, format: GPUTextureFormat, sampler: GPUSampler) {
-		this.#device = device;
-		this.#pipeline = device.createRenderPipeline({
+		this.device = device;
+		this.pipeline = device.createRenderPipeline({
 			layout: 'auto',
 			vertex: {
 				module: device.createShaderModule({
@@ -26,31 +26,32 @@ export class VideoRenderer {
 				topology: 'triangle-list'
 			}
 		});
-		this.#sampler = sampler;
+		this.sampler = sampler;
 	}
 
-	draw(passEncoder: GPURenderPassEncoder, frame: VideoFrame, uniformArray: Float32Array) {
-		const uniformBuffer = this.#device.createBuffer({
-			size: uniformArray.byteLength,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
-		this.#device.queue.writeBuffer(
+	draw(
+		passEncoder: GPURenderPassEncoder,
+		frame: VideoFrame,
+		uniformArray: Float32Array,
+		uniformBuffer: GPUBuffer
+	) {
+		this.device.queue.writeBuffer(
 			uniformBuffer,
 			0,
 			uniformArray.buffer,
 			0,
 			uniformArray.byteLength
 		);
-		const uniformBindGroup = this.#device.createBindGroup({
-			layout: this.#pipeline.getBindGroupLayout(0),
+		const uniformBindGroup = this.device.createBindGroup({
+			layout: this.pipeline.getBindGroupLayout(0),
 			entries: [
 				{ binding: 0, resource: { buffer: uniformBuffer } },
-				{ binding: 1, resource: this.#sampler },
-				{ binding: 2, resource: this.#device.importExternalTexture({ source: frame }) }
+				{ binding: 1, resource: this.sampler },
+				{ binding: 2, resource: this.device.importExternalTexture({ source: frame }) }
 			]
 		});
 
-		passEncoder.setPipeline(this.#pipeline);
+		passEncoder.setPipeline(this.pipeline);
 		passEncoder.setBindGroup(0, uniformBindGroup);
 		passEncoder.draw(6, 1, 0, 0);
 	}

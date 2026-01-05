@@ -247,20 +247,22 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 	renderer.startPaint();
 
+	let i = 0;
 	for (const clip of activeClips) {
+		i++;
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
 			const height = clip.params[0] * (clip.sourceWidth / 1920);
 			const width = clip.params[1] * (clip.sourceHeight / 1080);
-			renderer.videoPass(frame, clip.params, height, width);
+			renderer.videoPass(i, frame, clip.params, height, width);
 		}
 		if (clip.type === 'text') {
 			if (!clip.text) clip.text = '_';
-			renderer.textPass(frameNumber, clip.params, clip.text);
+			renderer.textPass(i, clip.params, clip.text);
 		}
 		if (clip.type === 'test') {
-			renderer.testPass(frameNumber - clip.start, clip.params);
+			renderer.testPass(i, frameNumber - clip.start, clip.params);
 		}
 	}
 

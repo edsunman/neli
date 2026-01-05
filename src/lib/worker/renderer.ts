@@ -3,65 +3,75 @@ import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
 
 export class WebGPURenderer {
-	#canvas?: OffscreenCanvas;
-	#ctx: GPUCanvasContext | null = null;
-
-	#format?: GPUTextureFormat;
-	#device?: GPUDevice;
-	#sampler?: GPUSampler;
-	#commandEncoder?: GPUCommandEncoder;
-	#passEncoder?: GPURenderPassEncoder;
-
-	#font?: MsdfFont;
-	#testFont?: MsdfFont;
-	#textRenderer?: MsdfTextRenderer;
-	#testRenderer?: TestRenderer;
-	#videoRenderer?: VideoRenderer;
-
 	bitmap?: ImageBitmap;
-	#uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
+
+	private canvas?: OffscreenCanvas;
+	private ctx: GPUCanvasContext | null = null;
+
+	private format?: GPUTextureFormat;
+	private device?: GPUDevice;
+	private sampler?: GPUSampler;
+	private commandEncoder?: GPUCommandEncoder;
+	private passEncoder?: GPURenderPassEncoder;
+
+	private font?: MsdfFont;
+	private testFont?: MsdfFont;
+	private textRenderer?: MsdfTextRenderer;
+	private testRenderer?: TestRenderer;
+	private videoRenderer?: VideoRenderer;
+
+	private uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
+	private uniformBuffers: GPUBuffer[] = [];
 
 	constructor(canvas: OffscreenCanvas) {
-		this.#canvas = canvas;
-		this.#start();
+		this.canvas = canvas;
+		this.start();
 	}
 
-	async #start() {
+	private async start() {
 		if (!navigator.gpu) {
 			throw Error('WebGPU not supported.');
 		}
 		const adapter = await navigator.gpu.requestAdapter();
 		if (!adapter) return;
-		this.#device = await adapter.requestDevice();
-		this.#format = navigator.gpu.getPreferredCanvasFormat();
+		this.device = await adapter.requestDevice();
+		this.format = navigator.gpu.getPreferredCanvasFormat();
 
-		if (!this.#canvas) return;
-		this.#ctx = this.#canvas.getContext('webgpu');
+		if (!this.canvas) return;
+		this.ctx = this.canvas.getContext('webgpu');
 
-		if (!this.#ctx) return;
-		this.#ctx.configure({
-			device: this.#device,
-			format: this.#format,
+		if (!this.ctx) return;
+		this.ctx.configure({
+			device: this.device,
+			format: this.format,
 			alphaMode: 'opaque'
 		});
 
-		this.#sampler = this.#device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+		this.sampler = this.device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
 
-		this.#testRenderer = new TestRenderer(this.#device, this.#format);
-		this.#videoRenderer = new VideoRenderer(this.#device, this.#format, this.#sampler);
-		this.#textRenderer = new MsdfTextRenderer(this.#device, this.#format);
-		this.#font = await this.#textRenderer.createFont('/text.json');
-		this.#testFont = await this.#textRenderer.createFont('/FiraMono-Bold-msdf.json');
+		this.testRenderer = new TestRenderer(this.device, this.format);
+		this.videoRenderer = new VideoRenderer(this.device, this.format, this.sampler);
+		this.textRenderer = new MsdfTextRenderer(this.device, this.format);
+		this.font = await this.textRenderer.createFont('/text.json');
+		this.testFont = await this.textRenderer.createFont('/FiraMono-Bold-msdf.json');
+
+		for (let i = 0; i < 4; i++) {
+			const uniformBuffer = this.device.createBuffer({
+				size: this.uniformArray.byteLength,
+				usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+			});
+			this.uniformBuffers.push(uniformBuffer);
+		}
 
 		this.startPaint();
 		this.endPaint();
 	}
 
 	startPaint() {
-		if (!this.#device || !this.#ctx) return;
-		this.#commandEncoder = this.#device.createCommandEncoder();
+		if (!this.device || !this.ctx) return;
+		this.commandEncoder = this.device.createCommandEncoder();
 		this.blankFramePass();
-		const textureView = this.#ctx.getCurrentTexture().createView();
+		const textureView = this.ctx.getCurrentTexture().createView();
 		const renderPassDescriptor = {
 			colorAttachments: [
 				{
@@ -71,27 +81,27 @@ export class WebGPURenderer {
 				}
 			]
 		};
-		this.#passEncoder = this.#commandEncoder.beginRenderPass(renderPassDescriptor);
+		this.passEncoder = this.commandEncoder.beginRenderPass(renderPassDescriptor);
 	}
 
 	async endPaint(createBitmap = false) {
-		if (!this.#device || !this.#commandEncoder || !this.#canvas || !this.#passEncoder) return;
-		this.#passEncoder.end();
-		this.#device.queue.submit([this.#commandEncoder.finish()]);
+		if (!this.device || !this.commandEncoder || !this.canvas || !this.passEncoder) return;
+		this.passEncoder.end();
+		this.device.queue.submit([this.commandEncoder.finish()]);
 
 		if (createBitmap) {
-			this.bitmap = await createImageBitmap(this.#canvas);
+			this.bitmap = await createImageBitmap(this.canvas);
 		}
 
-		return this.#device.queue.onSubmittedWorkDone();
+		return this.device.queue.onSubmittedWorkDone();
 	}
 
 	blankFramePass() {
-		if (!this.#commandEncoder || !this.#ctx) return;
-		const pass = this.#commandEncoder.beginRenderPass({
+		if (!this.commandEncoder || !this.ctx) return;
+		const pass = this.commandEncoder.beginRenderPass({
 			colorAttachments: [
 				{
-					view: this.#ctx.getCurrentTexture().createView(),
+					view: this.ctx.getCurrentTexture().createView(),
 					loadOp: 'clear',
 					storeOp: 'store'
 				}
@@ -100,17 +110,28 @@ export class WebGPURenderer {
 		pass.end();
 	}
 
-	textPass(frameNumber: number, params: number[], inputText: string) {
-		if (!this.#textRenderer || !this.#font || !this.#passEncoder) return;
-		const text = this.#textRenderer.prepareText(this.#font, inputText, params);
-		this.#textRenderer.render(this.#passEncoder, [text]);
+	textPass(trackNumber: number, params: number[], inputText: string) {
+		if (!this.textRenderer || !this.font || !this.passEncoder) return;
+		this.uniformArray.set([1, 0, params[0], params[1], params[2], params[3]]);
+		const text = this.textRenderer.prepareText(
+			this.font,
+			inputText,
+			params,
+			this.uniformArray,
+			this.uniformBuffers[trackNumber - 1]
+		);
+		this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
-	testPass(frameNumber: number, params: number[]) {
-		if (!this.#passEncoder || !this.#textRenderer || !this.#testFont) return;
+	testPass(trackNumber: number, frameNumber: number, params: number[]) {
+		if (!this.passEncoder || !this.textRenderer || !this.testFont) return;
 
-		this.#uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
-		this.#testRenderer?.draw(this.#passEncoder, this.#uniformArray);
+		this.uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
+		this.testRenderer?.draw(
+			this.passEncoder,
+			this.uniformArray,
+			this.uniformBuffers[trackNumber - 1]
+		);
 
 		const FF = frameNumber % 30;
 		const seconds = (frameNumber - FF) / 30;
@@ -125,14 +146,31 @@ export class WebGPURenderer {
 			String(FF).padStart(2, '0');
 
 		params[6] = 35;
-		const text = this.#textRenderer.prepareText(this.#testFont, t, params);
-		this.#textRenderer.render(this.#passEncoder, [text]);
+		const text = this.textRenderer.prepareText(
+			this.testFont,
+			t,
+			params,
+			this.uniformArray,
+			this.uniformBuffers[trackNumber - 1]
+		);
+		this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
-	videoPass(frame: VideoFrame, params: number[], height: number, width: number) {
-		if (!this.#passEncoder) return;
+	videoPass(
+		trackNumber: number,
+		frame: VideoFrame,
+		params: number[],
+		height: number,
+		width: number
+	) {
+		if (!this.passEncoder) return;
 
-		this.#uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
-		this.#videoRenderer?.draw(this.#passEncoder, frame, this.#uniformArray);
+		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
+		this.videoRenderer?.draw(
+			this.passEncoder,
+			frame,
+			this.uniformArray,
+			this.uniformBuffers[trackNumber - 1]
+		);
 	}
 }

@@ -341,8 +341,14 @@ export class MsdfTextRenderer {
 		);
 	}
 
-	// This can be called multiple times before calling render()
-	prepareText(font: MsdfFont, text: string, params: number[]): MsdfText {
+	// This can be called multiple times before calling draw()
+	prepareText(
+		font: MsdfFont,
+		text: string,
+		params: number[],
+		uniformArray: Float32Array,
+		uniformBuffer: GPUBuffer
+	): MsdfText {
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
 			size: (text.length + 6) * Float32Array.BYTES_PER_ELEMENT * 4,
@@ -379,13 +385,20 @@ export class MsdfTextRenderer {
 
 		textBuffer.unmap();
 
-		const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
+		/* const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
 
 		const buffer = this.device.createBuffer({
 			size: this.a.byteLength,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		});
-		this.device.queue.writeBuffer(buffer, 0, a.buffer, 0, a.byteLength);
+		this.device.queue.writeBuffer(buffer, 0, a.buffer, 0, a.byteLength); */
+		this.device.queue.writeBuffer(
+			uniformBuffer,
+			0,
+			uniformArray.buffer,
+			0,
+			uniformArray.byteLength
+		);
 
 		const bindGroup = this.device.createBindGroup({
 			label: 'msdf text bind group',
@@ -393,7 +406,7 @@ export class MsdfTextRenderer {
 			entries: [
 				{
 					binding: 0,
-					resource: { buffer: buffer }
+					resource: { buffer: uniformBuffer }
 				},
 				{
 					binding: 1,
@@ -473,7 +486,7 @@ export class MsdfTextRenderer {
 		};
 	}
 
-	render(renderPass: GPURenderPassEncoder, text: MsdfText[]) {
+	draw(renderPass: GPURenderPassEncoder, text: MsdfText[]) {
 		const renderBundles = text.map((t) => t.getRenderBundle());
 		renderPass.executeBundles(renderBundles);
 	}
