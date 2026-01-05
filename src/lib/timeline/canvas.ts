@@ -68,7 +68,7 @@ export const drawCanvas = (
 
 	// draw base for selected clips
 	for (const clip of timelineState.selectedClips) {
-		if (clip.deleted) return;
+		if (clip.deleted) continue;
 		drawBaseShape(context, clip, width);
 	}
 
