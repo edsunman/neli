@@ -9,6 +9,7 @@
 		folderIcon,
 		forwardIcon,
 		helpIcon,
+		imageIcon,
 		importIcon,
 		infoIcon,
 		justifyLeftIcon,
@@ -186,6 +187,20 @@
 		<path
 			d="M24.02,26.95c0-3.48,2.74-4.06,3.68-5,.95-.94,1.53-2.25,1.53-3.69,0-2.88-2.33-5.21-5.21-5.21-1.56,0-2.95.68-3.91,1.76-.44.5-.79,1.09-1.01,1.73"
 		/><line x1="24" y1="34" x2="24" y2="34" /><circle cx="24" cy="24" r="20" />
+	</svg>
+{/snippet}
+
+{#snippet imageIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"
+		/>
 	</svg>
 {/snippet}
 

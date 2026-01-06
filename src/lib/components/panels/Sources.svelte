@@ -9,7 +9,8 @@
 		paletteIcon,
 		filmIcon,
 		folderIcon,
-		presetsIcon
+		presetsIcon,
+		imageIcon
 	} from '../icons/Icons.svelte';
 
 	import MyTooltip from '../ui/Tooltip.svelte';
@@ -172,27 +173,35 @@
 				<div class="mb-5 bg-hover rounded border-hover border-2">
 					<div class="flex flex-col bg-zinc-950 rounded">
 						{#each group.folders as folder}
-							<button
-								onclick={() => {
-									appState.folderGroups.forEach((group) => {
-										group.folders.forEach((folder) => {
-											folder.selected = false;
+							<MyTooltip
+								contentProps={{ side: 'right' }}
+								triggerProps={{
+									onclick: () => {
+										appState.folderGroups.forEach((group) => {
+											group.folders.forEach((folder) => {
+												folder.selected = false;
+											});
 										});
-									});
-									folder.selected = true;
-									selectedFolder = folder.id;
+										folder.selected = true;
+										selectedFolder = folder.id;
+									}
 								}}
-								class={[
-									folder.selected ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
-									'p-2'
-								]}
-							>
-								{@render folderIcon('w-6 h-6')}
-							</button>
+								>{#snippet trigger()}
+									<div
+										class={[
+											folder.selected ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+											'p-2'
+										]}
+									>
+										{@render folderIcon('w-6 h-6')}
+									</div>
+								{/snippet}
+								{group.type} folder
+							</MyTooltip>
 						{/each}
 					</div>
 					{#if group.type === 'graphics'}
-						{@render textIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
+						{@render imageIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
 					{:else if group.type === 'video'}
 						{@render filmIcon('w-5 h-5 mx-2.5 my-1 text-zinc-950')}
 					{:else if group.type === 'audio'}
@@ -281,7 +290,7 @@
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
-					'rounded-lg border-2 select-none ',
+					'[&:nth-child(n+8)]:hidden height-xl:[&:nth-child(n+8)]:flex rounded-lg border-2 select-none ',
 					'border-dashed items-center justify-center flex h-14 mt-2 ml-2'
 				]}
 				ondrop={onDrop}

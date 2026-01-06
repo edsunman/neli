@@ -112,6 +112,18 @@ export const createVideoSource = async (
 	return newSource.id;
 };
 
+export const createImageSource = async (
+	file: File,
+	thumbnailCallback: (source: Source, gap: number) => void,
+	resolution: { height: number; width: number }
+) => {
+	const newSource = createSource('image', file);
+	newSource.height = resolution.height;
+	newSource.width = resolution.width;
+	appState.importSuccessCallback = thumbnailCallback;
+	sendFileToWorker(newSource);
+};
+
 export const createAudioSource = async (file: File, durationSeconds: number) => {
 	const maxFrameCount = 30 * 120;
 	const newSource = createSource('audio', file); //new Source('audio', file);
@@ -153,18 +165,6 @@ export const createSrtSource = async (file: File) => {
 	const newSource = createSource('srt', file); //new Source('srt', file);
 	newSource.srtEntries = srtEntries;
 	//appState.sources.push(newSource);
-};
-
-export const createTextSource = () => {
-	const source = createSource('text');
-	//appState.sources.push(source);
-	return source;
-};
-
-export const createTestSource = () => {
-	const source = createSource('test');
-	//appState.sources.push(source);
-	return source;
 };
 
 export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {
@@ -223,6 +223,16 @@ export const checkDroppedSource = async (file: File, fileType: string): Promise<
 			type: 'srt',
 			duration: 30,
 			entries: srtEntries.length
+		};
+	} else if (fileType === 'image/jpeg' || fileType === 'image/png') {
+		const bitmap = await createImageBitmap(file);
+		const width = bitmap.width;
+		const height = bitmap.height;
+		bitmap.close();
+		return {
+			type: 'image',
+			format: fileType === 'image/jpeg' ? 'jpeg' : 'png',
+			resolution: { width: width, height: height }
 		};
 	}
 	return { error: 'File format is not supported' };

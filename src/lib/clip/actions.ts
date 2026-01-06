@@ -42,7 +42,7 @@ export const createClip = (
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
-	if (source.type === 'video') {
+	if (source.type === 'video' || source.type === 'image') {
 		const scaleFactor = getClipInitialScaleFactor(clip);
 		clip.params[0] = scaleFactor;
 		clip.params[1] = scaleFactor;

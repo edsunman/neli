@@ -230,7 +230,7 @@
 		{@const offsetY = (clip.params[3] / 2) * 1080 * (scale / 100)}
 		{@const top = height / 2 - boxSizeY / 2 - offsetY}
 		{@const left = width / 2 - boxSizeX / 2 + offsetX}
-		{#if clip.source.type === 'video' || clip.source.type === 'test'}
+		{#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 			<div

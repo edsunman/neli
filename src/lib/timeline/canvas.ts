@@ -247,7 +247,7 @@ const drawClip = (
 	let clipColor = selected || multiSelected ? GREEN_LIGHT : GREEN;
 	let clipBaseColor = GREEN;
 	let clipDarkColor = GREEN_DARK;
-	if (clip.source.type === 'text') {
+	if (clip.source.type === 'text' || clip.source.type === 'image') {
 		clipColor = selected || multiSelected ? PURPLE_LIGHT : PURPLE;
 		clipBaseColor = PURPLE;
 		clipDarkColor = PURPLE_DARK;
@@ -351,7 +351,7 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 	if (!clip) return;
 
 	let clipColor = GREEN_LIGHT;
-	if (clip.source.type === 'text') {
+	if (clip.source.type === 'text' || clip.source.type === 'image') {
 		clipColor = PURPLE_LIGHT;
 	}
 	if (clip.source.type === 'audio') {

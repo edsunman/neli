@@ -29,10 +29,17 @@ self.addEventListener('message', async function (e) {
 			break;
 		case 'load-file':
 			{
-				const newSource = await loadFile(e.data.file, e.data.id);
-				if (!newSource) return;
-				sources.push(newSource);
-				sendFrameForThumbnail(newSource);
+				if (e.data.type === 'video') {
+					const newSource = await loadFile(e.data.file, e.data.id);
+					if (!newSource) return;
+					sources.push(newSource);
+					sendFrameForThumbnail(newSource);
+				} else if (e.data.type === 'image') {
+					const bitmap = await createImageBitmap(e.data.file);
+					renderer.loadTexture(bitmap, e.data.id);
+					//@ts-expect-error scope issue?
+					self.postMessage({ command: 'thumbnail', sourceId: e.data.id, gap: 0, bitmap }, [bitmap]);
+				}
 			}
 			break;
 		case 'encode':
@@ -247,20 +254,26 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 	renderer.startPaint();
 
+	let i = 0;
 	for (const clip of activeClips) {
+		i++;
+		const height = clip.params[0] * (clip.sourceWidth / 1920);
+		const width = clip.params[1] * (clip.sourceHeight / 1080);
+
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
-			const height = clip.params[0] * (clip.sourceWidth / 1920);
-			const width = clip.params[1] * (clip.sourceHeight / 1080);
-			renderer.videoPass(frame, clip.params, height, width);
+			renderer.videoPass(i, frame, clip.params, height, width);
+		}
+		if (clip.type === 'image') {
+			renderer.imagePass(i, clip.sourceId, clip.params, height, width);
 		}
 		if (clip.type === 'text') {
 			if (!clip.text) clip.text = '_';
-			renderer.textPass(frameNumber, clip.params, clip.text);
+			renderer.textPass(i, clip.params, clip.text);
 		}
 		if (clip.type === 'test') {
-			renderer.testPass(frameNumber - clip.start, clip.params);
+			renderer.testPass(i, frameNumber - clip.start, clip.params);
 		}
 	}
 

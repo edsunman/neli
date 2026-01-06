@@ -1,6 +1,6 @@
-import videoShader from '../shaders/video.wgsl?raw';
+import imageShader from '../shaders/image.wgsl?raw';
 
-export class VideoRenderer {
+export class ImageRenderer {
 	private device: GPUDevice;
 	private sampler: GPUSampler;
 	private pipeline: GPURenderPipeline;
@@ -11,16 +11,30 @@ export class VideoRenderer {
 			layout: 'auto',
 			vertex: {
 				module: device.createShaderModule({
-					code: videoShader
+					code: imageShader
 				}),
 				entryPoint: 'vertexMain'
 			},
 			fragment: {
 				module: device.createShaderModule({
-					code: videoShader
+					code: imageShader
 				}),
 				entryPoint: 'fragmentMain',
-				targets: [{ format: format }]
+				targets: [
+					{
+						format: format,
+						blend: {
+							color: {
+								srcFactor: 'src-alpha',
+								dstFactor: 'one-minus-src-alpha'
+							},
+							alpha: {
+								srcFactor: 'one',
+								dstFactor: 'one'
+							}
+						}
+					}
+				]
 			},
 			primitive: {
 				topology: 'triangle-list'
@@ -31,7 +45,7 @@ export class VideoRenderer {
 
 	draw(
 		passEncoder: GPURenderPassEncoder,
-		frame: VideoFrame,
+		texture: GPUTexture,
 		uniformArray: Float32Array,
 		uniformBuffer: GPUBuffer
 	) {
@@ -47,7 +61,7 @@ export class VideoRenderer {
 			entries: [
 				{ binding: 0, resource: { buffer: uniformBuffer } },
 				{ binding: 1, resource: this.sampler },
-				{ binding: 2, resource: this.device.importExternalTexture({ source: frame }) }
+				{ binding: 2, resource: texture.createView() }
 			]
 		});
 

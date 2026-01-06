@@ -4,7 +4,8 @@
 		checkDroppedSource,
 		createAudioSource,
 		createSrtSource,
-		createVideoSource
+		createVideoSource,
+		createImageSource
 	} from '$lib/source/actions';
 	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
@@ -75,7 +76,7 @@
 
 		fileDetails.name = file.name;
 		fileDetails.type = file.type;
-
+		console.log(fileDetails.type);
 		if (!file.type) {
 			const lastDotIndex = file.name.lastIndexOf('.');
 			const extension = file.name.slice(lastDotIndex);
@@ -86,7 +87,9 @@
 			fileDetails.type !== 'video/mp4' &&
 			fileDetails.type !== 'audio/mpeg' &&
 			fileDetails.type !== 'audio/wav' &&
-			fileDetails.type !== 'application/x-subrip'
+			fileDetails.type !== 'application/x-subrip' &&
+			fileDetails.type !== 'image/jpeg' &&
+			fileDetails.type !== 'image/png'
 		) {
 			fileDetails.type = 'unknown';
 			warningMessage = 'file type not supported';
@@ -115,7 +118,7 @@
 
 		fileDetails.info = info;
 
-		if (info.duration > 120) {
+		if (info.type === 'video' && info.duration > 120) {
 			warningMessage = 'File duration is currently limited to 2 minutes';
 		}
 
@@ -129,6 +132,10 @@
 				info.frameRate,
 				info.resolution
 			);
+		}
+
+		if (info.type === 'image') {
+			await createImageSource(file, setThumbnailReady, info.resolution);
 		}
 
 		if (info.type === 'audio') {
@@ -186,7 +193,9 @@
 				fileInput.click();
 			}}
 		>
-			<p class="text-center">drop files to import<br /><small>(.mp4, .mp3, .wav, .srt)</small></p>
+			<p class="text-center">
+				drop files to import<br /><small>(.mp4, .mp3, .wav, .srt, .jpg, .png)</small>
+			</p>
 		</div>
 		<input
 			onchange={(e) => {
@@ -242,6 +251,13 @@
 						`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
 					)}
 					{@render info('frame rate:', `${Math.round(fileDetails.info.frameRate * 100) / 100}fps`)}
+				{/if}
+				{#if fileDetails.info.type === 'image'}
+					{@render info('format:', fileDetails.info.format)}
+					{@render info(
+						'resolution:',
+						`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
+					)}
 				{/if}
 				{#if fileDetails.info.type === 'audio'}
 					{@render info('codec:', fileDetails.info.codec)}

@@ -1,6 +1,6 @@
 import type { Source } from './source/source.svelte';
 
-export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt';
+export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 
@@ -77,6 +77,11 @@ export type FileInfo =
 			type: 'srt';
 			entries: number;
 			duration: number;
+	  }
+	| {
+			type: 'image';
+			format: string;
+			resolution: { width: number; height: number };
 	  };
 
 export type Font = {
