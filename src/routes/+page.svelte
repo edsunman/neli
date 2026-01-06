@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createTestSource, createTextSource } from '$lib/source/actions';
+	import { createSource } from '$lib/source/actions';
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
@@ -44,9 +44,9 @@
 			localStorage.setItem('alreadyVisited', 'true');
 		}
 
-		const textSource = createTextSource();
+		const textSource = createSource('text');
 		textSource.preset = true;
-		const testSource = createTestSource();
+		const testSource = createSource('test');
 		testSource.preset = true;
 
 		const font = await loadFont('/text.json');

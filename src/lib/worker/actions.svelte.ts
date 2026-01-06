@@ -25,19 +25,22 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				break;
 			}
 			case 'thumbnail': {
-				const videoFrame = event.data.videoFrame;
-				const canvas = document.createElement('canvas');
-				canvas.width = videoFrame.codedWidth * 0.1;
-				canvas.height = videoFrame.codedHeight * 0.1;
+				if (event.data.videoFrame) {
+					const videoFrame = event.data.videoFrame as VideoFrame;
+					const imageData = createThumbnail(
+						videoFrame,
+						videoFrame.codedWidth,
+						videoFrame.codedHeight
+					);
+					setSourceThumbnail(event.data.sourceId, imageData, 0);
+				}
 
-				const ctx = canvas.getContext('2d');
-				ctx?.drawImage(videoFrame, 0, 0, videoFrame.codedWidth * 0.1, videoFrame.codedHeight * 0.1);
+				if (event.data.bitmap) {
+					const bitmap = event.data.bitmap as ImageBitmap;
+					const imageData = createThumbnail(bitmap, bitmap.width, bitmap.height);
+					setSourceThumbnail(event.data.sourceId, imageData, 0);
+				}
 
-				videoFrame.close();
-
-				const imgData = canvas.toDataURL('image/webp', 0.8);
-
-				setSourceThumbnail(event.data.sourceId, imgData, event.data.gap);
 				break;
 			}
 			case 'encode-progress': {
@@ -78,7 +81,8 @@ export const sendFileToWorker = (source: Source) => {
 	appState.mediaWorker?.postMessage({
 		command: 'load-file',
 		id: source.id,
-		file: source.file
+		file: source.file,
+		type: source.type
 	});
 };
 
@@ -142,3 +146,39 @@ export const encode = async (fileName: string, startFrame: number, endFrame: num
 		[audioBuffer.buffer]
 	);
 };
+
+function createThumbnail(image: ImageBitmap | VideoFrame, imageWidth: number, imageHeight: number) {
+	const canvas = document.createElement('canvas');
+	const ctx = canvas.getContext('2d');
+	if (!ctx) {
+		throw new Error('Could not get 2D context from canvas');
+	}
+
+	// Thumbnail dimentions
+	const targetW = 192;
+	const targetH = 108;
+
+	canvas.width = targetW;
+	canvas.height = targetH;
+	const inputRatio = imageWidth / imageHeight;
+	const targetRatio = targetW / targetH;
+
+	let drawW: number, drawH: number, offsetX: number, offsetY: number;
+
+	if (inputRatio > targetRatio) {
+		drawH = targetH;
+		drawW = imageWidth * (targetH / imageHeight);
+		offsetX = (targetW - drawW) / 2;
+		offsetY = 0;
+	} else {
+		drawW = targetW;
+		drawH = imageHeight * (targetW / imageWidth);
+		offsetX = 0;
+		offsetY = (targetH - drawH) / 2;
+	}
+
+	ctx.clearRect(0, 0, targetW, targetH);
+	ctx.drawImage(image, offsetX, offsetY, drawW, drawH);
+	image.close();
+	return canvas.toDataURL('image/webp', 0.8);
+}

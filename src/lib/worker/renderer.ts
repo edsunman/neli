@@ -1,6 +1,7 @@
 import { MsdfFont, MsdfTextRenderer } from './render/text';
 import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
+import { ImageRenderer } from './render/image';
 
 export class WebGPURenderer {
 	bitmap?: ImageBitmap;
@@ -19,16 +20,19 @@ export class WebGPURenderer {
 	private textRenderer?: MsdfTextRenderer;
 	private testRenderer?: TestRenderer;
 	private videoRenderer?: VideoRenderer;
+	private imageRenderer?: ImageRenderer;
 
 	private uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 	private uniformBuffers: GPUBuffer[] = [];
+
+	private loadedTextures = new Map<string, GPUTexture>();
 
 	constructor(canvas: OffscreenCanvas) {
 		this.canvas = canvas;
 		this.start();
 	}
 
-	private async start() {
+	async start() {
 		if (!navigator.gpu) {
 			throw Error('WebGPU not supported.');
 		}
@@ -51,6 +55,7 @@ export class WebGPURenderer {
 
 		this.testRenderer = new TestRenderer(this.device, this.format);
 		this.videoRenderer = new VideoRenderer(this.device, this.format, this.sampler);
+		this.imageRenderer = new ImageRenderer(this.device, this.format, this.sampler);
 		this.textRenderer = new MsdfTextRenderer(this.device, this.format);
 		this.font = await this.textRenderer.createFont('/text.json');
 		this.testFont = await this.textRenderer.createFont('/FiraMono-Bold-msdf.json');
@@ -172,5 +177,42 @@ export class WebGPURenderer {
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
+	}
+
+	imagePass(
+		trackNumber: number,
+		sourceId: string,
+		params: number[],
+		height: number,
+		width: number
+	) {
+		const texture = this.loadedTextures.get(sourceId);
+		if (!this.passEncoder || !texture) return;
+		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
+		this.imageRenderer?.draw(
+			this.passEncoder,
+			texture,
+			this.uniformArray,
+			this.uniformBuffers[trackNumber - 1]
+		);
+	}
+
+	loadTexture(image: ImageBitmap, soruceId: string) {
+		if (!this.device) return;
+		const texture = this.device.createTexture({
+			label: 'test-texture',
+			format: 'rgba8unorm',
+			size: [image.width, image.height],
+			usage:
+				GPUTextureUsage.TEXTURE_BINDING |
+				GPUTextureUsage.COPY_DST |
+				GPUTextureUsage.RENDER_ATTACHMENT
+		});
+		this.device.queue.copyExternalImageToTexture(
+			{ source: image, flipY: false },
+			{ texture: texture },
+			{ width: image.width, height: image.height }
+		);
+		this.loadedTextures.set(soruceId, texture);
 	}
 }

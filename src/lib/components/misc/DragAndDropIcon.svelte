@@ -16,6 +16,7 @@
 			source?.type === 'test' ? 'bg-clip-green-500' : '',
 			source?.type === 'audio' ? 'bg-clip-blue-500' : '',
 			source?.type === 'video' ? 'border-3 border-clip-green-500' : '',
+			source?.type === 'image' ? 'border-3 border-clip-purple-500' : '',
 			'h-[60px] w-[88px] flex flex-wrap justify-center content-center top-2 left-2 absolute',
 			'rounded-lg pointer-events-none  transition-opacity bg-cover bg-center z-100'
 		]}

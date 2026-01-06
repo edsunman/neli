@@ -77,6 +77,11 @@ export type FileInfo =
 			type: 'srt';
 			entries: number;
 			duration: number;
+	  }
+	| {
+			type: 'image';
+			format: string;
+			resolution: { width: number; height: number };
 	  };
 
 export type Font = {

@@ -385,13 +385,6 @@ export class MsdfTextRenderer {
 
 		textBuffer.unmap();
 
-		/* const a = new Float32Array([1, 0, params[0], params[1], params[2], params[3]]);
-
-		const buffer = this.device.createBuffer({
-			size: this.a.byteLength,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
-		this.device.queue.writeBuffer(buffer, 0, a.buffer, 0, a.byteLength); */
 		this.device.queue.writeBuffer(
 			uniformBuffer,
 			0,
