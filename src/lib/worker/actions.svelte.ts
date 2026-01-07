@@ -73,6 +73,25 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				appState.lockPalette = false;
 				break;
 			}
+			case 'download-file': {
+				console.log(event.data);
+				const url = URL.createObjectURL(event.data.file);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = event.data.file.name;
+				a.style.display = 'none'; // Keep it hidden
+
+				document.body.appendChild(a);
+				a.click();
+
+				document.body.removeChild(a);
+				URL.revokeObjectURL(event.data.link); // Clean up the URL
+
+				appState.encoderProgress.message = 'done';
+				appState.encoderProgress.percentage = 100;
+				appState.lockPalette = false;
+				break;
+			}
 		}
 	});
 };

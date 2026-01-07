@@ -101,7 +101,7 @@ const sendFrameForThumbnail = async (source: WorkerSource) => {
 	decoder.setup(source.videoConfig, source.videoChunks);
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
-	//@ts-expect-error scope issue?
+	//@ts-expect-error webworker scope
 	self.postMessage({ command: 'thumbnail', sourceId: source.id, gap: source.gap, videoFrame }, [
 		videoFrame
 	]);
@@ -298,68 +298,49 @@ const encodeAndCreateFile = async (
 	endFrame: number
 ) => {
 	encoding = true;
-
 	await decoderPool.pauseAll();
+	await encoder.setup();
 
-	encoder.setup();
-
-	console.log(`starting at ${startFrame}`);
-
-	const numberOfChannels = 2;
 	const durationInFrames = endFrame - startFrame;
-	const durationInSeconds = durationInFrames / 30;
-	const totalInputFrames = 48000 * durationInSeconds;
 
-	const chunkFrameSize = 1024; // Number of frames per AudioData chunk
-
-	// Split buffer into seperate arrays for each channel
-	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
-		const startOffset = c * totalInputFrames;
-		return new Float32Array(
-			audioBuffer.buffer,
-			startOffset * Float32Array.BYTES_PER_ELEMENT,
-			totalInputFrames
-		);
-	});
-
-	let encodeTimestamp = 0;
-
-	// Loop through planer channels, extract for AudioData, then send to encoder
-	for (let i = 0; i < totalInputFrames; i += chunkFrameSize) {
-		const currentChunkFrames = Math.min(chunkFrameSize, totalInputFrames - i);
-		if (currentChunkFrames <= 0) {
-			continue; // Skip empty last chunk if total frames are exact multiple
-		}
-
-		// Create a combined planar buffer for the current AudioData chunk
-		const combinedChunk = new Float32Array(currentChunkFrames * numberOfChannels);
-		let offsetInCombinedChunk = 0;
-
-		for (let c = 0; c < numberOfChannels; c++) {
-			const channelSlice = individualPlanarChannels[c].subarray(i, i + currentChunkFrames);
-			combinedChunk.set(channelSlice, offsetInCombinedChunk);
-			offsetInCombinedChunk += currentChunkFrames;
-		}
-
-		const audioFrame = new AudioData({
-			format: 'f32-planar',
-			sampleRate: 48000,
-			numberOfChannels: numberOfChannels,
-			numberOfFrames: currentChunkFrames,
-			timestamp: encodeTimestamp,
-			data: combinedChunk.buffer
-		});
-
-		encoder.encodeAudio(audioFrame);
-		encodeTimestamp += audioFrame.duration;
-		audioFrame.close();
-	}
-
+	encodeAudio(audioBuffer, durationInFrames);
 	await encoder.finalizeAudio();
 
 	await setupFrame(startFrame);
 
-	let i = 0;
+	try {
+		for await (const { frame, index } of frameGenerator(durationInFrames, startFrame)) {
+			encoder.encode(frame);
+			frame.close();
+
+			if (index % 30 === 0 || index === durationInFrames - 1) {
+				const percentComplete = Math.floor(((index + 1) / durationInFrames) * 100);
+				self.postMessage({ command: 'encode-progress', percentComplete });
+			}
+		}
+
+		// Finalisation
+		await decoderPool.pauseAll();
+		encoding = false;
+		/* const url = await encoder.finalize();
+		self.postMessage({
+			command: 'download-link',
+			fileName: `${fileName}.mp4`,
+			link: url
+		}); */
+		const file = await encoder.finalize();
+		if (!file) return;
+		self.postMessage({
+			command: 'download-file',
+			file
+		});
+	} catch (err) {
+		encoding = false;
+		console.error(err);
+		self.postMessage({ command: 'encode-progress', percentComplete: -1 });
+	}
+
+	/* 	let i = 0;
 	let retries = 0;
 	const maxRetries = 300;
 	let percentComplete = 0;
@@ -408,5 +389,87 @@ const encodeAndCreateFile = async (
 		}
 	};
 
-	decodeLoop();
+	decodeLoop(); */
 };
+
+const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
+	const numberOfChannels = 2;
+
+	const durationInSeconds = durationInFrames / 30;
+	const totalInputFrames = 48000 * durationInSeconds;
+
+	const chunkFrameSize = 1024; // Number of frames per AudioData chunk
+
+	// Split buffer into seperate arrays for each channel
+	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
+		const startOffset = c * totalInputFrames;
+		return new Float32Array(
+			audioBuffer.buffer,
+			startOffset * Float32Array.BYTES_PER_ELEMENT,
+			totalInputFrames
+		);
+	});
+
+	let encodeTimestamp = 0;
+
+	// Loop through planer channels, extract for AudioData, then send to encoder
+	for (let i = 0; i < totalInputFrames; i += chunkFrameSize) {
+		const currentChunkFrames = Math.min(chunkFrameSize, totalInputFrames - i);
+		if (currentChunkFrames <= 0) {
+			continue; // Skip empty last chunk if total frames are exact multiple
+		}
+
+		// Create a combined planar buffer for the current AudioData chunk
+		const combinedChunk = new Float32Array(currentChunkFrames * numberOfChannels);
+		let offsetInCombinedChunk = 0;
+
+		for (let c = 0; c < numberOfChannels; c++) {
+			const channelSlice = individualPlanarChannels[c].subarray(i, i + currentChunkFrames);
+			combinedChunk.set(channelSlice, offsetInCombinedChunk);
+			offsetInCombinedChunk += currentChunkFrames;
+		}
+
+		const audioFrame = new AudioData({
+			format: 'f32-planar',
+			sampleRate: 48000,
+			numberOfChannels: numberOfChannels,
+			numberOfFrames: currentChunkFrames,
+			timestamp: encodeTimestamp,
+			data: combinedChunk.buffer
+		});
+
+		encoder.encodeAudio(audioFrame);
+		encodeTimestamp += audioFrame.duration;
+		audioFrame.close();
+	}
+};
+
+async function* frameGenerator(totalFrames: number, startFrame: number) {
+	for (let i = 0; i < totalFrames; i++) {
+		await drawFrameAndEnsureFrameIsReady(i + startFrame);
+
+		if (!renderer.bitmap) {
+			throw new Error('Renderer bitmap is missing.');
+		}
+
+		const frame = new VideoFrame(renderer.bitmap, {
+			timestamp: (i * 1e6) / 30,
+			alpha: 'discard'
+		});
+		renderer.bitmap.close();
+		yield { frame, index: i };
+	}
+}
+
+// Attempt to draw frame or throw an error after ~3 seconds (300 * 10ms)
+async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 300): Promise<void> {
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		const success = await buildAndDrawFrame(frameIndex, true);
+		if (success) return;
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error(
+		`Frame Timeout: Frame ${frameIndex} failed to render after ${maxRetries} attempts.`
+	);
+}

@@ -1,26 +1,26 @@
 const DEBUG = false;
 
 export class VDecoder {
-	#decoder;
-	#decoderConfig: VideoDecoderConfig | null = null;
-	#ready = false;
-	#running = false;
+	private decoder: VideoDecoder;
+	private decoderConfig: VideoDecoderConfig | null = null;
+	private ready = false;
+	running = false;
 
 	/** All chunks */
-	#chunks: EncodedVideoChunk[] = [];
+	private chunks: EncodedVideoChunk[] = [];
 	/** Chunks waiting to be decoded */
-	#chunkBuffer: EncodedVideoChunk[] = [];
+	private chunkBuffer: EncodedVideoChunk[] = [];
 	/** Decoded frames waiting to be returned */
-	#frameQueue: VideoFrame[] = [];
-	#lastFrame?: VideoFrame;
-	#frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
+	private frameQueue: VideoFrame[] = [];
+	private lastFrame?: VideoFrame;
+	private frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
 	/** Used when seeking */
-	#targetFrameTimestamp = 0;
+	private targetFrameTimestamp = 0;
 	/** Used when running */
-	#startingFrameTimeStamp = 0;
-	#lastChunkIndex = 0;
-	#startToQueueFrames = false;
+	private startingFrameTimeStamp = 0;
+	private lastChunkIndex = 0;
+	private startToQueueFrames = false;
 
 	id = 0;
 	clipId: string | null = null;
@@ -28,34 +28,33 @@ export class VDecoder {
 	usedThisFrame = false;
 
 	constructor() {
-		this.#decoder = new VideoDecoder({ output: this.#onFrame, error: this.#onError });
+		this.decoder = new VideoDecoder({ output: this.onFrame, error: this.onError });
 	}
 
 	setup(config: VideoDecoderConfig, chunks: EncodedVideoChunk[]) {
-		this.#decoderConfig = config;
-		this.#decoder.configure(this.#decoderConfig);
-		this.#chunks = chunks;
-		this.#ready = true;
+		this.decoderConfig = config;
+		this.decoder.configure(this.decoderConfig);
+		this.chunks = chunks;
+		this.ready = true;
 	}
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
-		if (!this.#ready) return null;
+		if (!this.ready) return null;
 
-		this.#chunkBuffer = [];
-		await this.#decoder.flush();
+		this.chunkBuffer = [];
+		await this.decoder.flush();
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
 
-		const { targetFrameIndex, keyFrameIndex, maxTimestamp } =
-			this.#getKeyFrameIndex(frameTimestamp);
+		const { targetFrameIndex, keyFrameIndex, maxTimestamp } = this.getKeyFrameIndex(frameTimestamp);
 
-		this.#targetFrameTimestamp = this.#chunks[targetFrameIndex].timestamp;
+		this.targetFrameTimestamp = this.chunks[targetFrameIndex].timestamp;
 
-		if (this.#lastFrame) {
-			if (this.#lastFrame.timestamp === this.#targetFrameTimestamp) {
-				return Promise.resolve(this.#lastFrame);
+		if (this.lastFrame) {
+			if (this.lastFrame.timestamp === this.targetFrameTimestamp) {
+				return Promise.resolve(this.lastFrame);
 			} else {
-				this.#lastFrame.close();
+				this.lastFrame.close();
 			}
 		}
 
@@ -65,53 +64,53 @@ export class VDecoder {
 		}
 
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
-			this.#chunkBuffer.push(this.#chunks[i]);
+			this.chunkBuffer.push(this.chunks[i]);
 		}
 
-		this.#feedDecoder();
+		this.feedDecoder();
 
 		return new Promise((resolve) => {
-			this.#frameIsReady = resolve;
+			this.frameIsReady = resolve;
 		});
 	}
 
 	async play(frameNumber: number) {
-		if (this.#running) return;
+		if (this.running) return;
 
-		this.#chunkBuffer = [];
-		await this.#decoder.flush();
+		this.chunkBuffer = [];
+		await this.decoder.flush();
 
-		this.#running = true;
+		this.running = true;
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
-		const { targetFrameIndex, keyFrameIndex } = this.#getKeyFrameIndex(frameTimestamp);
+		const { targetFrameIndex, keyFrameIndex } = this.getKeyFrameIndex(frameTimestamp);
 
-		this.#startingFrameTimeStamp = this.#chunks[targetFrameIndex].timestamp;
+		this.startingFrameTimeStamp = this.chunks[targetFrameIndex].timestamp;
 
 		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
-			this.#chunkBuffer.push(this.#chunks[i]);
-			this.#lastChunkIndex = i;
+			this.chunkBuffer.push(this.chunks[i]);
+			this.lastChunkIndex = i;
 		}
-		this.#feedDecoder();
+		this.feedDecoder();
 	}
 
 	/** Called quickly during playback and encoding to keep frame queue full */
 	run(elapsedTimeMs: number, encoding = false) {
 		// Keep chunk buffer full
-		if (this.#chunkBuffer.length < 5) {
-			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
+		if (this.chunkBuffer.length < 5) {
+			if (DEBUG) console.log('fill chunk buffer starting with index ', this.lastChunkIndex + 1);
 
-			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
-				this.#chunkBuffer.push(this.#chunks[i]);
-				this.#lastChunkIndex = i;
+			for (let i = this.lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
+				this.chunkBuffer.push(this.chunks[i]);
+				this.lastChunkIndex = i;
 			}
-			this.#feedDecoder();
+			this.feedDecoder();
 		}
 
 		const frameTime = Math.floor(elapsedTimeMs * 1000);
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
-		for (let i = 0; i < this.#frameQueue.length; i++) {
-			const time_delta = Math.abs(frameTime - this.#frameQueue[i].timestamp);
+		for (let i = 0; i < this.frameQueue.length; i++) {
+			const time_delta = Math.abs(frameTime - this.frameQueue[i].timestamp);
 			if (time_delta < minTimeDelta) {
 				minTimeDelta = time_delta;
 				frameIndex = i;
@@ -122,23 +121,23 @@ export class VDecoder {
 
 		// If source has lower framerate than timeline we may need to return
 		// previous frame rather than grabbing a frame from framequeue
-		if (this.#lastFrame) {
-			const lastFrameDelta = Math.abs(frameTime - this.#lastFrame.timestamp);
+		if (this.lastFrame) {
+			const lastFrameDelta = Math.abs(frameTime - this.lastFrame.timestamp);
 			if (lastFrameDelta < minTimeDelta) {
-				if (DEBUG) console.log(`last frame is closer, returning ${this.#lastFrame.timestamp}`);
-				return this.#lastFrame;
+				if (DEBUG) console.log(`last frame is closer, returning ${this.lastFrame.timestamp}`);
+				return this.lastFrame;
 			}
 		}
 
 		for (let i = 0; i < frameIndex; i++) {
-			const staleFrame = this.#frameQueue.shift();
+			const staleFrame = this.frameQueue.shift();
 			staleFrame?.close();
 		}
 
-		const chosenFrame = this.#frameQueue.shift();
+		const chosenFrame = this.frameQueue.shift();
 		if (chosenFrame && chosenFrame.format) {
-			if (this.#lastFrame) this.#lastFrame.close();
-			this.#lastFrame = chosenFrame;
+			if (this.lastFrame) this.lastFrame.close();
+			this.lastFrame = chosenFrame;
 
 			if (DEBUG)
 				console.log(
@@ -148,55 +147,51 @@ export class VDecoder {
 
 			return chosenFrame;
 		}
-		if (this.#lastFrame && !encoding) {
+		if (this.lastFrame && !encoding) {
 			if (DEBUG) console.log('returning an old frame');
-			return this.#lastFrame;
+			return this.lastFrame;
 		}
 	}
 
 	async pause() {
 		if (!this.running) return;
-		this.#running = false;
+		this.running = false;
 		if (DEBUG)
-			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.#frameQueue.length}`);
+			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.frameQueue.length}`);
 
-		for (let i = 0; i < this.#frameQueue.length; i++) {
-			this.#frameQueue[i].close();
+		for (let i = 0; i < this.frameQueue.length; i++) {
+			this.frameQueue[i].close();
 		}
-		this.#frameQueue = [];
-		this.#chunkBuffer = [];
-		this.#startToQueueFrames = false;
-		await this.#decoder.flush();
-	}
-
-	get running() {
-		return this.#running;
+		this.frameQueue = [];
+		this.chunkBuffer = [];
+		this.startToQueueFrames = false;
+		await this.decoder.flush();
 	}
 
 	// Runs in a loop until chunk buffer is empty
-	#feedDecoder() {
-		if (this.#decoder.decodeQueueSize >= 5) {
+	private feedDecoder() {
+		if (this.decoder.decodeQueueSize >= 5) {
 			if (DEBUG)
 				console.log(
 					'Skip feeding. #frameQueue:',
-					this.#frameQueue.length,
+					this.frameQueue.length,
 					'decodeQueueSize:',
-					this.#decoder.decodeQueueSize
+					this.decoder.decodeQueueSize
 				);
 			return; // Stop feeding for now
 		}
-		if (this.#chunkBuffer.length > 0) {
-			const chunk = this.#chunkBuffer.shift();
+		if (this.chunkBuffer.length > 0) {
+			const chunk = this.chunkBuffer.shift();
 			if (!chunk) {
 				// Undefined chunks in the buffer mean we are at the end of the video file,
 				// so flush the encoder to make sure last few chunks make it through
-				this.#decoder.flush();
+				this.decoder.flush();
 				return;
 			}
 			try {
 				if (DEBUG) console.log(`Sending chunk to encoder: ${chunk.timestamp} (${chunk.type})`);
-				this.#decoder.decode(chunk);
-				this.#feedDecoder();
+				this.decoder.decode(chunk);
+				this.feedDecoder();
 			} catch (e) {
 				if (DEBUG) console.error('Error decoding chunk:', e);
 			}
@@ -205,62 +200,62 @@ export class VDecoder {
 		}
 	}
 
-	#onFrame = (frame: VideoFrame) => {
+	private onFrame = (frame: VideoFrame) => {
 		if (DEBUG) {
 			console.log('Frame output:', frame.timestamp);
-			console.log('Queue size:', this.#decoder.decodeQueueSize);
-			console.log('Frame Queue Size:', this.#frameQueue.length);
+			console.log('Queue size:', this.decoder.decodeQueueSize);
+			console.log('Frame Queue Size:', this.frameQueue.length);
 		}
-		if (this.#running) {
-			if (this.#startToQueueFrames) {
-				this.#frameQueue.push(frame);
-			} else if (frame.timestamp === this.#startingFrameTimeStamp) {
-				this.#startToQueueFrames = true;
-				this.#frameQueue.push(frame);
+		if (this.running) {
+			if (this.startToQueueFrames) {
+				this.frameQueue.push(frame);
+			} else if (frame.timestamp === this.startingFrameTimeStamp) {
+				this.startToQueueFrames = true;
+				this.frameQueue.push(frame);
 			} else {
 				frame.close();
 			}
-		} else if (frame.timestamp === this.#targetFrameTimestamp) {
-			this.#frameIsReady(frame);
-			this.#lastFrame = frame;
+		} else if (frame.timestamp === this.targetFrameTimestamp) {
+			this.frameIsReady(frame);
+			this.lastFrame = frame;
 		} else {
 			frame.close();
 		}
 
-		if (this.#decoder.decodeQueueSize < 3) {
+		if (this.decoder.decodeQueueSize < 3) {
 			if (DEBUG) console.log('Resuming feeding, decoder queue small enough');
-			this.#feedDecoder();
+			this.feedDecoder();
 		}
-		if (this.#frameQueue.length > 10) {
+		if (this.frameQueue.length > 10) {
 			if (DEBUG) console.log('Resuming feeding, frame queue getting big');
-			this.#feedDecoder();
+			this.feedDecoder();
 		}
 	};
 
-	#onError = (e: DOMException) => {
+	private onError = (e: DOMException) => {
 		// TODO: encoder may be reclaimed and we should check for that
 		// and assign a new decoder to clip
-		//this.#decoder.reset();
-		//this.#decoder.configure(this.#decoderConfig!);
+		//this.decoder.reset();
+		//this.decoder.configure(this.decoderConfig!);
 		console.log(e);
 	};
 
-	#getKeyFrameIndex(frameTimestamp: number) {
+	private getKeyFrameIndex(frameTimestamp: number) {
 		let targetFrameIndex = 0;
 		let keyFrameIndex = 0;
 		let scanForKeyframe = false;
 		let maxTimestamp;
-		for (let i = this.#chunks.length - 1; i >= 0; i--) {
-			if (i === this.#chunks.length - 1) {
-				maxTimestamp = this.#chunks[i].timestamp;
+		for (let i = this.chunks.length - 1; i >= 0; i--) {
+			if (i === this.chunks.length - 1) {
+				maxTimestamp = this.chunks[i].timestamp;
 			}
-			if (!scanForKeyframe && this.#chunks[i].timestamp < frameTimestamp) {
+			if (!scanForKeyframe && this.chunks[i].timestamp < frameTimestamp) {
 				targetFrameIndex = i;
 
 				scanForKeyframe = true;
 			}
 			if (scanForKeyframe) {
-				if (this.#chunks[i].type === 'key') {
+				if (this.chunks[i].type === 'key') {
 					keyFrameIndex = i;
 					break;
 				}
@@ -268,7 +263,7 @@ export class VDecoder {
 		}
 		if (DEBUG)
 			console.log(
-				`requesting frame: ${frameTimestamp}, so choosing ${this.#chunks[targetFrameIndex].timestamp}`
+				`requesting frame: ${frameTimestamp}, so choosing ${this.chunks[targetFrameIndex].timestamp}`
 			);
 
 		return {
