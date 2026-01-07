@@ -10,6 +10,7 @@
 	--color-hover: #26262c;
 	--color-zinc-350: #c9c9ce;
 	--color-zinc-370: #b6b6bb;
+	--color-zinc-925: #0f0f10;
 }
 @custom-variant height-xl (@media (height >= 870px));
 @custom-variant height-lg (@media (height >= 750px));
