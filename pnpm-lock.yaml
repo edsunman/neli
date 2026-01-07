@@ -51,8 +51,8 @@ importers:
         specifier: ^16.0.0
         version: 16.1.0
       mediabunny:
-        specifier: ^1.8.0
-        version: 1.8.0
+        specifier: ^1.27.4
+        version: 1.27.4
       prettier:
         specifier: ^3.4.2
         version: 3.5.3
@@ -990,6 +990,10 @@ packages:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
 
+  detect-libc@2.1.2:
+    resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
+    engines: {node: '>=8'}
+
   devalue@5.1.1:
     resolution: {integrity: sha512-maua5KUiapvEwiEAe+XnlZ3Rh0GD+qI1J/nb9vrJc3muPXvcF/8gXYTWF76+5DAqHyDUtOIImEuo0YKE9mshVw==}
 
@@ -1373,8 +1377,8 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
-  mediabunny@1.8.0:
-    resolution: {integrity: sha512-+JjE+A2NxtjxnBsEy4yCw9CYx8yDyJzivAx28xU5vWqEy4Xu9gE8qiIklKWfLEAoiyudJ+wn0gn3rl1HtK8vcw==}
+  mediabunny@1.27.4:
+    resolution: {integrity: sha512-j69K0yiXYMHyb5g4XyhYjbz1VpllRVyyDGF5lqYTsrdF0XoDRoGReoRvon9lnENv5yY5A5u+09dnqISwXvS86Q==}
 
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
@@ -2615,6 +2619,8 @@ snapshots:
 
   detect-libc@2.0.4: {}
 
+  detect-libc@2.1.2: {}
+
   devalue@5.1.1: {}
 
   dunder-proto@1.0.1:
@@ -2971,7 +2977,7 @@ snapshots:
 
   lightningcss@1.30.1:
     dependencies:
-      detect-libc: 2.0.4
+      detect-libc: 2.1.2
     optionalDependencies:
       lightningcss-darwin-arm64: 1.30.1
       lightningcss-darwin-x64: 1.30.1
@@ -3000,7 +3006,7 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mediabunny@1.8.0:
+  mediabunny@1.27.4:
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.11
       '@types/dom-webcodecs': 0.1.13

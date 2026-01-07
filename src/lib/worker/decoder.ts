@@ -1,3 +1,5 @@
+import { VideoSampleSink, type InputVideoTrack } from 'mediabunny';
+
 const DEBUG = false;
 
 export class VDecoder {
@@ -6,6 +8,8 @@ export class VDecoder {
 	private ready = false;
 	running = false;
 
+	private videoTrack: InputVideoTrack | undefined;
+	private sink: VideoSampleSink | undefined;
 	/** All chunks */
 	private chunks: EncodedVideoChunk[] = [];
 	/** Chunks waiting to be decoded */
@@ -13,6 +17,7 @@ export class VDecoder {
 	/** Decoded frames waiting to be returned */
 	private frameQueue: VideoFrame[] = [];
 	private lastFrame?: VideoFrame;
+	private lastFrameNumber = 0;
 	private frameIsReady: (value: VideoFrame | PromiseLike<VideoFrame>) => void = () => {};
 
 	/** Used when seeking */
@@ -26,22 +31,47 @@ export class VDecoder {
 	clipId: string | null = null;
 	lastUsedTime = 0;
 	usedThisFrame = false;
+	openKeyFrames = new Set();
 
 	constructor() {
 		this.decoder = new VideoDecoder({ output: this.onFrame, error: this.onError });
 	}
 
-	setup(config: VideoDecoderConfig, chunks: EncodedVideoChunk[]) {
+	setup(config: VideoDecoderConfig, track: InputVideoTrack) {
 		this.decoderConfig = config;
 		this.decoder.configure(this.decoderConfig);
-		this.chunks = chunks;
+		this.videoTrack = track;
+		this.sink = new VideoSampleSink(this.videoTrack);
+		//this.chunks = chunks;
 		this.ready = true;
 	}
 
-	async decodeFrame(frameNumber: number): Promise<VideoFrame | null> {
-		if (!this.ready) return null;
+	async decodeFrame(frameNumber: number): Promise<VideoFrame | undefined> {
+		if (!this.ready || !this.sink) return;
 
-		this.chunkBuffer = [];
+		if (this.lastFrame) {
+			if (this.lastFrameNumber === frameNumber) {
+				return this.lastFrame;
+			} else {
+				this.openKeyFrames.delete(this.lastFrame.timestamp);
+				this.lastFrame.close();
+			}
+		}
+
+		const sample = await this.sink.getSample(frameNumber / 30);
+		if (!sample) return;
+
+		const frame = sample.toVideoFrame();
+		sample.close();
+
+		this.openKeyFrames.add(frame.timestamp);
+
+		this.lastFrame = frame;
+		this.lastFrameNumber = frameNumber;
+
+		return frame;
+
+		/* 		this.chunkBuffer = [];
 		await this.decoder.flush();
 
 		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
@@ -71,7 +101,7 @@ export class VDecoder {
 
 		return new Promise((resolve) => {
 			this.frameIsReady = resolve;
-		});
+		}); */
 	}
 
 	async play(frameNumber: number) {

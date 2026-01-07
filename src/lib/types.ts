@@ -1,3 +1,4 @@
+import type { Input, InputVideoTrack } from 'mediabunny';
 import type { Source } from './source/source.svelte';
 
 export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
@@ -41,7 +42,8 @@ export type WorkerClip = {
 
 export type WorkerSource = {
 	id: string;
-	videoChunks: EncodedVideoChunk[];
+	videoTrack?: InputVideoTrack;
+	videoChunks?: EncodedVideoChunk[];
 	videoConfig: VideoDecoderConfig;
 	gap: number;
 };

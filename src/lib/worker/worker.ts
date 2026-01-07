@@ -1,6 +1,6 @@
 import { WebGPURenderer } from './renderer';
 import { Encoder } from './encoder';
-import { loadFile } from './file';
+import { loadFileNew } from './file';
 import { DecoderPool } from './pool';
 import type { WorkerClip, WorkerSource } from '$lib/types';
 
@@ -30,9 +30,10 @@ self.addEventListener('message', async function (e) {
 		case 'load-file':
 			{
 				if (e.data.type === 'video') {
-					const newSource = await loadFile(e.data.file, e.data.id);
+					const newSource = await loadFileNew(e.data.file, e.data.id);
 					if (!newSource) return;
 					sources.push(newSource);
+					//console.log(newSource);
 					sendFrameForThumbnail(newSource);
 				} else if (e.data.type === 'image') {
 					const bitmap = await createImageBitmap(e.data.file);
@@ -98,7 +99,7 @@ self.addEventListener('message', async function (e) {
 const sendFrameForThumbnail = async (source: WorkerSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoChunks);
+	decoder.setup(source.videoConfig, source.videoTrack!);
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
 	//@ts-expect-error webworker scope
@@ -287,7 +288,7 @@ const setupNewDecoder = (clip: WorkerClip) => {
 	if (!source) return;
 	const decoder = decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoChunks);
+	decoder.setup(source.videoConfig, source.videoTrack!);
 	return decoder;
 };
 
