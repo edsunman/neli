@@ -1,4 +1,9 @@
-import { VideoSampleSink, type InputVideoTrack } from 'mediabunny';
+import {
+	EncodedPacket,
+	EncodedPacketSink,
+	VideoSampleSink,
+	type InputVideoTrack
+} from 'mediabunny';
 
 const DEBUG = false;
 
@@ -10,6 +15,8 @@ export class VDecoder {
 
 	private videoTrack: InputVideoTrack | undefined;
 	private sink: VideoSampleSink | undefined;
+	private packetSink: EncodedPacketSink | undefined;
+	private lastPacket: EncodedPacket | undefined;
 	/** All chunks */
 	private chunks: EncodedVideoChunk[] = [];
 	/** Chunks waiting to be decoded */
@@ -42,6 +49,7 @@ export class VDecoder {
 		this.decoder.configure(this.decoderConfig);
 		this.videoTrack = track;
 		this.sink = new VideoSampleSink(this.videoTrack);
+		this.packetSink = new EncodedPacketSink(this.videoTrack);
 		//this.chunks = chunks;
 		this.ready = true;
 	}
@@ -105,22 +113,51 @@ export class VDecoder {
 	}
 
 	async play(frameNumber: number) {
-		if (this.running) return;
+		if (this.running || !this.packetSink) return;
 
 		this.chunkBuffer = [];
 		await this.decoder.flush();
 
 		this.running = true;
-		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
-		const { targetFrameIndex, keyFrameIndex } = this.getKeyFrameIndex(frameTimestamp);
+		//const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
+		//const { targetFrameIndex, keyFrameIndex } = this.getKeyFrameIndex(frameTimestamp);
 
-		this.startingFrameTimeStamp = this.chunks[targetFrameIndex].timestamp;
+		//this.startingFrameTimeStamp = this.chunks[targetFrameIndex].timestamp;
 
-		for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
+		const firstPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
+			verifyKeyPackets: true
+		});
+		const endPacket = await this.packetSink.getPacket((frameNumber + 10) / 30);
+		if (!firstPacket || !endPacket) return;
+		this.lastPacket = endPacket;
+		//this.chunkBuffer.push(firstPacket.toEncodedVideoChunk());
+
+		for await (const packet of this.packetSink.packets(firstPacket, endPacket)) {
+			this.chunkBuffer.push(packet.toEncodedVideoChunk());
+		}
+
+		this.startingFrameTimeStamp = firstPacket.toEncodedVideoChunk().timestamp;
+		console.log(this.startingFrameTimeStamp);
+
+		/* for (const chunk of this.chunkBuffer) {
+			console.log(chunk.type);
+		} */
+
+		/* for (let i = keyFrameIndex; i < targetFrameIndex + 10; i++) {
 			this.chunkBuffer.push(this.chunks[i]);
 			this.lastChunkIndex = i;
-		}
+		} */
 		this.feedDecoder();
+	}
+
+	async fillBuffer() {
+		if (!this.packetSink || !this.lastPacket) return;
+		const endPacket = await this.packetSink.getPacket(this.lastPacket.timestamp + 0.1);
+		if (!endPacket) return;
+		for await (const packet of this.packetSink.packets(this.lastPacket, endPacket)) {
+			this.chunkBuffer.push(packet.toEncodedVideoChunk());
+		}
+		this.lastPacket = endPacket;
 	}
 
 	/** Called quickly during playback and encoding to keep frame queue full */
@@ -128,11 +165,12 @@ export class VDecoder {
 		// Keep chunk buffer full
 		if (this.chunkBuffer.length < 5) {
 			if (DEBUG) console.log('fill chunk buffer starting with index ', this.lastChunkIndex + 1);
+			this.fillBuffer();
 
-			for (let i = this.lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
+			/* for (let i = this.lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
 				this.chunkBuffer.push(this.chunks[i]);
 				this.lastChunkIndex = i;
-			}
+			} */
 			this.feedDecoder();
 		}
 
@@ -148,16 +186,20 @@ export class VDecoder {
 				break;
 			}
 		}
+		//console.log('aiming for -> ', frameTime);
+		/* for (const chunk of this.frameQueue) {
+			console.log('we have: ', chunk.timestamp);
+		} */
 
 		// If source has lower framerate than timeline we may need to return
 		// previous frame rather than grabbing a frame from framequeue
-		if (this.lastFrame) {
+		/* 	if (this.lastFrame) {
 			const lastFrameDelta = Math.abs(frameTime - this.lastFrame.timestamp);
 			if (lastFrameDelta < minTimeDelta) {
 				if (DEBUG) console.log(`last frame is closer, returning ${this.lastFrame.timestamp}`);
 				return this.lastFrame;
 			}
-		}
+		} */
 
 		for (let i = 0; i < frameIndex; i++) {
 			const staleFrame = this.frameQueue.shift();
@@ -168,7 +210,6 @@ export class VDecoder {
 		if (chosenFrame && chosenFrame.format) {
 			if (this.lastFrame) this.lastFrame.close();
 			this.lastFrame = chosenFrame;
-
 			if (DEBUG)
 				console.log(
 					`Returning frame, delta: ${minTimeDelta / 1000}ms \n` +
