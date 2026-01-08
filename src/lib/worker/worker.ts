@@ -215,7 +215,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		let f;
 		if (run) {
 			f = decoder?.run(clipFrame * 33.33333333, encoding);
-			//console.log(`running decoder for clip ${videoClip.id} requesting frame ${clipFrame}`);
+			//console.log(`requesting frame ${clipFrame}, got ${f?.timestamp}`);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);
@@ -240,13 +240,13 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 			if (frameNumber < clip.start && frameNumber > clip.start - 4) {
 				const frameDistance = clip.start - frameNumber;
 				const clipStartFrame = frameNumber - clip.start + clip.sourceOffset + frameDistance;
-				const decoder = decoderPool.decoders.get(clip.id);
-				if (!decoder) {
-					setupNewDecoder(clip);
+				let decoder;
+				decoder = decoderPool.decoders.get(clip.id);
+				if (!decoder) decoder = setupNewDecoder(clip);
+				if (decoder) {
+					decoder.usedThisFrame = true;
+					decoder.play(clipStartFrame);
 				}
-				if (!decoder) return;
-				decoder.usedThisFrame = true;
-				decoder.play(clipStartFrame);
 			}
 		}
 
@@ -467,10 +467,10 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const success = await buildAndDrawFrame(frameIndex, true);
 		if (success) return;
-
+		console.log('retry', frameIndex);
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
-	throw new Error(
+	console.error(
 		`Frame Timeout: Frame ${frameIndex} failed to render after ${maxRetries} attempts.`
 	);
 }

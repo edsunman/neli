@@ -18,8 +18,8 @@ export class VDecoder {
 	private sink: VideoSampleSink | undefined;
 	private iterator: AsyncGenerator<VideoSample, void, unknown> | undefined;
 
-	private packetSink: EncodedPacketSink | undefined;
-	private lastPacket: EncodedPacket | undefined;
+	//private packetSink: EncodedPacketSink | undefined;
+	//private lastPacket: EncodedPacket | undefined;
 	/** All chunks */
 	private chunks: EncodedVideoChunk[] = [];
 	/** Chunks waiting to be decoded */
@@ -52,19 +52,16 @@ export class VDecoder {
 		this.decoder.configure(this.decoderConfig);
 		this.videoTrack = track;
 		this.sink = new VideoSampleSink(this.videoTrack);
-		this.packetSink = new EncodedPacketSink(this.videoTrack);
-		if (this.lastFrame) {
-			this.lastFrame.close();
-			this.lastFrame = null;
-		}
-
-		//this.chunks = chunks;
+		//this.packetSink = new EncodedPacketSink(this.videoTrack);
 		this.ready = true;
 	}
 
 	async decodeFrame(frameNumber: number): Promise<VideoFrame | undefined> {
 		if (!this.ready || !this.sink) return;
 
+		//console.log(this.openKeyFrames.size);
+
+		// We need to close the lastFrame here as we replace it below
 		if (this.lastFrame) {
 			if (this.lastFrameNumber === frameNumber) {
 				return this.lastFrame;
@@ -93,6 +90,10 @@ export class VDecoder {
 
 		this.running = true;
 		this.startToQueueFrames = false;
+		for (let i = 0; i < this.frameQueue.length; i++) {
+			this.openKeyFrames.delete(this.frameQueue[i].timestamp);
+			this.frameQueue[i].close();
+		}
 		this.frameQueue = [];
 		//await this.decoder.flush();
 
@@ -104,38 +105,7 @@ export class VDecoder {
 			throw Error('no iterator assigned');
 		}
 
-		/* this.lastFrame?.close();
-
-		const sample = (await this.iterator.next()).value ?? null;
-		this.lastFrame = sample?.toVideoFrame();
-		sample?.close(); */
-
-		/* 		const firstPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
-			verifyKeyPackets: true
-		});
-		const endPacket = await this.packetSink.getPacket((frameNumber + 10) / 30);
-		if (!firstPacket || !endPacket) return;
-		this.lastPacket = endPacket;
-
-		for await (const packet of this.packetSink.packets(firstPacket, endPacket)) {
-			this.chunkBuffer.push(packet.toEncodedVideoChunk());
-		}
-
-		this.startingFrameTimeStamp = firstPacket.toEncodedVideoChunk().timestamp;
-		console.log(this.startingFrameTimeStamp); */
 		this.fillFrameQueue();
-		//console.log('-- filling from play');
-		//this.feedDecoder();
-	}
-
-	async fillBuffer() {
-		if (!this.packetSink || !this.lastPacket) return;
-		const endPacket = await this.packetSink.getPacket(this.lastPacket.timestamp + 0.1);
-		if (!endPacket) return;
-		for await (const packet of this.packetSink.packets(this.lastPacket, endPacket)) {
-			this.chunkBuffer.push(packet.toEncodedVideoChunk());
-		}
-		this.lastPacket = endPacket;
 	}
 
 	async fillFrameQueue() {
@@ -144,10 +114,14 @@ export class VDecoder {
 		}
 		for (let i = 0; i < 5; i++) {
 			const sample = (await this.iterator.next()).value ?? null;
-			const frame = sample?.toVideoFrame();
-			sample?.close();
-			//if (frame) console.log(frame.timestamp);
-			if (frame) this.frameQueue.push(frame);
+			if (!sample) {
+				//throw Error('no sample from iterator');
+				continue;
+			}
+			const frame = sample.toVideoFrame();
+			this.openKeyFrames.add(frame.timestamp);
+			sample.close();
+			this.frameQueue.push(frame);
 		}
 
 		return true;
@@ -158,6 +132,7 @@ export class VDecoder {
 		if (!this.iterator) return;
 
 		//this.lastFrame?.close();
+		//console.log(this.openKeyFrames.size);
 
 		if (this.startToQueueFrames && this.frameQueue.length < 3) {
 			//console.log('filling from run');
@@ -178,14 +153,30 @@ export class VDecoder {
 			}
 		}
 
+		// If source has lower framerate than timeline we may need to return
+		// previous frame rather than grabbing a frame from framequeue
+		if (this.lastFrame) {
+			const lastFrameDelta = Math.abs(frameTime - this.lastFrame.timestamp);
+			if (lastFrameDelta < minTimeDelta) {
+				if (DEBUG) console.log(`last frame is closer, returning ${this.lastFrame.timestamp}`);
+				return this.lastFrame;
+			}
+		}
+
 		for (let i = 0; i < frameIndex; i++) {
 			const staleFrame = this.frameQueue.shift();
-			staleFrame?.close();
+			if (staleFrame) {
+				this.openKeyFrames.delete(staleFrame.timestamp);
+				staleFrame.close();
+			}
 		}
 		//console.log('framequeue:', this.frameQueue.length);
 		const chosenFrame = this.frameQueue.shift();
 		if (chosenFrame && chosenFrame.format) {
-			if (this.lastFrame) this.lastFrame.close();
+			if (this.lastFrame) {
+				this.openKeyFrames.delete(this.lastFrame.timestamp);
+				this.lastFrame.close();
+			}
 			this.lastFrame = chosenFrame;
 			this.startToQueueFrames = true;
 			if (DEBUG)
@@ -201,67 +192,6 @@ export class VDecoder {
 			console.log('returning an old frame');
 			return this.lastFrame;
 		}
-
-		//this.frameQueue.length = 0;
-
-		/* 	const sample = (await this.iterator.next()).value ?? null;
-		const frame = sample?.toVideoFrame();
-		sample?.close(); */
-
-		//	this.lastFrame = frame;
-
-		//console.log(frame?.timestamp);
-		//frame?.close();
-
-		/* if (frame) {
-			this.frameQueue.push(frame);
-		} */
-
-		//return frame;
-
-		// Keep chunk buffer full
-		/* if (this.chunkBuffer.length < 5) {
-			if (DEBUG) console.log('fill chunk buffer starting with index ', this.lastChunkIndex + 1);
-			this.fillBuffer();
-
-			this.feedDecoder();
-		}
-
-		const frameTime = Math.floor(elapsedTimeMs * 1000);
-		let minTimeDelta = Infinity;
-		let frameIndex = -1;
-		for (let i = 0; i < this.frameQueue.length; i++) {
-			const time_delta = Math.abs(frameTime - this.frameQueue[i].timestamp);
-			if (time_delta < minTimeDelta) {
-				minTimeDelta = time_delta;
-				frameIndex = i;
-			} else {
-				break;
-			}
-		}
-
-
-		for (let i = 0; i < frameIndex; i++) {
-			const staleFrame = this.frameQueue.shift();
-			staleFrame?.close();
-		}
-
-		const chosenFrame = this.frameQueue.shift();
-		if (chosenFrame && chosenFrame.format) {
-			if (this.lastFrame) this.lastFrame.close();
-			this.lastFrame = chosenFrame;
-			if (DEBUG)
-				console.log(
-					`Returning frame, delta: ${minTimeDelta / 1000}ms \n` +
-						`want: ${frameTime} got: ${chosenFrame.timestamp}`
-				);
-
-			return chosenFrame;
-		}
-		if (this.lastFrame && !encoding) {
-			if (DEBUG) console.log('returning an old frame');
-			return this.lastFrame;
-		} */
 	}
 
 	async pause() {
@@ -271,6 +201,7 @@ export class VDecoder {
 			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.frameQueue.length}`);
 
 		for (let i = 0; i < this.frameQueue.length; i++) {
+			this.openKeyFrames.delete(this.frameQueue[i].timestamp);
 			this.frameQueue[i].close();
 		}
 		this.frameQueue = [];
@@ -283,8 +214,8 @@ export class VDecoder {
 
 	// TODO: can this happen when we pause? I don't think so.. but maybe?
 	clear() {
-		this.lastFrame?.close();
-		this.lastFrame = null;
+		/* 	this.lastFrame?.close();
+		this.lastFrame = null; */
 	}
 
 	// Runs in a loop until chunk buffer is empty
@@ -320,7 +251,7 @@ export class VDecoder {
 	}
 
 	private onFrame = (frame: VideoFrame) => {
-		if (DEBUG) {
+		/* if (DEBUG) {
 			console.log('Frame output:', frame.timestamp);
 			console.log('Queue size:', this.decoder.decodeQueueSize);
 			console.log('Frame Queue Size:', this.frameQueue.length);
@@ -348,7 +279,7 @@ export class VDecoder {
 		if (this.frameQueue.length > 10) {
 			if (DEBUG) console.log('Resuming feeding, frame queue getting big');
 			this.feedDecoder();
-		}
+		} */
 	};
 
 	private onError = (e: DOMException) => {

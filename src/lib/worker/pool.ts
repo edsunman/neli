@@ -4,7 +4,7 @@ const DEBUG = true;
 
 export class DecoderPool {
 	decoders = new Map<string, VDecoder>();
-	#maxDecoders = 3;
+	#maxDecoders = 4;
 	#decoderCount = 0;
 
 	assignDecoder(clipId: string) {
