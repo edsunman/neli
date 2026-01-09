@@ -1,6 +1,6 @@
 import { VDecoder } from './decoder';
 
-const DEBUG = true;
+const DEBUG = false;
 
 export class DecoderPool {
 	decoders = new Map<string, VDecoder>();
@@ -35,7 +35,6 @@ export class DecoderPool {
 		if (!decoder) return;
 
 		decoder.lastUsedTime = performance.now();
-		decoder.clear();
 		decoder.pause();
 		this.decoders.set(clipId, decoder);
 
@@ -48,7 +47,6 @@ export class DecoderPool {
 			if (decoder.running) {
 				if (DEBUG) console.log(`[Pool] Decoder ${decoder.id} paused `);
 				await decoder.pause();
-				decoder.clear();
 			}
 		}
 	}
@@ -63,7 +61,6 @@ export class DecoderPool {
 		for (const [, decoder] of this.decoders) {
 			if (!decoder.usedThisFrame) {
 				decoder.pause();
-				decoder.clear();
 			}
 		}
 	}
