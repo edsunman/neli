@@ -110,7 +110,6 @@ const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 
 const processSeekFrame = async () => {
 	seeking = true;
-
 	while (true) {
 		const frameToProcess = latestSeekFrame;
 
