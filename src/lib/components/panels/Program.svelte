@@ -9,8 +9,12 @@
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { measureText } from '$lib/text/utils';
+	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+
+	let timelineMouseMove = $state<(e: MouseEvent) => void>();
+	let timelineMouseUp = $state<(e: MouseEvent) => void>();
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -36,6 +40,7 @@
 	let savedClipCenter = { x: 0, y: 0 };
 
 	mouseMove = (e: MouseEvent) => {
+		if (timelineMouseMove) timelineMouseMove(e);
 		if (cornerHover) {
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		} else {
@@ -71,6 +76,7 @@
 	};
 
 	mouseUp = (e: MouseEvent) => {
+		if (timelineMouseUp) timelineMouseUp(e);
 		if (appState.mouseMoveOwner !== 'program') return;
 		appState.mouseMoveOwner = 'timeline';
 
@@ -200,108 +206,109 @@
 	});
 </script>
 
-<div
-	class="h-full relative overflow-hidden"
-	bind:this={canvasContainer}
-	bind:clientHeight={height}
-	bind:clientWidth={width}
->
+<div class="flex flex-col h-full">
 	<div
-		class="absolute"
-		style:top={`${height / 2 - 540}px`}
-		style:left={`${width / 2 - 960}px`}
-		style:transform={`scale(${scale}%)`}
+		class="flex-1 relative overflow-hidden"
+		bind:this={canvasContainer}
+		bind:clientHeight={height}
+		bind:clientWidth={width}
 	>
-		<canvas
-			bind:this={canvas}
-			width={1920}
-			height={1080}
-			onmousedown={canvasMouseDown}
-			oncontextmenu={(e) => {
-				e.preventDefault();
-			}}
-		></canvas>
-	</div>
-	{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
-		{@const clip = timelineState.selectedClip}
-		{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
-		{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}
-		{@const offsetX = (clip.params[2] / 2) * 1920 * (scale / 100)}
-		{@const offsetY = (clip.params[3] / 2) * 1080 * (scale / 100)}
-		{@const top = height / 2 - boxSizeY / 2 - offsetY}
-		{@const left = width / 2 - boxSizeX / 2 + offsetX}
-		{#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<!-- svelte-ignore a11y_mouse_events_have_key_events -->
-			<div
-				style:top={`${top}px`}
-				style:left={`${left}px`}
-				style:width={`${boxSizeX}px`}
-				style:height={`${boxSizeY}px`}
-				class="border-2 border-white absolute top-0 left-0"
-				onmousedown={(e) => {
-					if (e.button > 0) return;
-					e.preventDefault();
-					dragging = true;
-					savedClipPosition = { x: clip.params[2], y: clip.params[3] };
-					mouseDownPosition = { x: e.clientX, y: e.clientY };
-					appState.mouseMoveOwner = 'program';
-					appState.mouseIsDown = true;
-				}}
+		<div
+			class="absolute"
+			style:top={`${height / 2 - 540}px`}
+			style:left={`${width / 2 - 960}px`}
+			style:transform={`scale(${scale}%)`}
+		>
+			<canvas
+				bind:this={canvas}
+				width={1920}
+				height={1080}
+				onmousedown={canvasMouseDown}
 				oncontextmenu={(e) => {
 					e.preventDefault();
-					contextMenu.openContextMenu(e);
 				}}
-			>
-				{@render cornerBox(0)}
-				{@render cornerBox(1)}
-				{@render cornerBox(2)}
-				{@render cornerBox(3)}
-				{#snippet cornerBox(corner: number)}
-					<div
-						onmouseenter={() => {
-							cornerHover = true;
-							cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
-						}}
-						onmouseleave={() => {
-							cornerHover = false;
-						}}
-						onmousedown={(e) =>
-							cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
-						class={[
-							corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
-							corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
-							'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
-						]}
-					></div>
-				{/snippet}
-			</div>
-		{/if}
-		{#if clip.source.type === 'text'}
-			{@const { x, y } = getTextBoundingBox(clip.text, clip.params[6], scale, clip.params[7])}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				style:top={`${top + boxSizeY / 2 - y / 2}px`}
-				style:left={`${left + boxSizeX / 2 - x / 2}px`}
-				style:width={`${x}px`}
-				style:height={`${y}px`}
-				class="border-2 border-white absolute top-0 left-0"
-				onmousedown={(e) => {
-					if (e.button > 0) return;
-					e.preventDefault();
-					dragging = true;
-					savedClipPosition = { x: clip.params[2], y: clip.params[3] };
-					mouseDownPosition = { x: e.clientX, y: e.clientY };
-					appState.mouseMoveOwner = 'program';
-					appState.mouseIsDown = true;
-				}}
-				oncontextmenu={(e) => {
-					e.preventDefault();
-					contextMenu.openContextMenu(e);
-				}}
-			></div>
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<!-- <div
+			></canvas>
+		</div>
+		{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
+			{@const clip = timelineState.selectedClip}
+			{@const boxSizeX = clip.params[0] * clip.source.width * (scale / 100)}
+			{@const boxSizeY = clip.params[1] * clip.source.height * (scale / 100)}
+			{@const offsetX = (clip.params[2] / 2) * 1920 * (scale / 100)}
+			{@const offsetY = (clip.params[3] / 2) * 1080 * (scale / 100)}
+			{@const top = height / 2 - boxSizeY / 2 - offsetY}
+			{@const left = width / 2 - boxSizeX / 2 + offsetX}
+			{#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
+				<div
+					style:top={`${top}px`}
+					style:left={`${left}px`}
+					style:width={`${boxSizeX}px`}
+					style:height={`${boxSizeY}px`}
+					class="border-2 border-white absolute top-0 left-0"
+					onmousedown={(e) => {
+						if (e.button > 0) return;
+						e.preventDefault();
+						dragging = true;
+						savedClipPosition = { x: clip.params[2], y: clip.params[3] };
+						mouseDownPosition = { x: e.clientX, y: e.clientY };
+						appState.mouseMoveOwner = 'program';
+						appState.mouseIsDown = true;
+					}}
+					oncontextmenu={(e) => {
+						e.preventDefault();
+						contextMenu.openContextMenu(e);
+					}}
+				>
+					{@render cornerBox(0)}
+					{@render cornerBox(1)}
+					{@render cornerBox(2)}
+					{@render cornerBox(3)}
+					{#snippet cornerBox(corner: number)}
+						<div
+							onmouseenter={() => {
+								cornerHover = true;
+								cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
+							}}
+							onmouseleave={() => {
+								cornerHover = false;
+							}}
+							onmousedown={(e) =>
+								cornerMouseDown(e, clip, { x: left + boxSizeX / 2, y: top + boxSizeY / 2 })}
+							class={[
+								corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
+								corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
+								'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
+							]}
+						></div>
+					{/snippet}
+				</div>
+			{/if}
+			{#if clip.source.type === 'text'}
+				{@const { x, y } = getTextBoundingBox(clip.text, clip.params[6], scale, clip.params[7])}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					style:top={`${top + boxSizeY / 2 - y / 2}px`}
+					style:left={`${left + boxSizeX / 2 - x / 2}px`}
+					style:width={`${x}px`}
+					style:height={`${y}px`}
+					class="border-2 border-white absolute top-0 left-0"
+					onmousedown={(e) => {
+						if (e.button > 0) return;
+						e.preventDefault();
+						dragging = true;
+						savedClipPosition = { x: clip.params[2], y: clip.params[3] };
+						mouseDownPosition = { x: e.clientX, y: e.clientY };
+						appState.mouseMoveOwner = 'program';
+						appState.mouseIsDown = true;
+					}}
+					oncontextmenu={(e) => {
+						e.preventDefault();
+						contextMenu.openContextMenu(e);
+					}}
+				></div>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<!-- <div
 				onmouseenter={() => {
 					cornerHover = true;
 					cornerHoverStyle = 'move';
@@ -322,8 +329,11 @@
 				style:left={`${left + boxSizeX / 2 - 7}px`}
 				class={['h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute  bg-zinc-900']}
 			></div> -->
+			{/if}
 		{/if}
+	</div>
+	{#if appState.selectedSource}
+		<SourceTimeline bind:mouseMove={timelineMouseMove} bind:mouseUp={timelineMouseUp} />
 	{/if}
 </div>
-
 <ContextMenu bind:this={contextMenu} {buttons} />

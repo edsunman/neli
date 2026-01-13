@@ -22,6 +22,7 @@
 		setAllTrackTypes
 	} from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
+	import { hideSourceInProgram, showSourceInProgram } from '$lib/program/actions';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -31,6 +32,7 @@
 	let hoverName = $state('');
 	let hoverNameIndex = $state(0);
 	let showHoverName = $state(false);
+	let hoverSelected = $state(false);
 
 	let startingCursor = { x: 0, y: 0 };
 	let cursorMovedEnough = $state(false);
@@ -72,7 +74,11 @@
 	const onClick = (source: Source) => {
 		if (cursorMovedEnough) return;
 
-		timelineState.selectedClips.clear();
+		appState.selectedSource = source;
+		hoverSelected = true;
+		showSourceInProgram();
+
+		/* timelineState.selectedClips.clear();
 		if (source.type === 'srt') {
 			// TODO: tidy this up
 			for (const entry of source.srtEntries) {
@@ -101,7 +107,7 @@
 			finaliseClip(clip, 'addClip');
 			setAllTrackTypes();
 		}
-		historyManager.finishCommand();
+		historyManager.finishCommand(); */
 	};
 
 	const onDrop = (e: DragEvent) => {
@@ -123,7 +129,14 @@
 </script>
 
 <Tooltip.Provider delayDuration={500}>
-	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative"
+		onmouseup={() => {
+			appState.selectedSource = null;
+			hideSourceInProgram();
+		}}
+	>
 		<div class="absolute -left-13">
 			<div class="mb-5 bg-zinc-900 border-zinc-900 border-2 rounded">
 				<div class=" flex flex-col bg-zinc-950 rounded">
@@ -215,7 +228,8 @@
 			style:top={`${hoverNameIndex * 56}px`}
 			class={[
 				showHoverName ? 'visible' : 'invisible',
-				'absolute bg-hover h-14 ml-20 text-left flex text-zinc-300',
+				hoverSelected ? 'bg-zinc-700 text-zinc-100' : 'bg-hover text-zinc-300',
+				'absolute  h-14 ml-20 text-left flex ',
 				'items-center z-10 rounded-lg pointer-events-none text-sm pr-3 text-nowrap'
 			]}
 		>
@@ -227,19 +241,28 @@
 				<button
 					onmouseover={() => {
 						if (appState.mouseIsDown) return;
+						if (source.id === appState.selectedSource?.id) hoverSelected = true;
 						showHoverName = true;
 						hoverName = source.name ?? '';
 						hoverNameIndex = i;
 					}}
 					onmouseout={() => {
 						showHoverName = false;
+						hoverSelected = false;
 						hoverName = '';
 					}}
 					class={[
-						!appState.mouseIsDown && 'hover:text-zinc-300 hover:bg-hover',
+						// selected
+						source.id === appState.selectedSource?.id && 'bg-zinc-700 text-zinc-100',
+						// hover
+						!appState.mouseIsDown &&
+							source.id !== appState.selectedSource?.id &&
+							'hover:text-zinc-300 hover:bg-hover',
+						// dragged
 						appState.dragAndDrop.clicked &&
 							appState.dragAndDrop.source?.id === source.id &&
 							'bg-hover text-zinc-300',
+
 						'group h-14 lg:w-full pl-20 select-none text-left relative',
 						' rounded-lg'
 					]}

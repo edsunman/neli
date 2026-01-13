@@ -8,16 +8,19 @@
 		moveIcon,
 		justifyCenterIcon,
 		justifyLeftIcon,
-		justifyRightIcon
+		justifyRightIcon,
+		settingsIcon,
+		filmIcon
 	} from '../icons/Icons.svelte';
 
 	import Slider from '../ui/Slider.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import Settings from '../ui/settings';
 
-	type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text';
+	type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
 	let previousSelected: Section;
 	let selected: Section = $derived.by<Section>(() => {
+		timelineState.playing;
 		if (timelineState.selectedClip && !timelineState.selectedClip.temp) {
 			const type = timelineState.selectedClip.source.type;
 			if (type === 'audio') {
@@ -49,6 +52,15 @@
 				>
 					{#snippet trigger()} -->
 			<button
+				onclick={() => (selected = 'project')}
+				class={[
+					selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+					'p-2'
+				]}
+			>
+				{@render settingsIcon('w-6 h-6')}
+			</button>
+			<button
 				onclick={() => (selected = 'masterAudio')}
 				class={[
 					selected === 'masterAudio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
@@ -60,19 +72,27 @@
 			<!-- 	{/snippet}
 					output audio
 				</MyTooltip> -->
-			<!-- <button
-				onclick={() => (selected = 'project')}
-				class={[
-					selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
-					'p-2'
-				]}
-			>
-				<SettingsIcon class="w-6 h-6" />
-			</button> -->
 		</div>
+		{#if appState.selectedSource}
+			<div class="bg-zinc-950 rounded flex flex-col">
+				<button
+					onclick={() => {
+						selected = 'source';
+						previousSelected = 'source';
+					}}
+					class={[
+						selected === 'source' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+						'p-2'
+					]}
+				>
+					{@render filmIcon('w-6 h-6')}
+					<!-- <MoveIcon class="w-6 h-6" /> -->
+				</button>
+			</div>
+		{/if}
 		{#if timelineState.selectedClip && !timelineState.selectedClip.temp}
 			{@const source = timelineState.selectedClip.source}
-			<div class=" bg-zinc-950 rounded flex flex-col">
+			<div class="bg-zinc-950 rounded flex flex-col">
 				{#if source.type !== 'audio'}
 					<!-- 	<MyTooltip
 							contentProps={{ side: 'left' }}
@@ -172,6 +192,13 @@
 					{/each}
 				</ToggleGroup.Root>
 			</div>
+		{/if}
+
+		{#if selected === 'source' && appState.selectedSource}
+			{@const source = appState.selectedSource}
+			<Settings.Group label={'name'}>
+				{source.name}
+			</Settings.Group>
 		{/if}
 
 		{#if selected === 'layout' && timelineState.selectedClip}

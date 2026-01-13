@@ -1,7 +1,9 @@
 import type { Clip } from '$lib/clip/clip.svelte';
-import { timelineState } from '$lib/state.svelte';
+import { programState, timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
+import { programFrameToCanvasPixel } from '$lib/program/utils';
 
+const ZINC_900 = '#18181b';
 const GREEN = '#41a088';
 const GREEN_DARK = '#1f4a42';
 const GREEN_LIGHT = '#50cfaf';
@@ -28,7 +30,7 @@ export const drawCanvas = (
 	height: number,
 	waveCanvas: OffscreenCanvas
 ) => {
-	context.fillStyle = '#18181b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(0, 0, width, height);
 
 	const flexHeight = height - 35;
@@ -113,14 +115,10 @@ export const drawCanvas = (
 	}
 
 	// playhead
-	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-	const playheadTop = rulerContainerHeight * 0.2;
-	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, playheadTop + 15, 2, flexHeight - 35);
-
-	context.translate(playheadPosition - 6, playheadTop);
-	context.fill(PLAYHEAD_PATH);
-	context.translate(-playheadPosition + 6, -playheadTop);
+	if (timelineState.showPlayhead) {
+		const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
+		drawPlayhead(context, rulerContainerHeight * 0.2, flexHeight - 20, playheadPosition);
+	}
 
 	// scrollbar
 	if (timelineState.zoom > 0.9) {
@@ -147,6 +145,47 @@ export const drawCanvas = (
 
 	context.fillStyle = 'rgba(0,0,255,0.2)';
 	context.fillRect(0, flexHeight * 0.2, 200, flexHeight * 0.8); */
+};
+
+export const drawSourceCanvas = (
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number
+) => {
+	context.fillStyle = ZINC_900;
+	context.fillRect(0, 0, width, height);
+
+	context.fillStyle = '#34343c';
+	context.beginPath();
+	context.roundRect(10, 35, width - 20, 8, 4);
+	context.fill();
+
+	context.fillStyle = '#696971';
+	context.strokeStyle = ZINC_900;
+	context.lineWidth = 6;
+	context.beginPath();
+	context.rect(100, 35, width - 300, 8);
+	context.stroke();
+	context.fill();
+
+	const playheadPosition = programFrameToCanvasPixel(programState.currentFrame);
+	drawPlayhead(context, 8, height - 16, playheadPosition);
+};
+
+const drawPlayhead = (
+	context: CanvasRenderingContext2D,
+	top: number,
+	length: number,
+	position: number
+) => {
+	//const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
+
+	context.fillStyle = 'white';
+	context.fillRect(position, top + 15, 2, length - 15);
+
+	context.translate(position - 6, top);
+	context.fill(PLAYHEAD_PATH);
+	context.translate(-position + 6, -top);
 };
 
 const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) => {

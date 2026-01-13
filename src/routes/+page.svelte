@@ -5,6 +5,7 @@
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
+	import { hideSourceInProgram } from '$lib/program/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -79,6 +80,12 @@
 <svelte:window
 	onkeydown={(e) => {
 		switch (e.code) {
+			case 'Escape':
+				if (appState.selectedSource && !appState.showPalette) {
+					appState.selectedSource = null;
+					hideSourceInProgram();
+				}
+				break;
 			case 'KeyZ':
 				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;

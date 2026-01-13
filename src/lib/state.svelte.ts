@@ -1,4 +1,4 @@
-import type { Source } from './source/source.svelte';
+import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
@@ -8,6 +8,7 @@ class AppState {
 	mediaWorker?: Worker;
 	waveformCanvas?: HTMLCanvasElement;
 	sources = $state<Source[]>([]);
+	selectedSource = $state<Source | null>();
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
 	audioLevel = $state([0, 0]);
@@ -32,8 +33,6 @@ class AppState {
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 
-export const appState = new AppState();
-
 class TimelineState {
 	clips: Clip[] = [];
 	tracks: Track[] = [];
@@ -55,10 +54,20 @@ class TimelineState {
 	focusedTrack = 0;
 	padding = 100;
 	trackDropZone = -1;
+	showPlayhead = true;
 	invalidate = false;
 	invalidateWaveform = false;
 }
 
+class ProgramState {
+	timelineWidth = $state(0); // pixels
+	duration = $state(1000); // frames
+	currentFrame = $state(0);
+	invalidateTimeline = false;
+}
+
+export const appState = new AppState();
 export const timelineState = new TimelineState();
+export const programState = new ProgramState();
 export const audioState = new AudioState();
 export const historyManager = new HistoryManager();

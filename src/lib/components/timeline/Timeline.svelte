@@ -44,6 +44,7 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
+	import { hideSourceInProgram } from '$lib/program/actions';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -161,6 +162,10 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
+		if (appState.selectedSource) {
+			appState.selectedSource = null;
+			hideSourceInProgram();
+		}
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
@@ -440,7 +445,7 @@
 	onresize={async () => {
 		if (!canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
-		timelineState.height = canvasContainer?.clientHeight;
+		timelineState.height = canvasContainer.clientHeight;
 		setCanvasSize();
 
 		if (waveContext) drawWaveforms(waveContext, timelineState.width);
