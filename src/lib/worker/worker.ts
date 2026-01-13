@@ -2,7 +2,7 @@ import { WebGPURenderer } from './renderer';
 import { Encoder } from './encoder';
 import { loadFileNew } from './file';
 import { DecoderPool } from './pool';
-import type { WorkerClip, WorkerSource } from '$lib/types';
+import type { WorkerClip, WorkerVideoSource } from '$lib/types';
 
 let renderer: WebGPURenderer;
 let encoder: Encoder;
@@ -15,7 +15,7 @@ let encoding = false;
 let latestSeekFrame = 0;
 
 const clips: WorkerClip[] = [];
-const sources: WorkerSource[] = [];
+const sources: WorkerVideoSource[] = [];
 
 self.addEventListener('message', async function (e) {
 	switch (e.data.command) {
@@ -96,10 +96,10 @@ self.addEventListener('message', async function (e) {
 	}
 });
 
-const sendFrameForThumbnail = async (source: WorkerSource) => {
+const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoTrack!);
+	decoder.setup(source.videoConfig, source.videoSampleSink, source.encodedPacketSink);
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
 	//@ts-expect-error webworker scope
@@ -288,7 +288,7 @@ const setupNewDecoder = (clip: WorkerClip) => {
 	if (!source) return;
 	const decoder = decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoTrack!);
+	decoder.setup(source.videoConfig, source.videoSampleSink, source.encodedPacketSink);
 	return decoder;
 };
 
@@ -311,7 +311,7 @@ const encodeAndCreateFile = async (
 
 	try {
 		for await (const { frame, index } of frameGenerator(durationInFrames, startFrame)) {
-			encoder.encode(frame);
+			await encoder.encode(frame);
 			frame.close();
 
 			if (index % 30 === 0 || index === durationInFrames - 1) {

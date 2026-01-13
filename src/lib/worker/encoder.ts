@@ -5,7 +5,9 @@ import {
 	EncodedAudioPacketSource,
 	EncodedPacket,
 	StreamTarget,
-	type StreamTargetChunk
+	type StreamTargetChunk,
+	VideoSampleSource,
+	VideoSample
 } from 'mediabunny';
 
 /**
@@ -18,6 +20,7 @@ export class Encoder {
 	private frameCounter = 0;
 	private handle: FileSystemFileHandle | undefined;
 	private syncHandle: FileSystemFileHandle | undefined;
+	private videoSampleSource: VideoSampleSource | undefined;
 
 	async setup() {
 		this.encoder = new VideoEncoder({
@@ -46,6 +49,11 @@ export class Encoder {
 			bitrate: 128000
 		};
 		this.audioEncoder.configure(encoderConfig);
+
+		this.videoSampleSource = new VideoSampleSource({
+			codec: 'avc',
+			bitrate: 10_000_000
+		});
 
 		/* this.output = new Output({
 			format: new Mp4OutputFormat({
@@ -84,8 +92,8 @@ export class Encoder {
 			target: new StreamTarget(writableStream)
 		});
 
-		const videoSource = new EncodedVideoPacketSource('avc');
-		this.output.addVideoTrack(videoSource, {
+		//const videoSource = new EncodedVideoPacketSource('avc');
+		this.output.addVideoTrack(this.videoSampleSource, {
 			rotation: 0,
 			frameRate: 30
 		});
@@ -96,13 +104,16 @@ export class Encoder {
 		await this.output.start();
 	}
 
-	encode(frame: VideoFrame) {
-		if (!this.encoder) return;
-		let keyFrame = false;
+	async encode(frame: VideoFrame) {
+		if (!this.videoSampleSource) return;
+		/* let keyFrame = false;
 		if (this.frameCounter % 30 === 0) {
 			keyFrame = true;
-		}
-		this.encoder.encode(frame, { keyFrame });
+		} */
+		const sample = new VideoSample(frame);
+		await this.videoSampleSource.add(sample);
+		sample.close();
+		//this.encoder.encode(frame, { keyFrame });
 		this.frameCounter++;
 	}
 

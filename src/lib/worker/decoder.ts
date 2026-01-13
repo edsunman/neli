@@ -1,10 +1,11 @@
-import { VideoSample, VideoSampleSink, type InputVideoTrack } from 'mediabunny';
+import { EncodedPacket, EncodedPacketSink, VideoSample, VideoSampleSink } from 'mediabunny';
 
 const DEBUG = false;
 
 export class VDecoder {
+	private decoder: VideoDecoder | undefined;
 	private ready = false;
-	private videoTrack: InputVideoTrack | undefined;
+	private packetSink: EncodedPacketSink | undefined;
 	private sink: VideoSampleSink | undefined;
 	private iterator: AsyncGenerator<VideoSample, void, unknown> | undefined;
 	private frameQueue: VideoFrame[] = [];
@@ -12,22 +13,54 @@ export class VDecoder {
 	private lastFrameNumber = 0;
 	private startToQueueFrames = false;
 
+	private currentPacket: EncodedPacket | null = null;
+	private packetWasFound = false;
+	private queueDequeue: Promise<void> | undefined;
+	private onQueueDequeue: ((value: void | PromiseLike<void>) => void) | undefined;
+
 	id = 0;
 	running = false;
 	clipId: string | null = null;
 	lastUsedTime = 0;
 	usedThisFrame = false;
 	openKeyFrames = new Set();
+	counter = 0;
 
-	setup(config: VideoDecoderConfig, track: InputVideoTrack) {
-		this.videoTrack = track;
-		this.sink = new VideoSampleSink(this.videoTrack);
+	constructor() {
+		this.decoder = new VideoDecoder({
+			output: (frame: VideoFrame) => {
+				this.onQueueDequeue!();
+				this.counter++;
+				if (this.counter === 1) {
+					//console.log('found frame');
+					this.packetWasFound = true;
+					this.lastFrame = frame;
+				} else {
+					frame.close();
+				}
+			},
+			error: (e) => {
+				console.error(e);
+			}
+		});
+	}
+
+	setup(config: VideoDecoderConfig, sink: VideoSampleSink, packetSink: EncodedPacketSink) {
+		this.decoder?.configure(config);
+		this.sink = sink;
+		this.packetSink = packetSink;
 		this.ready = true;
 	}
 
-	async decodeFrame(frameNumber: number): Promise<VideoFrame | undefined> {
-		if (!this.ready || !this.sink) return;
+	// NOTE: lets try a queue size of 8, maybe change in fututre https://github.com/Vanilagy/mediabunny/blob/571fbb31986c7e9b37310e144121ac964d48a29b/src/media-sink.ts#L793
 
+	/** Called when seeking */
+	async decodeFrame(frameNumber: number) {
+		if (!this.decoder || !this.ready || !this.packetSink) return;
+
+		//await this.decoder.flush();
+		this.counter = 0;
+		this.packetWasFound = false;
 		// We need to close the lastFrame here as we replace it below
 		if (this.lastFrame) {
 			if (this.lastFrameNumber === frameNumber) {
@@ -38,18 +71,44 @@ export class VDecoder {
 			}
 		}
 
-		const sample = await this.sink.getSample(frameNumber / 30);
-		if (!sample) return;
+		const keyPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
+			verifyKeyPackets: true
+		});
+
+		if (!keyPacket) throw new Error('No key packet');
+
+		this.currentPacket = keyPacket;
+		const packets = this.packetSink.packets(keyPacket, undefined);
+		await packets.next(); // Skip the start packet as we already have it
+
+		while (!this.packetWasFound) {
+			if (this.decoder.decodeQueueSize > 8) {
+				//console.log('pause queue');
+				({ promise: this.queueDequeue, resolve: this.onQueueDequeue } = Promise.withResolvers());
+				await this.queueDequeue;
+				continue;
+			}
+
+			this.decoder.decode(this.currentPacket.toEncodedVideoChunk());
+			const packetResult = await packets.next();
+			if (packetResult.done) break;
+			this.currentPacket = packetResult.value;
+		}
+
+		await packets.return();
+		await this.decoder.flush();
+
+		/* 		const sample = await this.sink.getSample(frameNumber / 30);
 
 		const frame = sample.toVideoFrame();
 		sample.close();
 
-		this.openKeyFrames.add(frame.timestamp);
+		this.openKeyFrames.add(frame.timestamp); */
 
-		this.lastFrame = frame;
+		//this.lastFrame = frame;
 		this.lastFrameNumber = frameNumber;
 
-		return frame;
+		return this.lastFrame;
 	}
 
 	async play(frameNumber: number) {

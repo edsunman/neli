@@ -1,5 +1,5 @@
-import type { WorkerSource } from '$lib/types';
-import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input } from 'mediabunny';
+import type { WorkerVideoSource } from '$lib/types';
+import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input, VideoSampleSink } from 'mediabunny';
 
 export const loadFileNew = async (file: File, sourceId: string) => {
 	const input = new Input({
@@ -12,6 +12,9 @@ export const loadFileNew = async (file: File, sourceId: string) => {
 
 	const videoConfig = await videoTrack.getDecoderConfig();
 	if (!videoConfig) return;
+
+	const videoSampleSink = new VideoSampleSink(videoTrack);
+	const encodedPacketSink = new EncodedPacketSink(videoTrack);
 
 	//const stats = await videoTrack.computePacketStats(100);
 	//const frameRate = stats.averagePacketRate;
@@ -40,10 +43,13 @@ export const loadFileNew = async (file: File, sourceId: string) => {
 		if (i >= maxSampleCount) break;
 	} */
 
-	return { videoTrack, videoConfig, id: sourceId, gap: 0 };
+	return { videoTrack, videoConfig, videoSampleSink, encodedPacketSink, id: sourceId, gap: 0 };
 };
 
-export const loadFile = async (file: File, sourceId: string): Promise<WorkerSource | undefined> => {
+export const loadFile = async (
+	file: File,
+	sourceId: string
+): Promise<WorkerVideoSource | undefined> => {
 	const input = new Input({
 		formats: ALL_FORMATS,
 		source: new BlobSource(file)
