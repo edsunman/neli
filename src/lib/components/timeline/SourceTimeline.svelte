@@ -1,34 +1,34 @@
 <script lang="ts">
+	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { setCurrentFrameFromOffset } from '$lib/program/actions';
-	import { programState } from '$lib/state.svelte';
+	import { appState, programState } from '$lib/state.svelte';
 	import { drawSourceCanvas } from '$lib/timeline/canvas';
-	import { onDestroy, onMount, tick, type MountOptions } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+	const { onFrame } = useAnimationFrame();
 
 	let canvas: HTMLCanvasElement;
 	let context: CanvasRenderingContext2D | null;
 	let canvasContainer: HTMLDivElement;
 	let height = 0;
 	let scrubbing = false;
-	let rafId: number;
 
 	const mouseDown = (e: MouseEvent) => {
+		appState.mouseIsDown = true;
 		scrubbing = true;
 	};
 
-	mouseMove = (e: MouseEvent) => {
+	const mouseMove = (e: MouseEvent) => {
 		if (scrubbing) {
-			const rect = canvasContainer.getBoundingClientRect();
-			const offsetX = e.clientX - rect.left;
+			const offsetX = e.clientX - canvasContainer.offsetLeft;
 			setCurrentFrameFromOffset(offsetX);
 			programState.invalidateTimeline = true;
 		}
 	};
 
-	mouseUp = (e: MouseEvent) => {
+	const mouseUp = (e: MouseEvent) => {
+		appState.mouseIsDown = false;
 		scrubbing = false;
-		//console.log(e.offsetX);
 	};
 
 	const setCanvasSize = async () => {
@@ -49,14 +49,12 @@
 		drawSourceCanvas(context, programState.timelineWidth, height);
 	};
 
-	const step = () => {
+	onFrame(() => {
 		if (programState.invalidateTimeline) {
 			if (context) drawSourceCanvas(context, programState.timelineWidth, height);
 			programState.invalidateTimeline = false;
 		}
-		rafId = requestAnimationFrame(step);
-	};
-	requestAnimationFrame(step);
+	});
 
 	onMount(() => {
 		if (!canvas || !canvasContainer) return;
@@ -64,10 +62,6 @@
 		height = canvasContainer.clientHeight;
 		context = canvas.getContext('2d', { alpha: false });
 		setCanvasSize();
-	});
-
-	onDestroy(() => {
-		if (rafId) window.cancelAnimationFrame(rafId);
 	});
 </script>
 
@@ -77,6 +71,8 @@
 </div>
 
 <svelte:window
+	onmousemove={mouseMove}
+	onmouseup={mouseUp}
 	onresize={async () => {
 		if (!canvasContainer || !context) return;
 		programState.timelineWidth = canvasContainer.clientWidth;

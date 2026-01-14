@@ -17,7 +17,7 @@
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import Settings from '../ui/settings';
 
-	type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
+	/* type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
 	let previousSelected: Section;
 	let selected: Section = $derived.by<Section>(() => {
 		timelineState.playing;
@@ -36,7 +36,7 @@
 			previousSelected = 'masterAudio';
 			return 'masterAudio';
 		}
-	});
+	}); */
 </script>
 
 <!-- <Tooltip.Provider> -->
@@ -52,18 +52,22 @@
 				>
 					{#snippet trigger()} -->
 			<button
-				onclick={() => (selected = 'project')}
+				onclick={() => (appState.settingsSection = 'project')}
 				class={[
-					selected === 'project' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+					appState.settingsSection === 'project'
+						? 'text-zinc-200'
+						: 'text-zinc-600 hover:text-zinc-400',
 					'p-2'
 				]}
 			>
 				{@render settingsIcon('w-6 h-6')}
 			</button>
 			<button
-				onclick={() => (selected = 'masterAudio')}
+				onclick={() => (appState.settingsSection = 'masterAudio')}
 				class={[
-					selected === 'masterAudio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+					appState.settingsSection === 'masterAudio'
+						? 'text-zinc-200'
+						: 'text-zinc-600 hover:text-zinc-400',
 					'p-2'
 				]}
 			>
@@ -77,11 +81,13 @@
 			<div class="bg-zinc-950 rounded flex flex-col">
 				<button
 					onclick={() => {
-						selected = 'source';
-						previousSelected = 'source';
+						appState.settingsSection = 'source';
+						//previousSelected = 'source';
 					}}
 					class={[
-						selected === 'source' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+						appState.settingsSection === 'source'
+							? 'text-zinc-200'
+							: 'text-zinc-600 hover:text-zinc-400',
 						'p-2'
 					]}
 				>
@@ -101,11 +107,13 @@
 							{#snippet trigger()} -->
 					<button
 						onclick={() => {
-							selected = 'layout';
-							previousSelected = 'layout';
+							appState.settingsSection = 'layout';
+							//previousSelected = 'layout';
 						}}
 						class={[
-							selected === 'layout' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							appState.settingsSection === 'layout'
+								? 'text-zinc-200'
+								: 'text-zinc-600 hover:text-zinc-400',
 							'p-2'
 						]}
 					>
@@ -124,11 +132,13 @@
 							{#snippet trigger()} -->
 					<button
 						onclick={() => {
-							selected = 'text';
-							previousSelected = 'text';
+							appState.settingsSection = 'text';
+							//previousSelected = 'text';
 						}}
 						class={[
-							selected === 'text' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							appState.settingsSection === 'text'
+								? 'text-zinc-200'
+								: 'text-zinc-600 hover:text-zinc-400',
 							'p-2'
 						]}
 					>
@@ -146,11 +156,13 @@
 							{#snippet trigger()} -->
 					<button
 						onclick={() => {
-							selected = 'audio';
-							previousSelected = 'audio';
+							appState.settingsSection = 'audio';
+							// previousSelected = 'audio';
 						}}
 						class={[
-							selected === 'audio' ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-400',
+							appState.settingsSection === 'audio'
+								? 'text-zinc-200'
+								: 'text-zinc-600 hover:text-zinc-400',
 							'p-2'
 						]}
 					>
@@ -164,9 +176,19 @@
 		{/if}
 	</div>
 	<div class="flex-1 flex flex-col gap-3 mt-2 mr-3">
-		{#if selected === 'project'}
+		{#if appState.settingsSection === 'project'}
 			<div class="text-sm font-medium">
-				<span>Aspect ratio</span>
+				<Settings.Group label={'aspect ratio'}>
+					<!-- <Settings.Input bind:value={clip.params[8]} fallback={0} /> -->
+					<Settings.Toggle
+						items={[
+							{ value: 0, icon: justifyLeftIcon },
+							{ value: 1, icon: justifyCenterIcon },
+							{ value: 2, icon: justifyRightIcon }
+						]}
+					/>
+				</Settings.Group>
+				<!-- <span>Aspect ratio</span>
 				<ToggleGroup.Root type="multiple" class="flex justify-end gap-x-2 mt-2">
 					{#each { length: 3 } as _}
 						<ToggleGroup.Item
@@ -190,18 +212,18 @@
 							>
 						</ToggleGroup.Item>
 					{/each}
-				</ToggleGroup.Root>
+				</ToggleGroup.Root> -->
 			</div>
 		{/if}
 
-		{#if selected === 'source' && appState.selectedSource}
+		{#if appState.settingsSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
 			<Settings.Group label={'name'}>
 				{source.name}
 			</Settings.Group>
 		{/if}
 
-		{#if selected === 'layout' && timelineState.selectedClip}
+		{#if appState.settingsSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
 				<Settings.Group label={'size'}>
@@ -214,7 +236,7 @@
 				<Settings.Input bind:value={clip.params[3]} />
 			</Settings.Group>
 		{/if}
-		{#if selected === 'text' && timelineState.selectedClip}
+		{#if appState.settingsSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Settings.Group label={'text'}>
 				<Settings.Textarea bind:value={clip.text} />
@@ -237,7 +259,7 @@
 				<Settings.Input bind:value={clip.params[7]} fallback={1} />
 			</Settings.Group>
 		{/if}
-		{#if selected === 'audio' && timelineState.selectedClip}
+		{#if appState.settingsSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Settings.Group label={'gain'}>
 				<Settings.Input bind:value={clip.params[4]} fallback={1} />
@@ -246,7 +268,7 @@
 				<Settings.Input bind:value={clip.params[5]} fallback={0} />
 			</Settings.Group>
 		{/if}
-		{#if selected === 'masterAudio'}
+		{#if appState.settingsSection === 'masterAudio'}
 			<div class="flex h-full w-full justify-end pr-3">
 				<Slider
 					bind:value={audioState.masterGain}
@@ -258,7 +280,7 @@
 		{/if}
 	</div>
 
-	{#if selected === 'masterAudio'}
+	{#if appState.settingsSection === 'masterAudio'}
 		<div
 			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
 			style="background:linear-gradient(90deg,#090909 43%, #18181b 43%, #18181b 57%,#090909 57%);"

@@ -11,11 +11,6 @@
 	import { measureText } from '$lib/text/utils';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
-
-	let timelineMouseMove = $state<(e: MouseEvent) => void>();
-	let timelineMouseUp = $state<(e: MouseEvent) => void>();
-
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
 	let contextMenu: ContextMenu;
@@ -39,8 +34,7 @@
 	let savedClipScale = { x: 0, y: 0 };
 	let savedClipCenter = { x: 0, y: 0 };
 
-	mouseMove = (e: MouseEvent) => {
-		if (timelineMouseMove) timelineMouseMove(e);
+	const mouseMove = (e: MouseEvent) => {
 		if (cornerHover) {
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		} else {
@@ -75,11 +69,10 @@
 		}
 	};
 
-	mouseUp = (e: MouseEvent) => {
-		if (timelineMouseUp) timelineMouseUp(e);
+	const mouseUp = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'program') return;
 		appState.mouseMoveOwner = 'timeline';
-
+		appState.mouseIsDown = false;
 		if (dragging) {
 			dragging = false;
 			const clip = timelineState.selectedClip;
@@ -333,7 +326,9 @@
 		{/if}
 	</div>
 	{#if appState.selectedSource}
-		<SourceTimeline bind:mouseMove={timelineMouseMove} bind:mouseUp={timelineMouseUp} />
+		<SourceTimeline />
 	{/if}
 </div>
 <ContextMenu bind:this={contextMenu} {buttons} />
+
+<svelte:window onmousemove={mouseMove} onmouseup={mouseUp} />

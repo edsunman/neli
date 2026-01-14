@@ -24,8 +24,6 @@
 	import type { Source } from '$lib/source/source.svelte';
 	import { hideSourceInProgram, showSourceInProgram } from '$lib/program/actions';
 
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
-
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
@@ -45,7 +43,7 @@
 		});
 	});
 
-	mouseMove = (e: MouseEvent) => {
+	const mouseMove = (e: MouseEvent) => {
 		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.x = e.clientX;
 			appState.dragAndDrop.y = e.clientY;
@@ -63,7 +61,8 @@
 		}
 	};
 
-	mouseUp = () => {
+	const mouseUp = () => {
+		appState.mouseIsDown = false;
 		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.showIcon = false;
 			appState.dragAndDrop.active = false;
@@ -346,3 +345,4 @@
 		</div>
 	</div>
 </Tooltip.Provider>
+<svelte:window onmousemove={mouseMove} onmouseup={mouseUp} />

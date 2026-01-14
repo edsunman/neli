@@ -4,6 +4,8 @@ export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 
+export type SettingsSection = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
+
 export type Track = {
 	height: number;
 	top: number;

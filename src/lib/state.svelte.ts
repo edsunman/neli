@@ -2,13 +2,14 @@ import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { DragAndDropState, FolderGroup, Font, Track } from './types';
+import type { DragAndDropState, FolderGroup, Font, SettingsSection, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
 	waveformCanvas?: HTMLCanvasElement;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
+	settingsSection = $state<SettingsSection>('project');
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
 	audioLevel = $state([0, 0]);
