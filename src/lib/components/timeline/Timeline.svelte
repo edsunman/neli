@@ -46,6 +46,7 @@
 	import { mouseIcon } from '../icons/Icons.svelte';
 	import { hideSourceInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
+	import { showClipPropertiesSection } from '$lib/properties/actions';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -226,6 +227,7 @@
 			}
 			timelineState.selectedClip = clip;
 			timelineState.selectedClips.clear();
+			showClipPropertiesSection(clip);
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
@@ -241,6 +243,7 @@
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
 			timelineState.action = 'selecting';
+			appState.propertiesSection = 'masterAudio';
 		}
 		removeHoverAllClips();
 		timelineState.invalidate = true;
@@ -259,6 +262,7 @@
 				if (appState.dragAndDrop.active) {
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
+					showClipPropertiesSection(clip);
 				} else {
 					finaliseClip(clip, 'moveClip');
 				}
@@ -279,11 +283,14 @@
 			resizing = false;
 			if (clip) finaliseClip(clip, 'trimClip');
 		}
-		if ((timelineState.action = 'selecting')) {
+		if (timelineState.action === 'selecting') {
 			if (timelineState.selectedClips.size === 1) {
 				// if there is only one clip, select it
 				const foundClip = timelineState.selectedClips.values().next().value;
-				if (foundClip) timelineState.selectedClip = foundClip;
+				if (foundClip) {
+					showClipPropertiesSection(foundClip);
+					timelineState.selectedClip = foundClip;
+				}
 				timelineState.selectedClips.clear();
 			}
 		}

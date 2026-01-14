@@ -10,7 +10,7 @@
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
 	import Timeline from '$lib/components/timeline/Timeline.svelte';
-	import Controls from '$lib/components/panels/Settings.svelte';
+	import Properties from '$lib/components/panels/Properties.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
 
@@ -46,7 +46,7 @@
 		<Sources />
 	</div>
 	<div><Program /></div>
-	<div><Controls /></div>
+	<div><Properties /></div>
 	<div class="col-span-3">
 		<Timeline />
 	</div>

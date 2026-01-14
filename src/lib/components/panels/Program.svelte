@@ -10,6 +10,7 @@
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { measureText } from '$lib/text/utils';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
+	import { showClipPropertiesSection } from '$lib/properties/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -145,6 +146,7 @@
 				e.offsetY < box.centerY + box.height / 2
 			) {
 				timelineState.selectedClip = clip;
+				showClipPropertiesSection(clip);
 				break;
 			}
 		}

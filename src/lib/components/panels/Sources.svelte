@@ -65,8 +65,11 @@
 		appState.mouseIsDown = false;
 		if (appState.dragAndDrop.clicked) {
 			appState.dragAndDrop.showIcon = false;
-			appState.dragAndDrop.active = false;
 			appState.dragAndDrop.clicked = false;
+			// Wait for other mouseUp events before setting active to false
+			setTimeout(() => {
+				appState.dragAndDrop.active = false;
+			}, 0);
 		}
 	};
 
