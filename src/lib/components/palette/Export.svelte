@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Progress, useId } from 'bits-ui';
 	import { appState } from '$lib/state.svelte';
-	import { encode } from '$lib/worker/actions.svelte';
+	import { encode, cancelEncode } from '$lib/worker/actions.svelte';
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
@@ -12,6 +12,7 @@
 
 	let inputValue = $state('');
 	let encodingStarted = $state(false);
+	let encodingFinished = $state(false);
 	let startFrame = $state(0);
 	let endFrame = $state(getUsedTimelineDuration());
 	let closeButton = $state<HTMLButtonElement>();
@@ -22,19 +23,29 @@
 		if (startFrame >= endFrame) return;
 		encodingStarted = true;
 		shrinkBox();
+
 		appState.lockPalette = true;
 		appState.encoderProgress.message = 'preparing audio...';
 		appState.encoderProgress.percentage = 0;
-		appState.exportSuccessCallback = exportSuccess;
+		appState.exportSuccessCallback = exportCallback;
+
 		const fileName = inputValue ? inputValue : 'video';
 		encode(fileName, startFrame, endFrame);
 	};
 
-	const exportSuccess = async () => {
+	const exportCallback = async (success: boolean) => {
+		encodingFinished = true;
+		appState.lockPalette = false;
 		await tick();
 		if (closeButton) {
 			closeButton.focus();
 		}
+	};
+
+	const cancel = () => {
+		cancelEncode();
+		appState.lockPalette = false;
+		appState.showPalette = false;
 	};
 </script>
 
@@ -114,6 +125,8 @@
 <div class="mx-8 flex-none pt-5 pb-7 text-right">
 	{#if !encodingStarted}
 		<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text={'Export'} />
+	{:else if encodingStarted && !encodingFinished}
+		<Button bind:ref={closeButton} onclick={() => cancel()} text={'cancel'} />
 	{:else}
 		<Button
 			bind:ref={closeButton}

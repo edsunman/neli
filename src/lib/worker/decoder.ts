@@ -32,19 +32,18 @@ export class VDecoder {
 					if (this.foundTargetFrame) {
 						this.frameQueue.push(frame);
 					} else {
-						// We are still searching...
 						this.resumeFeedingChunks?.();
 
 						if (this.lastFrame) {
-							// If the NEW frame is >= target, then the OLD frame (lastFrame)
-							// is the one we want to queue first
+							// If the new frame is past the target frame,
+							// then the last frame is the one we want to queue first
 							if (frame.timestamp > this.targetTimestamp) {
 								this.frameQueue.push(this.lastFrame);
 								this.frameQueue.push(frame);
 								this.foundTargetFrame = true;
 								this.lastFrame = null;
 							} else if (frame.timestamp === this.targetTimestamp) {
-								// Edge case: Perfect match. We don't need lastFrame
+								// Edge case: Perfect match so we don't need lastFrame
 								this.lastFrame.close();
 								this.frameQueue.push(frame);
 								this.foundTargetFrame = true;
@@ -142,7 +141,7 @@ export class VDecoder {
 		return this.savedFrame;
 	}
 
-	async play(frameNumber: number) {
+	async play(frameNumber: number, useSavedFrame = false) {
 		if (!this.decoder || !this.packetSink) return;
 		if (this.running) return;
 
@@ -152,6 +151,12 @@ export class VDecoder {
 		this.running = true;
 		this.startToQueueFrames = false;
 		this.clearFrameQueue();
+
+		// If this is not the first clip played, savedFrame will be stale
+		if (!useSavedFrame) {
+			this.savedFrame?.close();
+			this.savedFrame = null;
+		}
 
 		this.targetTimestamp = Math.floor((frameNumber / 30) * 1_000_000);
 		this.foundTargetFrame = false;
@@ -189,9 +194,10 @@ export class VDecoder {
 			this.resumeFeedingChunks?.();
 		}
 
-		// Nothing in frame queue so return saved frame
+		// Nothing in frame queue so return saved frame if we have it
 		if (this.frameQueue.length < 1 && !encoding) {
-			return this.savedFrame;
+			if (this.savedFrame) return this.savedFrame;
+			return;
 		}
 
 		// Find closest frame in frame queue
@@ -225,8 +231,8 @@ export class VDecoder {
 
 		const chosenFrame = this.frameQueue.shift();
 		if (chosenFrame && chosenFrame.format) {
-			this.lastFrame?.close();
-			this.lastFrame = chosenFrame;
+			this.savedFrame?.close();
+			this.savedFrame = chosenFrame;
 			this.startToQueueFrames = true;
 			if (DEBUG)
 				console.log(
@@ -236,10 +242,10 @@ export class VDecoder {
 			return chosenFrame;
 		}
 
-		if (this.savedFrame && !encoding) {
+		/* if (this.savedFrame && !encoding) {
 			console.log('returning an old frame');
-			return this.lastFrame;
-		}
+			return this.savedFrame;
+		} */
 	}
 
 	async pause() {

@@ -13,6 +13,7 @@ let playing = false;
 let seeking = false;
 let encoding = false;
 let latestSeekFrame = 0;
+let cancelEncode = false;
 
 const clips: WorkerClip[] = [];
 const sources: WorkerVideoSource[] = [];
@@ -50,6 +51,11 @@ self.addEventListener('message', async function (e) {
 					e.data.startFrame,
 					e.data.endFrame
 				);
+			}
+			break;
+		case 'cancelEncode':
+			{
+				cancelEncode = true;
 			}
 			break;
 		case 'play':
@@ -121,55 +127,43 @@ const processSeekFrame = async () => {
 	seeking = false;
 };
 
-const startPlayLoop = async (frame: number) => {
-	const startingFrame = frame;
-
+const startPlayLoop = async (startingFrame: number) => {
 	await setupFrame(startingFrame);
 
-	let firstTimestamp: number | null = null;
-	let previousFrame = -1;
+	const msPerFrame = 1000 / 30;
+	const epsilon = 1; // Tolerance for smoother playback
 
-	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
-	let accumulator = 0;
 	let lastTime = 0;
-	let targetFrame = startingFrame;
+	let accumulator = 0;
+	let currentFrame = startingFrame;
+	let warmUpCycles = 0;
 
-	let i = 0;
-	const loop = async (timestamp: number) => {
+	const loop = (timestamp: number) => {
 		if (!playing) return;
-		// pause for two loops to wait for VideoDecoders to warm up
-		if (i < 2) {
-			i++;
-			self.requestAnimationFrame(loop);
-			return;
+
+		// Warm up decoders
+		if (warmUpCycles < 2) {
+			warmUpCycles++;
+			return self.requestAnimationFrame(loop);
 		}
 
-		if (lastTime === 0) {
-			lastTime = timestamp;
-		}
-
-		if (firstTimestamp === null) {
-			firstTimestamp = timestamp;
-		}
+		if (lastTime === 0) lastTime = timestamp;
 
 		const deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
 		accumulator += deltaTime;
 
-		// the - 1 here is an 'epsilon' to make playback smoother
-		while (accumulator >= MS_PER_FRAME - 1) {
-			targetFrame = previousFrame + 1;
-			accumulator -= MS_PER_FRAME;
+		let frameChanged = false;
+		while (accumulator >= msPerFrame - epsilon) {
+			currentFrame++;
+			accumulator -= msPerFrame;
+			frameChanged = true;
 		}
 
-		if (targetFrame === previousFrame) {
-			self.requestAnimationFrame(loop);
-			return;
+		if (frameChanged) {
+			buildAndDrawFrame(currentFrame, true);
 		}
 
-		buildAndDrawFrame(targetFrame, true);
-
-		previousFrame = targetFrame;
 		self.requestAnimationFrame(loop);
 	};
 
@@ -177,12 +171,11 @@ const startPlayLoop = async (frame: number) => {
 };
 
 const setupFrame = async (frameNumber: number) => {
-	// start decoders and wait for them to flush
 	for (const clip of clips) {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
 			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
-			decoderPool.decoders.get(clip.id)?.play(clipFrame);
+			decoderPool.decoders.get(clip.id)?.play(clipFrame, true);
 		}
 	}
 };
@@ -203,7 +196,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 	decoderPool.markAllAsUnused();
 
-	// get frame for each video clip
+	// Get frame for each video clip
 	const videoFrames = new Map();
 	for (const videoClip of activeClips) {
 		if (videoClip.type !== 'video') continue;
@@ -212,7 +205,6 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		let f;
 		if (run) {
 			f = decoder?.run(clipFrame * 33.33333333, encoding);
-			//console.log(`requesting frame ${clipFrame}, got ${f?.timestamp}`);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);
@@ -220,7 +212,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 			f = await decoder?.decodeFrame(clipFrame);
 		}
 		if (encoding && !f) {
-			// a blank frame from a decoder while encoding, so abort
+			// A blank frame from a decoder while encoding, so abort
 			return;
 		}
 		videoFrames.set(videoClip.id, f);
@@ -296,6 +288,7 @@ const encodeAndCreateFile = async (
 	endFrame: number
 ) => {
 	encoding = true;
+	cancelEncode = false;
 	await decoderPool.pauseAll();
 	await encoder.setup();
 
@@ -307,6 +300,10 @@ const encodeAndCreateFile = async (
 
 	try {
 		for await (const { frame, index } of frameGenerator(durationInFrames, startFrame)) {
+			if (cancelEncode) {
+				frame.close();
+				break;
+			}
 			await encoder.encode(frame);
 			frame.close();
 
@@ -319,74 +316,27 @@ const encodeAndCreateFile = async (
 		// Finalisation
 		await decoderPool.pauseAll();
 		encoding = false;
-		/* const url = await encoder.finalize();
-		self.postMessage({
-			command: 'download-link',
-			fileName: `${fileName}.mp4`,
-			link: url
-		}); */
+
+		if (cancelEncode) {
+			await encoder.cancel();
+			console.log('canceled!');
+			return;
+		}
+
 		const file = await encoder.finalize();
 		if (!file) return;
+
 		self.postMessage({
 			command: 'download-file',
+			fileName,
 			file
 		});
 	} catch (err) {
 		encoding = false;
+		await encoder.cancel();
 		console.error(err);
 		self.postMessage({ command: 'encode-progress', percentComplete: -1 });
 	}
-
-	/* 	let i = 0;
-	let retries = 0;
-	const maxRetries = 300;
-	let percentComplete = 0;
-	let lastPercent = 0;
-	const decodeLoop = async () => {
-		const success = await buildAndDrawFrame(i + startFrame, true);
-		if (!success) {
-			retries++;
-			if (retries < maxRetries) {
-				//console.log(retries);
-				setTimeout(decodeLoop, 0);
-			} else {
-				encoding = false;
-				console.warn('encode failed');
-				self.postMessage({ command: 'encode-progress', percentComplete: -1 });
-			}
-			return;
-		}
-		if (!renderer.bitmap) return;
-
-		const newFrame = new VideoFrame(renderer.bitmap, {
-			timestamp: (i * 1e6) / 30,
-			alpha: 'discard'
-		});
-
-		renderer.bitmap.close();
-
-		encoder.encode(newFrame);
-		newFrame.close();
-		i++;
-
-		percentComplete = Math.floor((i / durationInFrames) * 100);
-
-		if (percentComplete > lastPercent) {
-			lastPercent = percentComplete;
-			self.postMessage({ command: 'encode-progress', percentComplete });
-		}
-
-		if (i < durationInFrames) {
-			setTimeout(decodeLoop, 0);
-		} else {
-			await decoderPool.pauseAll();
-			encoding = false;
-			const url = await encoder.finalize();
-			self.postMessage({ command: 'download-link', fileName: `${fileName}.mp4`, link: url });
-		}
-	};
-
-	decodeLoop(); */
 };
 
 const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
@@ -457,7 +407,7 @@ async function* frameGenerator(totalFrames: number, startFrame: number) {
 	}
 }
 
-// Attempt to draw frame or throw an error after ~3 seconds (300 * 10ms)
+// Attempt to draw frame or throw an error after about 3 seconds (300 * 10ms)
 async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 300): Promise<void> {
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const success = await buildAndDrawFrame(frameIndex, true);
@@ -465,7 +415,7 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 		console.log('retry', frameIndex);
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
-	console.error(
+	throw new Error(
 		`Frame Timeout: Frame ${frameIndex} failed to render after ${maxRetries} attempts.`
 	);
 }

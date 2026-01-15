@@ -46,8 +46,9 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 			case 'encode-progress': {
 				if (event.data.percentComplete > -1) {
 					appState.encoderProgress.percentage = event.data.percentComplete;
-					if (event.data.percentComplete === 100) appState.exportSuccessCallback();
+					if (event.data.percentComplete === 100) appState.exportSuccessCallback(true);
 				} else {
+					appState.exportSuccessCallback(false);
 					appState.encoderProgress.percentage = 0;
 					appState.encoderProgress.message = 'encoding failed';
 					appState.encoderProgress.fail = true;
@@ -55,10 +56,11 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 
 				break;
 			}
-			case 'download-link': {
+			case 'download-file': {
 				console.log(event.data);
+				const url = URL.createObjectURL(event.data.file);
 				const a = document.createElement('a');
-				a.href = event.data.link;
+				a.href = url;
 				a.download = event.data.fileName;
 				a.style.display = 'none'; // Keep it hidden
 
@@ -70,26 +72,7 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 
 				appState.encoderProgress.message = 'done';
 				appState.encoderProgress.percentage = 100;
-				appState.lockPalette = false;
-				break;
-			}
-			case 'download-file': {
-				console.log(event.data);
-				const url = URL.createObjectURL(event.data.file);
-				const a = document.createElement('a');
-				a.href = url;
-				a.download = event.data.file.name;
-				a.style.display = 'none'; // Keep it hidden
 
-				document.body.appendChild(a);
-				a.click();
-
-				document.body.removeChild(a);
-				URL.revokeObjectURL(event.data.link); // Clean up the URL
-
-				appState.encoderProgress.message = 'done';
-				appState.encoderProgress.percentage = 100;
-				appState.lockPalette = false;
 				break;
 			}
 		}
@@ -164,6 +147,13 @@ export const encode = async (fileName: string, startFrame: number, endFrame: num
 		},
 		[audioBuffer.buffer]
 	);
+};
+
+export const cancelEncode = () => {
+	appState.encoderProgress.message = 'cancelling...';
+	appState.mediaWorker?.postMessage({
+		command: 'cancelEncode'
+	});
 };
 
 function createThumbnail(image: ImageBitmap | VideoFrame, imageWidth: number, imageHeight: number) {

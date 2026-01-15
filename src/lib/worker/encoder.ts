@@ -79,7 +79,13 @@ export class Encoder {
 		await this.output.finalize();
 		this.syncHandle.flush();
 		this.syncHandle.close();
-
 		return await this.handle.getFile();
+	}
+
+	async cancel() {
+		if (!this.output || !this.syncHandle) return;
+		await this.output.cancel();
+		this.syncHandle.flush();
+		this.syncHandle.close();
 	}
 }

@@ -510,7 +510,7 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: nu
 		}
 
 		if (decoder.audioDataQueue.length < 1) {
-			console.log(`retries: ${retries}`);
+			//console.log(`retries: ${retries}`);
 			retries++;
 			if (retries >= maxRetries) {
 				// we sent in a buffer that was too big
