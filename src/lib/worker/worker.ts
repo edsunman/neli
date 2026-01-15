@@ -184,7 +184,7 @@ const setupFrame = async (frameNumber: number) => {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
 			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
-			await decoderPool.decoders.get(clip.id)?.play(clipFrame);
+			decoderPool.decoders.get(clip.id)?.play(clipFrame);
 		}
 	}
 };

@@ -10,32 +10,64 @@ export class VDecoder {
 	private iterator: AsyncGenerator<VideoSample, void, unknown> | undefined;
 	private frameQueue: VideoFrame[] = [];
 	private lastFrame?: VideoFrame | null = null;
-	private lastFrameNumber = 0;
+	private savedFrame?: VideoFrame | null = null;
+	private savedFrameNumber = 0;
 	private startToQueueFrames = false;
 
 	private currentChunk: EncodedVideoChunk | null = null;
 	private bestChunkTimestamp: number = -1;
 	private queueDequeue: Promise<void> | undefined;
-	private onQueueDequeue: ((value: void | PromiseLike<void>) => void) | undefined;
+	private resumeFeedingChunks: ((value: void | PromiseLike<void>) => void) | undefined;
+	private targetTimestamp: number = -1;
+	private foundTargetFrame = false;
 
 	id = 0;
 	running = false;
 	clipId: string | null = null;
 	lastUsedTime = 0;
 	usedThisFrame = false;
-	openKeyFrames = new Set();
 
 	constructor() {
 		this.decoder = new VideoDecoder({
 			output: (frame: VideoFrame) => {
-				this.onQueueDequeue?.();
+				if (this.running) {
+					if (this.foundTargetFrame) {
+						this.frameQueue.push(frame);
+					} else {
+						// We are still searching...
+						this.resumeFeedingChunks?.();
 
-				if (this.bestChunkTimestamp > -1 && frame.timestamp === this.bestChunkTimestamp) {
-					//console.log('found frame');
-					//this.chunkWasFound = true;
-					this.lastFrame = frame;
+						if (this.lastFrame) {
+							// If the NEW frame is >= target, then the OLD frame (lastFrame)
+							// is the one we want to queue first
+							if (frame.timestamp > this.targetTimestamp) {
+								this.frameQueue.push(this.lastFrame);
+								this.frameQueue.push(frame);
+								this.foundTargetFrame = true;
+								this.lastFrame = null;
+							} else if (frame.timestamp === this.targetTimestamp) {
+								// Edge case: Perfect match. We don't need lastFrame
+								this.lastFrame.close();
+								this.frameQueue.push(frame);
+								this.foundTargetFrame = true;
+								this.lastFrame = null;
+							} else {
+								// Still haven't hit the target
+								this.lastFrame.close();
+								this.lastFrame = frame;
+							}
+						} else {
+							// First frame from decoder
+							this.lastFrame = frame;
+						}
+					}
 				} else {
-					frame.close();
+					this.resumeFeedingChunks?.();
+					if (this.bestChunkTimestamp > -1 && frame.timestamp === this.bestChunkTimestamp) {
+						this.savedFrame = frame;
+					} else {
+						frame.close();
+					}
 				}
 			},
 			error: (e) => {
@@ -56,13 +88,12 @@ export class VDecoder {
 		if (!this.decoder || !this.ready || !this.packetSink) return;
 		this.bestChunkTimestamp = -1;
 
-		// We need to close this.lastFrame here as we replace it below
-		if (this.lastFrame) {
-			if (this.lastFrameNumber === frameNumber) {
-				return this.lastFrame;
+		// We need to close this.savedFrame here as we replace it below
+		if (this.savedFrame) {
+			if (this.savedFrameNumber === frameNumber) {
+				return this.savedFrame;
 			} else {
-				this.openKeyFrames.delete(this.lastFrame.timestamp);
-				this.lastFrame.close();
+				this.savedFrame.close();
 			}
 		}
 
@@ -83,7 +114,8 @@ export class VDecoder {
 			// Lets try a queue size of 8, maybe change in future
 			// https://github.com/Vanilagy/mediabunny/blob/571fbb31986c7e9b37310e144121ac964d48a29b/src/media-sink.ts#L793
 			if (this.decoder.decodeQueueSize > 8) {
-				({ promise: this.queueDequeue, resolve: this.onQueueDequeue } = Promise.withResolvers());
+				({ promise: this.queueDequeue, resolve: this.resumeFeedingChunks } =
+					Promise.withResolvers());
 				await this.queueDequeue;
 				continue;
 			}
@@ -107,38 +139,64 @@ export class VDecoder {
 		await packets.return();
 		await this.decoder.flush();
 
-		this.lastFrameNumber = frameNumber;
-		return this.lastFrame;
+		this.savedFrameNumber = frameNumber;
+		return this.savedFrame;
 	}
 
 	async play(frameNumber: number) {
+		if (!this.decoder || !this.packetSink) return;
 		if (this.running) return;
+
+		this.lastFrame?.close();
+		this.lastFrame = null;
 
 		this.running = true;
 		this.startToQueueFrames = false;
 		this.clearFrameQueue();
 
-		await this.iterator?.return();
+		this.targetTimestamp = Math.floor((frameNumber / 30) * 1_000_000);
+		this.foundTargetFrame = false;
 
-		this.iterator = this.sink?.samples(frameNumber / 30);
+		let keyPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
+			verifyKeyPackets: true
+		});
+		if (!keyPacket) keyPacket = await this.packetSink.getFirstPacket();
+		if (!keyPacket) throw new Error('No key packet');
 
-		if (!this.iterator) {
-			throw Error('no iterator assigned');
+		this.currentChunk = keyPacket.toEncodedVideoChunk();
+		const packets = this.packetSink.packets(keyPacket, undefined);
+		await packets.next(); // Skip the start packet as we already have it
+
+		while (this.running) {
+			if (this.decoder.decodeQueueSize > 8) {
+				({ promise: this.queueDequeue, resolve: this.resumeFeedingChunks } =
+					Promise.withResolvers());
+				await this.queueDequeue;
+				continue;
+			}
+			this.decoder.decode(this.currentChunk);
+			const packetResult = await packets.next();
+			if (packetResult.done) break;
+
+			this.currentChunk = packetResult.value.toEncodedVideoChunk();
 		}
 
-		this.fillFrameQueue();
+		await packets.return();
 	}
 
 	/** Called quickly during playback and encoding */
 	run(timeMs: number, encoding = false) {
-		if (!this.iterator) return;
-
 		if (this.startToQueueFrames && this.frameQueue.length < 3) {
-			this.fillFrameQueue();
+			this.resumeFeedingChunks?.();
 		}
 
-		const frameTime = Math.floor(timeMs * 1000);
+		// Nothing in frame queue so return saved frame
+		if (this.frameQueue.length < 1 && !encoding) {
+			return this.savedFrame;
+		}
 
+		// Find closest frame in frame queue
+		const frameTime = Math.floor(timeMs * 1000);
 		let minTimeDelta = Infinity;
 		let frameIndex = -1;
 		for (let i = 0; i < this.frameQueue.length; i++) {
@@ -153,28 +211,22 @@ export class VDecoder {
 
 		// If source has lower framerate than timeline we may need to return
 		// previous frame rather than grabbing a frame from framequeue
-		if (this.lastFrame) {
-			const lastFrameDelta = Math.abs(frameTime - this.lastFrame.timestamp);
+		if (this.savedFrame) {
+			const lastFrameDelta = Math.abs(frameTime - this.savedFrame.timestamp);
 			if (lastFrameDelta < minTimeDelta) {
-				if (DEBUG) console.log(`last frame is closer, returning ${this.lastFrame.timestamp}`);
-				return this.lastFrame;
+				if (DEBUG) console.log(`last frame is closer, returning ${this.savedFrame.timestamp}`);
+				return this.savedFrame;
 			}
 		}
 
 		for (let i = 0; i < frameIndex; i++) {
 			const staleFrame = this.frameQueue.shift();
-			if (staleFrame) {
-				this.openKeyFrames.delete(staleFrame.timestamp);
-				staleFrame.close();
-			}
+			staleFrame?.close();
 		}
 
 		const chosenFrame = this.frameQueue.shift();
 		if (chosenFrame && chosenFrame.format) {
-			if (this.lastFrame) {
-				this.openKeyFrames.delete(this.lastFrame.timestamp);
-				this.lastFrame.close();
-			}
+			this.lastFrame?.close();
 			this.lastFrame = chosenFrame;
 			this.startToQueueFrames = true;
 			if (DEBUG)
@@ -182,11 +234,10 @@ export class VDecoder {
 					`Returning frame, delta: ${minTimeDelta / 1000}ms \n` +
 						`want: ${frameTime} got: ${chosenFrame.timestamp}`
 				);
-
 			return chosenFrame;
 		}
 
-		if (this.lastFrame && !encoding) {
+		if (this.savedFrame && !encoding) {
 			console.log('returning an old frame');
 			return this.lastFrame;
 		}
@@ -200,31 +251,10 @@ export class VDecoder {
 
 		this.clearFrameQueue();
 		this.startToQueueFrames = false;
-		await this.iterator?.return();
-	}
-
-	private async fillFrameQueue() {
-		if (!this.iterator) {
-			throw Error('no iterator assigned');
-		}
-		for (let i = 0; i < 5; i++) {
-			const sample = (await this.iterator.next()).value ?? null;
-			if (!sample) {
-				//throw Error('no sample from iterator');
-				continue;
-			}
-			const frame = sample.toVideoFrame();
-			this.openKeyFrames.add(frame.timestamp);
-			sample.close();
-			this.frameQueue.push(frame);
-		}
-
-		return true;
 	}
 
 	private async clearFrameQueue() {
 		for (let i = 0; i < this.frameQueue.length; i++) {
-			this.openKeyFrames.delete(this.frameQueue[i].timestamp);
 			this.frameQueue[i].close();
 		}
 		this.frameQueue = [];
