@@ -1,6 +1,6 @@
 import { VDecoder } from './decoder';
 
-const DEBUG = true;
+const DEBUG = false;
 
 export class DecoderPool {
 	decoders = new Map<string, VDecoder>();

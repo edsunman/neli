@@ -38,7 +38,6 @@ self.addEventListener('message', async function (e) {
 				} else if (e.data.type === 'image') {
 					const bitmap = await createImageBitmap(e.data.file);
 					renderer.loadTexture(bitmap, e.data.id);
-					//@ts-expect-error scope issue?
 					self.postMessage({ command: 'thumbnail', sourceId: e.data.id, gap: 0, bitmap }, [bitmap]);
 				}
 			}
@@ -99,10 +98,9 @@ self.addEventListener('message', async function (e) {
 const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoSampleSink, source.encodedPacketSink);
+	decoder.setup(source.videoConfig, source.encodedPacketSink);
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
-	//@ts-expect-error webworker scope
 	self.postMessage({ command: 'thumbnail', sourceId: source.id, gap: source.gap, videoFrame }, [
 		videoFrame
 	]);
@@ -287,7 +285,7 @@ const setupNewDecoder = (clip: WorkerClip) => {
 	if (!source) return;
 	const decoder = decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
-	decoder.setup(source.videoConfig, source.videoSampleSink, source.encodedPacketSink);
+	decoder.setup(source.videoConfig, source.encodedPacketSink);
 	return decoder;
 };
 
@@ -304,7 +302,6 @@ const encodeAndCreateFile = async (
 	const durationInFrames = endFrame - startFrame;
 
 	encodeAudio(audioBuffer, durationInFrames);
-	await encoder.finalizeAudio();
 
 	await setupFrame(startFrame);
 
@@ -440,7 +437,6 @@ const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
 
 		encoder.encodeAudio(audioFrame);
 		encodeTimestamp += audioFrame.duration;
-		audioFrame.close();
 	}
 };
 

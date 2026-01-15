@@ -3,7 +3,6 @@ import { historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;

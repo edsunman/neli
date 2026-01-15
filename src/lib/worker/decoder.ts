@@ -1,4 +1,4 @@
-import { EncodedPacketSink, VideoSample, VideoSampleSink } from 'mediabunny';
+import { EncodedPacketSink } from 'mediabunny';
 
 const DEBUG = false;
 
@@ -6,8 +6,6 @@ export class VDecoder {
 	private decoder: VideoDecoder | undefined;
 	private ready = false;
 	private packetSink: EncodedPacketSink | undefined;
-	private sink: VideoSampleSink | undefined;
-	private iterator: AsyncGenerator<VideoSample, void, unknown> | undefined;
 	private frameQueue: VideoFrame[] = [];
 	private lastFrame?: VideoFrame | null = null;
 	private savedFrame?: VideoFrame | null = null;
@@ -76,9 +74,10 @@ export class VDecoder {
 		});
 	}
 
-	setup(config: VideoDecoderConfig, sink: VideoSampleSink, packetSink: EncodedPacketSink) {
+	setup(config: VideoDecoderConfig, packetSink: EncodedPacketSink) {
+		this.savedFrame?.close();
+		this.savedFrame = null;
 		this.decoder?.configure(config);
-		this.sink = sink;
 		this.packetSink = packetSink;
 		this.ready = true;
 	}
@@ -248,7 +247,7 @@ export class VDecoder {
 		this.running = false;
 		if (DEBUG)
 			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.frameQueue.length}`);
-
+		this.decoder?.flush();
 		this.clearFrameQueue();
 		this.startToQueueFrames = false;
 	}
@@ -257,6 +256,6 @@ export class VDecoder {
 		for (let i = 0; i < this.frameQueue.length; i++) {
 			this.frameQueue[i].close();
 		}
-		this.frameQueue = [];
+		this.frameQueue.length = 0;
 	}
 }

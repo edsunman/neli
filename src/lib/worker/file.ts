@@ -1,19 +1,22 @@
 import type { WorkerVideoSource } from '$lib/types';
-import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input, VideoSampleSink } from 'mediabunny';
+import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input } from 'mediabunny';
 
-export const loadFileNew = async (file: File, sourceId: string) => {
+export const loadFileNew = async (file: File, sourceId: string): Promise<WorkerVideoSource> => {
 	const input = new Input({
 		formats: ALL_FORMATS,
 		source: new BlobSource(file)
 	});
 
 	const videoTrack = await input.getPrimaryVideoTrack();
-	if (!videoTrack) return;
+	if (!videoTrack) {
+		throw new Error('No video track');
+	}
 
 	const videoConfig = await videoTrack.getDecoderConfig();
-	if (!videoConfig) return;
+	if (!videoConfig) {
+		throw new Error('No video config ');
+	}
 
-	const videoSampleSink = new VideoSampleSink(videoTrack);
 	const encodedPacketSink = new EncodedPacketSink(videoTrack);
 
 	//const stats = await videoTrack.computePacketStats(100);
@@ -43,10 +46,10 @@ export const loadFileNew = async (file: File, sourceId: string) => {
 		if (i >= maxSampleCount) break;
 	} */
 
-	return { videoTrack, videoConfig, videoSampleSink, encodedPacketSink, id: sourceId, gap: 0 };
+	return { videoTrack, videoConfig, encodedPacketSink, id: sourceId, gap: 0 };
 };
 
-export const loadFile = async (
+/* export const loadFile = async (
 	file: File,
 	sourceId: string
 ): Promise<WorkerVideoSource | undefined> => {
@@ -88,5 +91,6 @@ export const loadFile = async (
 		if (i >= maxSampleCount) break;
 	}
 
-	return { videoChunks, videoConfig, id: sourceId, gap: largestKeyframeGap };
+	//return { videoConfig, id: sourceId, gap: largestKeyframeGap };
 };
+ */

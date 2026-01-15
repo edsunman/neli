@@ -1,13 +1,12 @@
 import {
 	Output,
 	Mp4OutputFormat,
-	EncodedVideoPacketSource,
-	EncodedAudioPacketSource,
-	EncodedPacket,
 	StreamTarget,
-	type StreamTargetChunk,
 	VideoSampleSource,
-	VideoSample
+	VideoSample,
+	AudioSampleSource,
+	AudioSample,
+	type StreamTargetChunk
 } from 'mediabunny';
 
 /**
@@ -15,149 +14,72 @@ import {
  */
 export class Encoder {
 	private output: Output<Mp4OutputFormat, StreamTarget> | null = null;
-	private encoder: VideoEncoder | null = null;
-	private audioEncoder: AudioEncoder | null = null;
 	private frameCounter = 0;
 	private handle: FileSystemFileHandle | undefined;
-	private syncHandle: FileSystemFileHandle | undefined;
+	private syncHandle: FileSystemSyncAccessHandle | undefined;
 	private videoSampleSource: VideoSampleSource | undefined;
+	private audioSampleSource: AudioSampleSource | undefined;
 
 	async setup() {
-		this.encoder = new VideoEncoder({
-			output: async (chunk, meta) =>
-				await videoSource.add(EncodedPacket.fromEncodedChunk(chunk), meta),
-			error: (e) => console.error(e)
+		this.audioSampleSource = new AudioSampleSource({
+			codec: 'aac',
+			bitrate: 128_000
 		});
-
-		this.audioEncoder = new AudioEncoder({
-			output: async (chunk, meta) =>
-				await audioSource.add(EncodedPacket.fromEncodedChunk(chunk), meta),
-			error: (e) => console.error(e)
-		});
-
-		this.encoder.configure({
-			codec: 'avc1.420029',
-			width: 1920,
-			height: 1080,
-			bitrate: 10_000_000,
-			bitrateMode: 'constant'
-		});
-		const encoderConfig = {
-			codec: 'mp4a.40.2',
-			numberOfChannels: 2,
-			sampleRate: 48000,
-			bitrate: 128000
-		};
-		this.audioEncoder.configure(encoderConfig);
 
 		this.videoSampleSource = new VideoSampleSource({
 			codec: 'avc',
 			bitrate: 10_000_000
 		});
 
-		/* this.output = new Output({
-			format: new Mp4OutputFormat({
-				fastStart: 'in-memory'
-				//minimumFragmentDuration: MIN_FRAGMENT_DURATION
-			}),
-			target: new BufferTarget()
-		}); */
-
 		const root = await navigator.storage.getDirectory();
-		// Create (or overwrite) a temporary file in the sandbox
 		this.handle = await root.getFileHandle('temp_video.mp4', { create: true });
-		// This handle is only available in Workers
-		//const writableStream = await this.handle.createWritable();
-
-		//const syncHandle = await fileHandle.createSyncAccessHandle();
 		this.syncHandle = await this.handle.createSyncAccessHandle();
+		const syncHandle = this.syncHandle;
 
-		const h = this.syncHandle;
 		const writableStream = new WritableStream({
 			write(chunk: StreamTargetChunk) {
-				console.log('write');
-				// Pretend writing out data takes 10 milliseconds:
-				h.write(chunk.data, { at: chunk.position });
-				//return new Promise((resolve) => setTimeout(resolve, 10));
+				syncHandle.write(chunk.data, { at: chunk.position });
+				console.log(chunk.data.byteLength);
 			}
 		});
-
-		//console.log(syncHandle);
 
 		this.output = new Output({
 			format: new Mp4OutputFormat({
 				fastStart: false
-				//minimumFragmentDuration: MIN_FRAGMENT_DURATION
 			}),
-			target: new StreamTarget(writableStream)
+			target: new StreamTarget(writableStream, { chunked: true, chunkSize: 4_000_000 })
 		});
-
-		//const videoSource = new EncodedVideoPacketSource('avc');
 		this.output.addVideoTrack(this.videoSampleSource, {
 			rotation: 0,
 			frameRate: 30
 		});
-
-		const audioSource = new EncodedAudioPacketSource('aac');
-		this.output.addAudioTrack(audioSource);
+		this.output.addAudioTrack(this.audioSampleSource);
 
 		await this.output.start();
 	}
 
 	async encode(frame: VideoFrame) {
 		if (!this.videoSampleSource) return;
-		/* let keyFrame = false;
-		if (this.frameCounter % 30 === 0) {
-			keyFrame = true;
-		} */
 		const sample = new VideoSample(frame);
 		await this.videoSampleSource.add(sample);
 		sample.close();
-		//this.encoder.encode(frame, { keyFrame });
 		this.frameCounter++;
 	}
 
-	encodeAudio(audioData: AudioData) {
-		if (!this.audioEncoder) return;
-		this.audioEncoder.encode(audioData);
-		audioData.close();
-	}
-
-	async finalizeAudio() {
-		if (!this.audioEncoder) return;
-		await this.audioEncoder.flush();
+	async encodeAudio(audioData: AudioData) {
+		if (!this.audioSampleSource) return;
+		const sample = new AudioSample(audioData);
+		await this.audioSampleSource.add(sample);
+		sample.close();
 	}
 
 	async finalize() {
-		if (!this.output || !this.encoder || !this.audioEncoder) return;
-
-		await this.encoder.flush();
-
-		this.encoder.close();
-		this.encoder = null;
+		if (!this.output || !this.handle || !this.syncHandle) return;
 
 		await this.output.finalize();
-
-		if (!this.handle) return;
-
 		this.syncHandle.flush();
 		this.syncHandle.close();
 
-		console.log(this.syncHandle);
-
-		const file = await this.handle.getFile();
-
-		return file;
-		/* //const buffer = this.output.target.buffer;
-
-		if (!buffer) return;
-		const blob = new Blob([buffer]);
-
-		// clear buffer
-		this.output = null;
-
-		// TODO: there must be a better way to do this
-		// transfer buffer to main thread?
-		return URL.createObjectURL(blob); */
+		return await this.handle.getFile();
 	}
 }
