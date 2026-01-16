@@ -15,8 +15,8 @@
 	});
 </script>
 
-<div class="mx-8 flex-1 grow flex flex-col relative items-center">
-	{@render logoIcon('text-rose-500 size-35 absolute -top-5 left-38 ')}
+<div class="px-8 bg-zinc-900 rounded-2xl flex-1 grow flex flex-col relative items-center">
+	{@render logoIcon('text-rose-500 size-35 absolute -top-5 left-46 ')}
 	<svg
 		class="text-white w-40 mt-35 mb-5"
 		xmlns="http://www.w3.org/2000/svg"

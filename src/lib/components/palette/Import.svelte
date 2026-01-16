@@ -10,7 +10,13 @@
 	import { onMount } from 'svelte';
 	import type { Source } from '$lib/source/source.svelte';
 	import type { FileInfo } from '$lib/types';
-	import { infoIcon, spinningIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
+	import {
+		infoIcon,
+		spinningIcon,
+		audioIcon,
+		helpIcon,
+		backArrowIcon
+	} from '../icons/Icons.svelte';
 
 	import Button from '../ui/Button.svelte';
 
@@ -170,11 +176,24 @@
 	});
 </script>
 
-<div class="mx-8 flex-none py-5">
+<!-- <div class="mx-8 flex-none py-5">
 	<h1 class="text-xl text-zinc-50">import</h1>
 </div>
+ -->
+<div class="mx-8 flex-none flex py-5 items-center text-zinc-50">
+	<button
+		onclick={() => {
+			appState.palettePage = 'search';
+		}}
+		class="mr-2 opacity-100 pt-[2px] starting:opacity-0 transition-opacity delay-100 text-zinc-500 hover:text-zinc-50"
+	>
+		{@render backArrowIcon('size-4')}
+	</button>
 
-<div class="mx-8 flex-1 grow flex flex-col">
+	<h1 class="text-xl starting:transform-[translateX(-24px)] transition-transform">import</h1>
+</div>
+
+<div class="flex-1 px-8 bg-zinc-900 rounded-2xl grow flex flex-col">
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	{#if !showDetails}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -208,97 +227,100 @@
 			class="hidden"
 		/>
 	{:else}
-		<div class="text-zinc-200 flex mt-2">
-			<div class="w-30 h-20 mx-10 relative">
-				{#if thumbnail}
+		<div class="flex-1">
+			<div class="text-zinc-200 flex mt-8">
+				<div class="w-30 h-20 mx-10 relative">
+					{#if thumbnail}
+						<div
+							style:background-image={`url(${thumbnail})`}
+							class="absolute rounded-lg w-full h-full bg-cover bg-center opacity-100 starting:opacity-0 transition-opacity duration-500"
+						></div>
+					{/if}
 					<div
-						style:background-image={`url(${thumbnail})`}
-						class="absolute rounded-lg w-full h-full bg-cover bg-center opacity-100 starting:opacity-0 transition-opacity duration-500"
-					></div>
-				{/if}
-				<div
-					class={[
-						fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'
-							? 'bg-clip-blue-500'
-							: fileDetails.type === 'application/x-subrip'
-								? 'bg-clip-purple-500'
-								: 'border-2 border-zinc-700',
-						'rounded-lg w-full h-full flex items-center justify-center'
-					]}
-				>
-					{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
-						{@render audioIcon('size-12 text-clip-blue-600')}
-					{/if}
-					{#if fileDetails.type === 'application/x-subrip'}
-						<span class="text-clip-purple-600 text-3xl font-extrabold">.srt</span>
-					{/if}
-					{#if fileDetails.type === 'unknown'}
-						{@render helpIcon('size-12 text-zinc-600')}
-					{/if}
+						class={[
+							fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'
+								? 'bg-clip-blue-500'
+								: fileDetails.type === 'application/x-subrip'
+									? 'bg-clip-purple-500'
+									: 'border-2 border-zinc-700',
+							'rounded-lg w-full h-full flex items-center justify-center'
+						]}
+					>
+						{#if fileDetails.type === 'audio/mpeg' || fileDetails.type === 'audio/wav'}
+							{@render audioIcon('size-12 text-clip-blue-600')}
+						{/if}
+						{#if fileDetails.type === 'application/x-subrip'}
+							<span class="text-clip-purple-600 text-3xl font-extrabold">.srt</span>
+						{/if}
+						{#if fileDetails.type === 'unknown'}
+							{@render helpIcon('size-12 text-zinc-600')}
+						{/if}
+					</div>
+				</div>
+				<div class="w-20 flex-1 content-center wrap-break-word">
+					{truncateString(fileDetails.name, 80)}
 				</div>
 			</div>
-			<div class="w-20 flex-1 content-center wrap-break-word">
-				{truncateString(fileDetails.name, 80)}
-			</div>
+			{#if fileDetails.info && !('error' in fileDetails.info)}
+				<div class="grid grid-cols-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
+					{#if fileDetails.info.type === 'video'}
+						{@render info('codec:', fileDetails.info.codec)}
+						{@render info('duration:', formatDuration(fileDetails.info.duration))}
+						{@render info(
+							'resolution:',
+							`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
+						)}
+						{@render info(
+							'frame rate:',
+							`${Math.round(fileDetails.info.frameRate * 100) / 100}fps`
+						)}
+					{/if}
+					{#if fileDetails.info.type === 'image'}
+						{@render info('format:', fileDetails.info.format)}
+						{@render info(
+							'resolution:',
+							`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
+						)}
+					{/if}
+					{#if fileDetails.info.type === 'audio'}
+						{@render info('codec:', fileDetails.info.codec)}
+						{@render info('duration:', formatDuration(fileDetails.info.duration))}
+						{@render info('sample rate:', `${fileDetails.info.sampleRate / 1000} kHz`)}
+						{@render info('channels:', fileDetails.info.channelCount)}
+					{/if}
+					{#if fileDetails.info.type === 'srt'}
+						{@render info('duration:', fileDetails.info.duration)}
+						{@render info('captions:', fileDetails.info.entries)}
+					{/if}
+				</div>
+			{/if}
+			{#if warningMessage}
+				<div
+					class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center"
+				>
+					{@render infoIcon('size-6 mr-2 text-rose-600')}
+					<p class="flex-1 content-center">{warningMessage}</p>
+				</div>
+			{/if}
+			{#if loadingMessage}
+				<div class="text-zinc-200 mt-4 flex justify-center">
+					<div class="mr-4 content-center">{@render spinningIcon('size-5')}</div>
+					<p class="content-center">{loadingMessage}</p>
+				</div>
+			{/if}
 		</div>
-		{#if fileDetails.info && !('error' in fileDetails.info)}
-			<div class="grid grid-cols-2 mt-6 gap-2 px-2 py-4 text-white bg-hover rounded-lg">
-				{#if fileDetails.info.type === 'video'}
-					{@render info('codec:', fileDetails.info.codec)}
-					{@render info('duration:', formatDuration(fileDetails.info.duration))}
-					{@render info(
-						'resolution:',
-						`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
-					)}
-					{@render info('frame rate:', `${Math.round(fileDetails.info.frameRate * 100) / 100}fps`)}
-				{/if}
-				{#if fileDetails.info.type === 'image'}
-					{@render info('format:', fileDetails.info.format)}
-					{@render info(
-						'resolution:',
-						`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`
-					)}
-				{/if}
-				{#if fileDetails.info.type === 'audio'}
-					{@render info('codec:', fileDetails.info.codec)}
-					{@render info('duration:', formatDuration(fileDetails.info.duration))}
-					{@render info('sample rate:', `${fileDetails.info.sampleRate / 1000} kHz`)}
-					{@render info('channels:', fileDetails.info.channelCount)}
-				{/if}
-				{#if fileDetails.info.type === 'srt'}
-					{@render info('duration:', fileDetails.info.duration)}
-					{@render info('captions:', fileDetails.info.entries)}
-				{/if}
-			</div>
-		{/if}
-		{#if warningMessage}
-			<div
-				class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center"
-			>
-				{@render infoIcon('size-6 mr-2 text-rose-600')}
-				<p class="flex-1 content-center">{warningMessage}</p>
-			</div>
-		{/if}
-		{#if loadingMessage}
-			<div class="text-zinc-200 mt-4 flex justify-center">
-				<div class="mr-4 content-center">{@render spinningIcon('size-5')}</div>
-				<p class="content-center">{loadingMessage}</p>
-			</div>
-		{/if}
+		<div class="flex-none pt-5 pb-7 text-right">
+			<Button
+				onclick={() => {
+					appState.showPalette = false;
+					appState.palettePage = 'search';
+				}}
+				text={'Done'}
+				disabled={disableButton}
+			/>
+		</div>
 	{/if}
 </div>
-{#if showDetails}
-	<div class="mx-8 flex-none pt-5 pb-7 text-right">
-		<Button
-			onclick={() => {
-				appState.showPalette = false;
-				appState.palettePage = 'search';
-			}}
-			text={'Done'}
-			disabled={disableButton}
-		/>
-	</div>
-{/if}
 
 {#snippet info(text: string, info: string | number)}
 	<div class="text-center">

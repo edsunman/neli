@@ -26,7 +26,7 @@
 	<div
 		class={[
 			smallBox ? 'h-60' : 'h-[30rem]',
-			'bg-zinc-900 w-lg rounded-xl flex flex-col transition-all duration-500 ease-in-out'
+			'bg-zinc-925 w-lg rounded-2xl flex flex-col transition-all duration-500 ease-in-out'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
