@@ -34,10 +34,10 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			}
 		}
 		// look ahead
-		if (frame < clip.start && frame > clip.start - 4) {
-			//const frameDistance = clip.start - frame;
-			//console.log(`clip starts in ${frameDistance} frames`);
-		}
+		//if (frame < clip.start && frame > clip.start - 4) {
+		//const frameDistance = clip.start - frame;
+		//console.log(`clip starts in ${frameDistance} frames`);
+		//}
 	}
 
 	// stop decoders
@@ -61,63 +61,44 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 	// play audio in decoder buffers
 	for (const [clipId, decoder] of audioState.decoderPool.decoders) {
 		if (decoder.running && decoder.audioDataQueue.length > 4) {
-			let currentBatchFrames = 0;
+			let totalFrames = 0;
 			for (const audioData of decoder.audioDataQueue) {
-				currentBatchFrames += audioData.numberOfFrames;
+				totalFrames += audioData.numberOfFrames;
 			}
-			const combinedBatchBuffer = new Float32Array(currentBatchFrames * 2);
-			let offset = 0;
+
+			const audioBuffer = audioState.audioContext.createBuffer(2, totalFrames, decoder.sampleRate);
+			const leftChannel = audioBuffer.getChannelData(0);
+			const rightChannel = audioBuffer.getChannelData(1);
+
+			let frameOffset = 0;
 			for (const audioData of decoder.audioDataQueue) {
-				for (let i = 0; i < 2; i++) {
-					const planarData = new Float32Array(audioData.numberOfFrames);
-					audioData.copyTo(planarData, {
-						format: 'f32-planar',
-						planeIndex: i,
-						frameOffset: 0,
-						frameCount: audioData.numberOfFrames
-					});
-
-					for (let j = 0; j < audioData.numberOfFrames; j++) {
-						combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
-					}
-				}
-
-				offset += audioData.numberOfFrames * 2;
+				const count = audioData.numberOfFrames;
+				audioData.copyTo(leftChannel.subarray(frameOffset, frameOffset + count), {
+					format: 'f32-planar',
+					planeIndex: 0
+				});
+				audioData.copyTo(rightChannel.subarray(frameOffset, frameOffset + count), {
+					format: 'f32-planar',
+					planeIndex: 1
+				});
+				frameOffset += count;
 				audioData.close();
 			}
+
 			decoder.audioDataQueue.length = 0;
-
-			const framesRead = currentBatchFrames;
-			const audioBuffer = audioState.audioContext.createBuffer(
-				2,
-				currentBatchFrames,
-				decoder.sampleRate
-			);
-
-			const leftChannelData = audioBuffer.getChannelData(0);
-			for (let i = 0; i < framesRead; i++) {
-				leftChannelData[i] = combinedBatchBuffer[i * 2];
-			}
-
-			const rightChannelData = audioBuffer.getChannelData(1);
-			for (let i = 0; i < framesRead; i++) {
-				rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
-			}
 
 			const sourceNode = audioState.audioContext.createBufferSource();
 			sourceNode.buffer = audioBuffer;
-
 			const gainNode = audioState.gainNodes.get(clipId);
 			if (gainNode) sourceNode.connect(gainNode);
 
 			const currentOffset = audioState.offsets.get(clipId);
 			let scheduledTime = audioState.audioContext.currentTime;
-
 			if (currentOffset) {
 				scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
 			}
-			sourceNode.start(scheduledTime);
 
+			sourceNode.start(scheduledTime);
 			audioState.offsets.set(clipId, scheduledTime + audioBuffer.duration);
 		}
 	}
@@ -199,7 +180,7 @@ const updateMeter = () => {
 	let dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
 
 	// TODO: show clipping on meter
-	//if (dbPeak > 1) console.log('clip');
+	// if (dbPeak > 0.98) console.log('clip');
 
 	// Normalise between 0 and 1
 	let normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (0 - MIN_METER_DB);

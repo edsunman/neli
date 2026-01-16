@@ -24,7 +24,6 @@ export class ADecoder {
 	}
 
 	setup(config: AudioDecoderConfig, sink: EncodedPacketSink) {
-		console.log(sink);
 		this.decoderConfig = config;
 		this.decoder.configure(this.decoderConfig);
 		this.packetSink = sink;

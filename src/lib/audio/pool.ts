@@ -4,16 +4,17 @@ const DEBUG = false;
 
 export class DecoderPool {
 	decoders = new Map<string, ADecoder>();
-	#maxDecoders = 3;
-	#decoderCount = 0;
+
+	private maxDecoders = 6;
+	private decoderCount = 0;
 
 	assignDecoder(clipId: string) {
 		let decoder;
-		if (this.decoders.size < this.#maxDecoders) {
+		if (this.decoders.size < this.maxDecoders) {
 			// Create a new decoder
 			decoder = new ADecoder();
-			this.#decoderCount++;
-			decoder.id = this.#decoderCount;
+			this.decoderCount++;
+			decoder.id = this.decoderCount;
 			if (DEBUG) console.log(`[Pool] Created new decoder`);
 		} else {
 			// Use the oldest active decoder
@@ -38,7 +39,7 @@ export class DecoderPool {
 		decoder.pause();
 		this.decoders.set(clipId, decoder);
 
-		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.#maxDecoders}`);
+		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.maxDecoders}`);
 		return decoder;
 	}
 
