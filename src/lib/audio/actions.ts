@@ -173,10 +173,10 @@ export const pauseAudio = () => {
 
 const setupNewDecoder = (clip: Clip) => {
 	const source = appState.sources.find((s) => s.id === clip.source.id);
-	if (!source || !source.audioConfig) return;
+	if (!source || !source.audioConfig || !source.sink) return;
 	const decoder = audioState.decoderPool.assignDecoder(clip.id);
 	if (!decoder) return;
-	decoder.setup(source.audioConfig, source.audioChunks);
+	decoder.setup(source.audioConfig, source.sink);
 	return decoder;
 };
 
@@ -238,68 +238,33 @@ const updateMeter = () => {
 };
 
 export const generateWaveformData = async (source: Source) => {
-	let resolve: (value: boolean) => void;
-	const promise = new Promise((res) => {
-		resolve = res;
-	});
-
-	if (!source.audioConfig || !source.duration || !source.frameRate) return;
+	if (!source.audioConfig || !source.duration || !source.frameRate || !source.sampleSink) return;
 	// We are going to store 300 values per second to draw waveform
-	// The step is how many samples we need per value
+	// Step is how many samples we need per value
 	const step = source.audioConfig.sampleRate / 300;
-
 	const durationInSeconds = source.duration / source.frameRate;
-	// Array needs to be big enough to hold 300 samples per second
 	const data = new Float32Array(durationInSeconds * 300);
 
-	const decoder = audioState.decoderPool.assignDecoder(source.id);
-	if (!decoder) return;
-	decoder.setup(source.audioConfig, source.audioChunks);
-	decoder.play(0);
-
-	let count = 0;
-	let retries = 0;
 	const state = {
 		currentIndex: 0,
 		samplesRemaining: 0,
 		previousMax: 0,
 		tempSamples: []
 	};
-	const decodeLoop = async () => {
-		retries++;
-		decoder.run(0, true);
 
-		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
-			const audioData = decoder.audioDataQueue.shift();
-			if (!audioData) continue;
-
-			const numberOfAudioDataSamples = audioData.numberOfFrames;
-			const rawData = new Float32Array(numberOfAudioDataSamples);
-
-			audioData.copyTo(rawData, {
-				format: 'f32-planar',
-				planeIndex: 0,
-				frameOffset: 0
-			});
-
-			processAudioChunk(rawData, step, state, data);
-			audioData.close();
-			count++;
-			retries = 0;
-		}
-
-		if (retries > 50) {
-			resolve(false);
-		} else if (count < source.audioChunks.length - 2) {
-			setTimeout(decodeLoop, 0);
-		} else {
-			source.audioWaveform = data;
-			timelineState.invalidateWaveform = true;
-			resolve(true);
-		}
-	};
-	decodeLoop();
-	return promise;
+	for await (const sample of source.sampleSink.samples()) {
+		const numberOfAudioDataSamples = sample.numberOfFrames;
+		const rawData = new Float32Array(numberOfAudioDataSamples);
+		sample.copyTo(rawData, {
+			format: 'f32-planar',
+			planeIndex: 0,
+			frameOffset: 0
+		});
+		processAudioChunk(rawData, step, state, data);
+		sample.close();
+	}
+	source.audioWaveform = data;
+	timelineState.invalidateWaveform = true;
 };
 
 const processAudioChunk = (
@@ -426,6 +391,7 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 			}
 		} else {
 			await decodeSource(audioBuffer, clip, sourceStartFrame);
+			console.log(audioBuffer);
 		}
 
 		const gainNode = offlineAudioContext.createGain();
@@ -459,76 +425,33 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
  * clips use the same source it will be decoded mutltple times
  */
 const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: number) => {
-	let resolver: (value: boolean | PromiseLike<boolean>) => void;
-	const promise = new Promise<boolean>((resolve) => {
-		resolver = resolve;
-	});
-
-	const decoder = setupNewDecoder(clip);
-	if (!decoder) return;
-	decoder.play(startFrame);
-
+	if (!clip.source.sampleSink) return;
 	let currentWriteOffset = 0;
-	let done = false;
-	let retries = 0;
-	const maxRetries = 20;
-	const decodeLoop = async () => {
-		decoder.run(0, true);
+	for await (const sample of clip.source.sampleSink.samples(startFrame / 30)) {
+		console.log(sample.format);
+		for (let c = 0; c < sample.numberOfChannels; c++) {
+			const finalBufferChannelData = audioBuffer.getChannelData(c);
 
-		for (let i = 1; i <= decoder.audioDataQueue.length; i++) {
-			retries = 0;
+			const destinationSlice = finalBufferChannelData.subarray(
+				currentWriteOffset,
+				currentWriteOffset + sample.numberOfFrames
+			);
 
-			const audioData = decoder.audioDataQueue.shift();
-			if (!audioData) continue;
-
-			for (let c = 0; c < audioData.numberOfChannels; c++) {
-				const finalBufferChannelData = audioBuffer.getChannelData(c);
-
-				const destinationSlice = finalBufferChannelData.subarray(
-					currentWriteOffset,
-					currentWriteOffset + audioData.numberOfFrames
-				);
-
-				audioData.copyTo(destinationSlice, {
-					format: 'f32-planar',
-					planeIndex: c,
-					frameCount: audioData.numberOfFrames
-				});
-			}
-			currentWriteOffset += audioData.numberOfFrames;
-			/* console.log(
-				`current write offset: ${currentWriteOffset}, trying to copy: ${audioData.numberOfFrames}, total length: ${audioBuffer.length}`
-			); */
-			const numberOfFrames = audioData.numberOfFrames;
-			audioData.close();
-
-			if (currentWriteOffset + numberOfFrames >= audioBuffer.length) {
-				// buffer full
-				done = true;
-				break;
-			}
+			sample.copyTo(destinationSlice, {
+				format: 'f32-planar',
+				planeIndex: c,
+				frameCount: sample.numberOfFrames
+			});
 		}
+		currentWriteOffset += sample.numberOfFrames;
+		const numberOfFrames = sample.numberOfFrames;
+		sample.close();
 
-		if (decoder.audioDataQueue.length < 1) {
-			//console.log(`retries: ${retries}`);
-			retries++;
-			if (retries >= maxRetries) {
-				// we sent in a buffer that was too big
-				console.warn('audio decode loop hit max retries');
-				done = true;
-			}
+		if (currentWriteOffset + numberOfFrames >= audioBuffer.length) {
+			// buffer full
+			break;
 		}
-
-		if (done) {
-			decoder.pause();
-			resolver(true);
-		} else {
-			setTimeout(decodeLoop, 0);
-		}
-	};
-	decodeLoop();
-
-	return promise;
+	}
 };
 
 const generateTone = (high = false, sampleRate: number, frameCount: number) => {

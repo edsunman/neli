@@ -46,6 +46,7 @@
 		cancelEncode();
 		appState.lockPalette = false;
 		appState.showPalette = false;
+		appState.disableKeyboardShortcuts = false;
 	};
 </script>
 
@@ -126,11 +127,14 @@
 	{#if !encodingStarted}
 		<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text={'Export'} />
 	{:else if encodingStarted && !encodingFinished}
-		<Button bind:ref={closeButton} onclick={() => cancel()} text={'cancel'} />
+		<Button onclick={() => cancel()} text={'cancel'} />
 	{:else}
 		<Button
 			bind:ref={closeButton}
-			onclick={() => (appState.showPalette = false)}
+			onclick={() => {
+				appState.showPalette = false;
+				appState.disableKeyboardShortcuts = false;
+			}}
 			text={'close'}
 			disabled={!(appState.encoderProgress.fail || appState.encoderProgress.percentage === 100)}
 		/>

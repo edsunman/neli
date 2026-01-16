@@ -27,46 +27,7 @@ export class VDecoder {
 
 	constructor() {
 		this.decoder = new VideoDecoder({
-			output: (frame: VideoFrame) => {
-				if (this.running) {
-					if (this.foundTargetFrame) {
-						this.frameQueue.push(frame);
-					} else {
-						this.resumeFeedingChunks?.();
-
-						if (this.lastFrame) {
-							// If the new frame is past the target frame,
-							// then the last frame is the one we want to queue first
-							if (frame.timestamp > this.targetTimestamp) {
-								this.frameQueue.push(this.lastFrame);
-								this.frameQueue.push(frame);
-								this.foundTargetFrame = true;
-								this.lastFrame = null;
-							} else if (frame.timestamp === this.targetTimestamp) {
-								// Edge case: Perfect match so we don't need lastFrame
-								this.lastFrame.close();
-								this.frameQueue.push(frame);
-								this.foundTargetFrame = true;
-								this.lastFrame = null;
-							} else {
-								// Still haven't hit the target
-								this.lastFrame.close();
-								this.lastFrame = frame;
-							}
-						} else {
-							// First frame from decoder
-							this.lastFrame = frame;
-						}
-					}
-				} else {
-					this.resumeFeedingChunks?.();
-					if (this.bestChunkTimestamp > -1 && frame.timestamp === this.bestChunkTimestamp) {
-						this.savedFrame = frame;
-					} else {
-						frame.close();
-					}
-				}
-			},
+			output: this.onOutput,
 			error: (e) => {
 				console.error(e);
 			}
@@ -186,6 +147,7 @@ export class VDecoder {
 		}
 
 		await packets.return();
+		console.log(`decoder ${this.id} cleaned up`);
 	}
 
 	/** Called quickly during playback and encoding */
@@ -251,12 +213,54 @@ export class VDecoder {
 	async pause() {
 		if (!this.running) return;
 		this.running = false;
+		this.resumeFeedingChunks?.();
 		if (DEBUG)
 			console.log(`Decoder ${this.id} paused. Frames left in queue: ${this.frameQueue.length}`);
 		this.decoder?.flush();
 		this.clearFrameQueue();
 		this.startToQueueFrames = false;
 	}
+
+	private onOutput = (frame: VideoFrame) => {
+		if (this.running) {
+			if (this.foundTargetFrame) {
+				this.frameQueue.push(frame);
+			} else {
+				this.resumeFeedingChunks?.();
+
+				if (this.lastFrame) {
+					// If the new frame is past the target frame,
+					// then the last frame is the one we want to queue first
+					if (frame.timestamp > this.targetTimestamp) {
+						this.frameQueue.push(this.lastFrame);
+						this.frameQueue.push(frame);
+						this.foundTargetFrame = true;
+						this.lastFrame = null;
+					} else if (frame.timestamp === this.targetTimestamp) {
+						// Edge case: Perfect match so we don't need lastFrame
+						this.lastFrame.close();
+						this.frameQueue.push(frame);
+						this.foundTargetFrame = true;
+						this.lastFrame = null;
+					} else {
+						// Still haven't hit the target
+						this.lastFrame.close();
+						this.lastFrame = frame;
+					}
+				} else {
+					// First frame from decoder
+					this.lastFrame = frame;
+				}
+			}
+		} else {
+			this.resumeFeedingChunks?.();
+			if (this.bestChunkTimestamp > -1 && frame.timestamp === this.bestChunkTimestamp) {
+				this.savedFrame = frame;
+			} else {
+				frame.close();
+			}
+		}
+	};
 
 	private async clearFrameQueue() {
 		for (let i = 0; i < this.frameQueue.length; i++) {

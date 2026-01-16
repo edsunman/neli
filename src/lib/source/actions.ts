@@ -2,7 +2,7 @@ import { sendFileToWorker } from '$lib/worker/actions.svelte';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { generateWaveformData } from '$lib/audio/actions';
-import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from 'mediabunny';
+import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, FolderGroup, SourceType, SrtEntry, TrackType } from '$lib/types';
 import { getTrackTypeFromSourceType } from '$lib/timeline/actions';
 
@@ -91,17 +91,8 @@ export const createVideoSource = async (
 
 	if (audioTrack && audioConfig) {
 		// file has audio track
-		const sink = new EncodedPacketSink(audioTrack);
-		const audioChunks: EncodedAudioChunk[] = [];
-
-		let duration = 0;
-		for await (const packet of sink.packets()) {
-			duration += packet.duration;
-			audioChunks.push(packet.toEncodedAudioChunk());
-			if (duration > 120) break;
-		}
-
-		newSource.audioChunks = audioChunks;
+		newSource.sink = new EncodedPacketSink(audioTrack);
+		newSource.sampleSink = new AudioSampleSink(audioTrack);
 		newSource.audioConfig = audioConfig;
 	}
 
@@ -140,17 +131,8 @@ export const createAudioSource = async (file: File, durationSeconds: number) => 
 
 	if (!audioTrack || !audioConfig) return;
 
-	const sink = new EncodedPacketSink(audioTrack);
-	const audioChunks: EncodedAudioChunk[] = [];
-
-	let duration = 0;
-	for await (const packet of sink.packets()) {
-		duration += packet.duration;
-		audioChunks.push(packet.toEncodedAudioChunk());
-		if (duration > 120) break;
-	}
-
-	newSource.audioChunks = audioChunks;
+	newSource.sink = new EncodedPacketSink(audioTrack);
+	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
 
 	//appState.sources.push(newSource);
