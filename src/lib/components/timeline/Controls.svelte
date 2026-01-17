@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, programState, timelineState } from '$lib/state.svelte';
 	import { pause, play } from '$lib/timeline/actions';
 	import { framesToTimecode } from '$lib/timeline/utils';
 	import { pauseIcon, playIcon, seekIcon, copyIcon, mouseIcon } from '../icons/Icons.svelte';
@@ -10,6 +10,10 @@
 
 	let formattedTime = $derived.by(() => {
 		return framesToTimecode(timelineState.currentFrame);
+	});
+
+	let formattedProgramTime = $derived.by(() => {
+		return framesToTimecode(programState.currentFrame);
 	});
 
 	let contextMenu: ContextMenu;
@@ -29,7 +33,9 @@
 			onclick: async () => {
 				const type = 'text/plain';
 				const clipboardItemData = {
-					[type]: framesToTimecode(timelineState.currentFrame)
+					[type]: framesToTimecode(
+						appState.selectedSource ? programState.currentFrame : timelineState.currentFrame
+					)
 				};
 				const clipboardItem = new ClipboardItem(clipboardItemData);
 				await navigator.clipboard.write([clipboardItem]);
@@ -71,7 +77,11 @@
 		{/if}
 
 		<span>
-			{showFrames ? timelineState.currentFrame : formattedTime}
+			{#if appState.selectedSource}
+				{showFrames ? programState.currentFrame : formattedProgramTime}
+			{:else}
+				{showFrames ? timelineState.currentFrame : formattedTime}
+			{/if}
 		</span>
 	</button>
 </div>

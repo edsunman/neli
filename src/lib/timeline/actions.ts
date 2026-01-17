@@ -1,5 +1,5 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
-import { historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
@@ -19,6 +19,7 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 
 export const play = () => {
 	playWorker(timelineState.currentFrame);
+	appState.propertiesSection = 'masterAudio';
 };
 
 export const startPlayLoop = () => {

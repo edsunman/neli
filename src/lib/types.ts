@@ -5,6 +5,8 @@ import type { Source } from './source/source.svelte';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 
+export type PropertiesSection = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
+
 export type Track = {
 	height: number;
 	top: number;

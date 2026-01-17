@@ -4,10 +4,10 @@
 	import type { Snippet } from 'svelte';
 
 	type Props = {
-		value: number;
+		value?: number;
 		items: { value: number; icon: Snippet<[string]> }[];
 	};
-	let { value = $bindable(), items }: Props = $props();
+	let { value = $bindable(0), items }: Props = $props();
 
 	let selectedIndex = $derived.by(() => {
 		let index = 0;

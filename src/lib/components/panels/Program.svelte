@@ -6,8 +6,8 @@
 	import { measureText } from '$lib/text/utils';
 
 	import ClipBox from '../program/ClipBox.svelte';
-
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+	import SourceTimeline from '../timeline/SourceTimeline.svelte';
+	import { showClipPropertiesSection } from '$lib/properties/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -48,6 +48,7 @@
 				e.offsetY < box.centerY + box.height / 2
 			) {
 				timelineState.selectedClip = clip;
+				showClipPropertiesSection(clip);
 				break;
 			}
 		}
@@ -60,29 +61,34 @@
 	});
 </script>
 
-<div
-	class="h-full relative overflow-hidden"
-	bind:this={canvasContainer}
-	bind:clientHeight={height}
-	bind:clientWidth={width}
->
+<div class="flex flex-col h-full">
 	<div
-		class="absolute"
-		style:top={`${height / 2 - 540}px`}
-		style:left={`${width / 2 - 960}px`}
-		style:transform={`scale(${scale}%)`}
+		class="flex-1 h-full relative overflow-hidden"
+		bind:this={canvasContainer}
+		bind:clientHeight={height}
+		bind:clientWidth={width}
 	>
-		<canvas
-			bind:this={canvas}
-			width={1920}
-			height={1080}
-			onmousedown={canvasMouseDown}
-			oncontextmenu={(e) => {
-				e.preventDefault();
-			}}
-		></canvas>
+		<div
+			class="absolute"
+			style:top={`${height / 2 - 540}px`}
+			style:left={`${width / 2 - 960}px`}
+			style:transform={`scale(${scale}%)`}
+		>
+			<canvas
+				bind:this={canvas}
+				width={1920}
+				height={1080}
+				onmousedown={canvasMouseDown}
+				oncontextmenu={(e) => {
+					e.preventDefault();
+				}}
+			></canvas>
+		</div>
+		{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
+			<ClipBox clip={timelineState.selectedClip} {scale} {width} {height} {canvasContainer} />
+		{/if}
 	</div>
-	{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
-		<ClipBox clip={timelineState.selectedClip} {scale} {width} {height} {canvasContainer} />
+	{#if appState.selectedSource}
+		<SourceTimeline />
 	{/if}
 </div>

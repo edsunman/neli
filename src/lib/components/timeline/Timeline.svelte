@@ -44,8 +44,11 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
+	import { hideSourceInProgram } from '$lib/program/actions';
+	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
+	import { showClipPropertiesSection } from '$lib/properties/actions';
 
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+	const { onFrame } = useAnimationFrame();
 
 	let canvas = $state<HTMLCanvasElement>();
 	let context: CanvasRenderingContext2D | null;
@@ -83,7 +86,7 @@
 		}
 	]);
 
-	mouseMove = (e: MouseEvent) => {
+	const mouseMove = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
 
@@ -161,6 +164,10 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
+		if (appState.selectedSource) {
+			appState.selectedSource = null;
+			hideSourceInProgram();
+		}
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
@@ -220,6 +227,7 @@
 			}
 			timelineState.selectedClip = clip;
 			timelineState.selectedClips.clear();
+			showClipPropertiesSection(clip);
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
@@ -235,12 +243,14 @@
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
 			timelineState.action = 'selecting';
+			appState.propertiesSection = 'masterAudio';
 		}
 		removeHoverAllClips();
 		timelineState.invalidate = true;
 	};
 
-	mouseUp = () => {
+	const mouseUp = () => {
+		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
 		if (scrubbing) {
 			scrubbing = false;
@@ -252,6 +262,7 @@
 				if (appState.dragAndDrop.active) {
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
+					showClipPropertiesSection(clip);
 				} else {
 					finaliseClip(clip, 'moveClip');
 				}
@@ -272,11 +283,14 @@
 			resizing = false;
 			if (clip) finaliseClip(clip, 'trimClip');
 		}
-		if ((timelineState.action = 'selecting')) {
+		if (timelineState.action === 'selecting') {
 			if (timelineState.selectedClips.size === 1) {
 				// if there is only one clip, select it
 				const foundClip = timelineState.selectedClips.values().next().value;
-				if (foundClip) timelineState.selectedClip = foundClip;
+				if (foundClip) {
+					showClipPropertiesSection(foundClip);
+					timelineState.selectedClip = foundClip;
+				}
 				timelineState.selectedClips.clear();
 			}
 		}
@@ -352,7 +366,7 @@
 		drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 	};
 
-	const step = () => {
+	onFrame(() => {
 		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveforms(waveContext, timelineState.width);
 			timelineState.invalidateWaveform = false;
@@ -362,9 +376,7 @@
 			if (context) drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 			timelineState.invalidate = false;
 		}
-		requestAnimationFrame(step);
-	};
-	requestAnimationFrame(step);
+	});
 
 	onMount(() => {
 		if (!canvas || !canvasContainer) return;
@@ -436,11 +448,16 @@
 		<canvas class="absolute" bind:this={canvas}></canvas>
 	</div>
 </div>
+
+<ContextMenu bind:this={contextMenu} {buttons} />
+
 <svelte:window
+	onmousemove={mouseMove}
+	onmouseup={mouseUp}
 	onresize={async () => {
 		if (!canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
-		timelineState.height = canvasContainer?.clientHeight;
+		timelineState.height = canvasContainer.clientHeight;
 		setCanvasSize();
 
 		if (waveContext) drawWaveforms(waveContext, timelineState.width);
@@ -513,5 +530,3 @@
 		}
 	}}
 />
-
-<ContextMenu bind:this={contextMenu} {buttons} />
