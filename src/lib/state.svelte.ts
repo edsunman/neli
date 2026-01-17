@@ -2,7 +2,7 @@ import type { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { DragAndDropState, FolderGroup, Font, Track } from './types';
+import type { DragAndDropState, FolderGroup, Font, ImportState, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
@@ -22,13 +22,17 @@ class AppState {
 		source: null
 	});
 	folderGroups: FolderGroup[] = $state([]);
-
+	import = $state<ImportState>({
+		importStarted: false,
+		thumbnail: '',
+		warningMessage: '',
+		fileDetails: null
+	});
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
 	importSuccessCallback: (source: Source, gap: number) => void = () => {};
 	exportSuccessCallback: (success: boolean) => void = () => {};
-	fileToImport: File | null = null;
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
 

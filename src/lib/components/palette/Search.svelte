@@ -47,7 +47,10 @@
 					selected: true,
 					icon: importIcon,
 					shortcuts: ['I'],
-					action: () => (appState.palettePage = 'import')
+					action: () => {
+						appState.import.importStarted = false;
+						appState.palettePage = 'import';
+					}
 				},
 				{
 					id: 102,

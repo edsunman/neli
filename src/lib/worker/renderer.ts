@@ -169,7 +169,6 @@ export class WebGPURenderer {
 		width: number
 	) {
 		if (!this.passEncoder) return;
-		//console.log('draw', frame.timestamp);
 		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.videoRenderer?.draw(
 			this.passEncoder,

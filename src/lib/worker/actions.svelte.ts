@@ -27,17 +27,17 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 			case 'thumbnail': {
 				if (event.data.videoFrame) {
 					const videoFrame = event.data.videoFrame as VideoFrame;
-					const imageData = createThumbnail(
+					const imageData = await createThumbnail(
 						videoFrame,
 						videoFrame.codedWidth,
 						videoFrame.codedHeight
 					);
-					setSourceThumbnail(event.data.sourceId, imageData, 0);
+					setSourceThumbnail(event.data.sourceId, imageData, event.data.gap);
 				}
 
 				if (event.data.bitmap) {
 					const bitmap = event.data.bitmap as ImageBitmap;
-					const imageData = createThumbnail(bitmap, bitmap.width, bitmap.height);
+					const imageData = await createThumbnail(bitmap, bitmap.width, bitmap.height);
 					setSourceThumbnail(event.data.sourceId, imageData, 0);
 				}
 
@@ -57,7 +57,6 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				break;
 			}
 			case 'download-file': {
-				console.log(event.data);
 				const url = URL.createObjectURL(event.data.file);
 				const a = document.createElement('a');
 				a.href = url;
@@ -90,13 +89,21 @@ export const sendFileToWorker = (source: Source) => {
 
 // TODO: updates should be batched together
 // so multiple clip updates are sent in one message
+// Also do we really need to send everything or can
+// we decide what to send?
 export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
+	let height = 0;
+	let width = 0;
+	if (clip.source.info.type === 'video' || clip.source.info.type === 'image') {
+		height = clip.source.info.resolution.height;
+		width = clip.source.info.resolution.width;
+	}
 	const workerClip: WorkerClip = {
 		id: clip.id,
 		sourceId: clip.source.id,
-		sourceHeight: clip.source.height,
-		sourceWidth: clip.source.width,
+		sourceHeight: height,
+		sourceWidth: width,
 		start: clip.start,
 		duration: clip.duration,
 		sourceOffset: clip.sourceOffset,
@@ -156,38 +163,55 @@ export const cancelEncode = () => {
 	});
 };
 
-function createThumbnail(image: ImageBitmap | VideoFrame, imageWidth: number, imageHeight: number) {
-	const canvas = document.createElement('canvas');
-	const ctx = canvas.getContext('2d');
-	if (!ctx) {
+const createThumbnail = async (
+	image: ImageBitmap | VideoFrame,
+	imageWidth: number,
+	imageHeight: number
+) => {
+	const targetWidth = 192;
+	const targetHeight = 108;
+
+	const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+	const context = canvas.getContext('2d');
+	if (!context) {
 		throw new Error('Could not get 2D context from canvas');
 	}
 
-	// Thumbnail dimentions
-	const targetW = 192;
-	const targetH = 108;
-
-	canvas.width = targetW;
-	canvas.height = targetH;
 	const inputRatio = imageWidth / imageHeight;
-	const targetRatio = targetW / targetH;
-
-	let drawW: number, drawH: number, offsetX: number, offsetY: number;
+	const targetRatio = targetWidth / targetHeight;
+	let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
 
 	if (inputRatio > targetRatio) {
-		drawH = targetH;
-		drawW = imageWidth * (targetH / imageHeight);
-		offsetX = (targetW - drawW) / 2;
+		drawHeight = targetHeight;
+		drawWidth = imageWidth * (targetHeight / imageHeight);
+		offsetX = (targetWidth - drawWidth) / 2;
 		offsetY = 0;
 	} else {
-		drawW = targetW;
-		drawH = imageHeight * (targetW / imageWidth);
+		drawWidth = targetWidth;
+		drawHeight = imageHeight * (targetWidth / imageWidth);
 		offsetX = 0;
-		offsetY = (targetH - drawH) / 2;
+		offsetY = (targetHeight - drawHeight) / 2;
 	}
 
-	ctx.clearRect(0, 0, targetW, targetH);
-	ctx.drawImage(image, offsetX, offsetY, drawW, drawH);
+	context.clearRect(0, 0, targetWidth, targetHeight);
+	context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
 	image.close();
-	return canvas.toDataURL('image/webp', 0.8);
-}
+
+	const blob = await canvas.convertToBlob({ type: 'image/png' });
+
+	const db: IDBDatabase = await new Promise((resolve, reject) => {
+		const request = indexedDB.open('ImageStorage', 1);
+		request.onupgradeneeded = () => request.result.createObjectStore('images');
+		request.onsuccess = () => resolve(request.result);
+		request.onerror = () => reject(request.error);
+	});
+
+	await new Promise<void>((resolve, reject) => {
+		const tx = db.transaction('images', 'readwrite');
+		tx.objectStore('images').put(blob, 'hello');
+		tx.oncomplete = () => resolve();
+		tx.onerror = () => reject(tx.error);
+	});
+
+	return URL.createObjectURL(blob);
+};

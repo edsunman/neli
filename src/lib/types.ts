@@ -1,7 +1,7 @@
 import type { EncodedPacketSink, InputVideoTrack } from 'mediabunny';
 import type { Source } from './source/source.svelte';
 
-export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
+//export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 
@@ -57,10 +57,17 @@ export type DragAndDropState = {
 	source: Source | null;
 };
 
+export type ImportState = {
+	importStarted: boolean;
+	warningMessage: string;
+	thumbnail: string;
+	fileDetails: { name: string; type: string; info: FileInfo | null } | null;
+};
+
+// A helper for all possible keys
+export type SourceType = 'video' | 'audio' | 'srt' | 'image' | 'text' | 'test';
+
 export type FileInfo =
-	| {
-			error: string;
-	  }
 	| {
 			type: 'video';
 			codec: string;
@@ -84,7 +91,9 @@ export type FileInfo =
 			type: 'image';
 			format: string;
 			resolution: { width: number; height: number };
-	  };
+	  }
+	| { type: 'text' }
+	| { type: 'test' };
 
 export type Font = {
 	charCount: number;

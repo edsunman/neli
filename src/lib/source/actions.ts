@@ -6,10 +6,9 @@ import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } fr
 import type { FileInfo, FolderGroup, SourceType, SrtEntry, TrackType } from '$lib/types';
 import { getTrackTypeFromSourceType } from '$lib/timeline/actions';
 
-export const createSource = (type: SourceType, file?: File) => {
-	const newSource = new Source();
+export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
+	const newSource = new Source(type, info);
 	newSource.id = Math.random().toString(16).slice(2);
-	newSource.type = type;
 
 	if (type === 'text') newSource.name = 'Text';
 	if (type === 'test') newSource.name = 'Test video';
@@ -21,12 +20,7 @@ export const createSource = (type: SourceType, file?: File) => {
 		newSource.file = file;
 	}
 
-	if (type === 'audio') {
-		newSource.frameRate = 30;
-	}
-
 	appState.sources.push(newSource);
-
 	assignSourcesToFolders();
 
 	return newSource;
@@ -66,20 +60,8 @@ const assignSourcesToFolders = () => {
 	}
 };
 
-export const createVideoSource = async (
-	file: File,
-	thumbnailCallback: (source: Source, gap: number) => void,
-	durationSeconds: number,
-	frameRate: number,
-	resolution: { height: number; width: number }
-) => {
-	const maxFrameCount = frameRate * 120;
-	const newSource = createSource('video', file); //new Source('video', file);
-	newSource.frameRate = frameRate;
-	const durationInFrames = Math.floor(durationSeconds * frameRate);
-	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
-	newSource.height = resolution.height;
-	newSource.width = resolution.width;
+export const createVideoSource = async (file: File, info: FileInfo) => {
+	const newSource = createSource('video', info, file);
 
 	const input = new Input({
 		formats: ALL_FORMATS,
@@ -96,30 +78,20 @@ export const createVideoSource = async (
 		newSource.audioConfig = audioConfig;
 	}
 
-	//appState.sources.push(newSource);
-	appState.importSuccessCallback = thumbnailCallback;
 	sendFileToWorker(newSource);
 	await generateWaveformData(newSource);
 	return newSource.id;
 };
 
-export const createImageSource = async (
-	file: File,
-	thumbnailCallback: (source: Source, gap: number) => void,
-	resolution: { height: number; width: number }
-) => {
-	const newSource = createSource('image', file);
-	newSource.height = resolution.height;
-	newSource.width = resolution.width;
-	appState.importSuccessCallback = thumbnailCallback;
+export const createImageSource = async (file: File, info: FileInfo) => {
+	const newSource = createSource('image', info, file);
+	newSource.info = info;
 	sendFileToWorker(newSource);
 };
 
-export const createAudioSource = async (file: File, durationSeconds: number) => {
-	const maxFrameCount = 30 * 120;
-	const newSource = createSource('audio', file); //new Source('audio', file);
-	const durationInFrames = Math.floor(durationSeconds * 30);
-	newSource.duration = durationInFrames > maxFrameCount ? maxFrameCount : durationInFrames;
+export const createAudioSource = async (file: File, info: FileInfo) => {
+	const newSource = createSource('audio', info, file);
+	newSource.info = info;
 
 	const input = new Input({
 		formats: ALL_FORMATS,
@@ -135,23 +107,96 @@ export const createAudioSource = async (file: File, durationSeconds: number) => 
 	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
 
-	//appState.sources.push(newSource);
-
 	await generateWaveformData(newSource);
 	return newSource.id;
 };
 
-export const createSrtSource = async (file: File) => {
+export const createSrtSource = async (file: File, info: FileInfo) => {
 	const result = await readFileAsText(file);
 	const srtEntries = parseSrt(result);
-	const newSource = createSource('srt', file); //new Source('srt', file);
+	const newSource = createSource('srt', info, file); //new Source('srt', file);
 	newSource.srtEntries = srtEntries;
-	//appState.sources.push(newSource);
 };
 
-export const checkDroppedSource = async (file: File, fileType: string): Promise<FileInfo> => {
-	console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-	console.log(fileType);
+export const processFile = async (file: File) => {
+	appState.import.importStarted = true;
+	appState.import.warningMessage = '';
+	appState.import.thumbnail = '';
+	appState.import.fileDetails = {
+		name: '',
+		type: '',
+		info: null
+	};
+
+	appState.import.fileDetails.name = file.name;
+	appState.import.fileDetails.type = file.type;
+	if (!file.type) {
+		const lastDotIndex = file.name.lastIndexOf('.');
+		const extension = file.name.slice(lastDotIndex);
+		if (extension === '.srt') appState.import.fileDetails.type = 'application/x-subrip';
+	}
+
+	if (
+		file.type !== 'video/mp4' &&
+		file.type !== 'audio/mpeg' &&
+		file.type !== 'audio/wav' &&
+		file.type !== 'application/x-subrip' &&
+		file.type !== 'image/jpeg' &&
+		file.type !== 'image/png'
+	) {
+		appState.import.fileDetails.type = 'unknown';
+		appState.import.warningMessage = 'file type not supported';
+		appState.palettePage = 'import';
+		appState.showPalette = true;
+		return;
+	}
+
+	if (file.size > 1e9) {
+		appState.import.fileDetails.type = 'unknown';
+		appState.import.warningMessage = 'file exceeds 1GB size limit';
+		appState.palettePage = 'import';
+		appState.showPalette = true;
+		return;
+	}
+
+	const info = await checkDroppedSource(file, appState.import.fileDetails.type);
+	if (!info) return;
+
+	if ('error' in info) {
+		appState.import.fileDetails.type = 'unknown';
+		appState.import.warningMessage = info.error ?? '';
+		appState.palettePage = 'import';
+		appState.showPalette = true;
+		return;
+	}
+
+	appState.import.fileDetails.info = info;
+
+	if (info.type === 'video' && info.duration > 120) {
+		appState.import.warningMessage = 'File duration is currently limited to 2 minutes';
+	}
+
+	appState.importSuccessCallback = (source: Source, gap: number) => {
+		appState.import.thumbnail = source.thumbnail;
+		if (gap > 70 && appState.import.warningMessage === '') {
+			appState.import.warningMessage = `this video has a large gap between keyframes (${gap}) which may result in poor playback performance`;
+			appState.palettePage = 'import';
+			appState.showPalette = true;
+		}
+	};
+
+	if (info.type === 'video') await createVideoSource(file, info);
+	if (info.type === 'image') await createImageSource(file, info);
+	if (info.type === 'audio') await createAudioSource(file, info);
+	if (info.type === 'srt') await createSrtSource(file, info);
+};
+
+export const checkDroppedSource = async (
+	file: File,
+	fileType: string
+): Promise<FileInfo | { error: string }> => {
+	//console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
+
 	if (fileType === 'video/mp4') {
 		const input = new Input({
 			formats: ALL_FORMATS,

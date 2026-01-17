@@ -28,7 +28,8 @@ export class Encoder {
 
 		this.videoSampleSource = new VideoSampleSource({
 			codec: 'avc',
-			bitrate: 10_000_000
+			bitrate: 10_000_000,
+			keyFrameInterval: 1
 		});
 
 		const root = await navigator.storage.getDirectory();
@@ -39,7 +40,6 @@ export class Encoder {
 		const writableStream = new WritableStream({
 			write(chunk: StreamTargetChunk) {
 				syncHandle.write(chunk.data, { at: chunk.position });
-				console.log(chunk.data.byteLength);
 			}
 		});
 

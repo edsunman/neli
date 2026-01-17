@@ -25,13 +25,8 @@ export const createClip = (
 	if (duration === 0) {
 		// no duration set so use defaults
 		duration = 500;
-		if (source.duration) {
-			if (source.frameRate && source.frameRate !== 30) {
-				const ratio = 30 / source.frameRate;
-				duration = Math.floor(source.duration * ratio);
-			} else {
-				duration = source.duration;
-			}
+		if (source.info.type === 'audio' || source.info.type === 'video') {
+			duration = source.info.duration * 30;
 		}
 	}
 
@@ -277,11 +272,11 @@ export const resizeSelctedClip = () => {
 		}
 
 		// source length checks
-		if (clip.source.duration && clip.sourceOffset < 0) {
+		if ((clip.source.type === 'video' || clip.source.type === 'audio') && clip.sourceOffset < 0) {
 			clip.start = clip.savedStart - clip.savedSourceOffset;
 			clip.duration = clip.savedDuration + clip.savedSourceOffset;
 			clip.sourceOffset = 0;
-			clip.invalid = true;
+			//clip.invalid = true;
 		}
 	} else if (clip.resizeHover === 'end') {
 		clip.duration = clip.savedDuration + frameOffset;
@@ -305,16 +300,13 @@ export const resizeSelctedClip = () => {
 		}
 
 		// source length checks
-		if (clip.source.duration) {
-			let maxLength = clip.source.duration - clip.sourceOffset;
-			if (clip.source.frameRate && clip.source.frameRate !== 30) {
-				const ratio = 30 / clip.source.frameRate;
-				maxLength = Math.floor(clip.source.duration * ratio - clip.sourceOffset);
-			}
+		if (clip.source.info.type === 'video' || clip.source.info.type === 'audio') {
+			const sourceDurationInFrames = clip.source.info.duration * 30;
+			const maxLength = sourceDurationInFrames - clip.sourceOffset;
 
 			if (clip.duration > maxLength) {
 				clip.duration = maxLength;
-				clip.invalid = true;
+				//clip.invalid = true;
 			}
 		}
 	}

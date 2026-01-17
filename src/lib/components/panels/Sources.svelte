@@ -22,6 +22,7 @@
 		setAllTrackTypes
 	} from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
+	import { processFile } from '$lib/source/actions';
 
 	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
 
@@ -76,7 +77,6 @@
 		if (source.type === 'srt') {
 			// TODO: tidy this up
 			for (const entry of source.srtEntries) {
-				//console.log(entry.text);
 				const clip = createClip(
 					appState.sources[0].id,
 					1,
@@ -111,12 +111,10 @@
 		const files = e.dataTransfer?.files;
 		if (!files) return;
 
-		fileSelected(files[0]);
+		processFile(files[0]);
 	};
 
 	const fileSelected = (file: File) => {
-		console.log('selected', file);
-		appState.fileToImport = file;
 		appState.palettePage = 'import';
 		appState.showPalette = true;
 	};
@@ -261,14 +259,16 @@
 					<span
 						style:background-image={`url(${source.thumbnail})`}
 						class={[
+							(source.type === 'video' || source.type === 'image') && !source.thumbnail
+								? 'opacity-0'
+								: appState.dragAndDrop.active && appState.dragAndDrop.source?.id === source.id
+									? 'opacity-10'
+									: 'opacity-80',
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' ? 'bg-clip-blue-500' : '',
-							appState.dragAndDrop.active && appState.dragAndDrop.source?.id === source.id
-								? 'opacity-10'
-								: 'opacity-80',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
-							'rounded-lg transition-opacity bg-cover bg-center'
+							'rounded-lg transition-opacity duration-200 bg-cover bg-center'
 						]}
 					>
 						{#if source.type === 'text'}
@@ -298,8 +298,9 @@
 				ondragleave={() => (dragHover = false)}
 				ondragover={(e) => e.preventDefault()}
 				onclick={() => {
-					if (!fileInput) return;
-					fileInput.click();
+					appState.import.importStarted = false;
+					appState.palettePage = 'import';
+					appState.showPalette = true;
 				}}
 			>
 				{@render addIcon('size-5 mr-2 pointer-events-none')} import

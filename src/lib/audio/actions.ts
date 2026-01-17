@@ -219,12 +219,12 @@ const updateMeter = () => {
 };
 
 export const generateWaveformData = async (source: Source) => {
-	if (!source.audioConfig || !source.duration || !source.frameRate || !source.sampleSink) return;
+	if (!source.audioConfig || !source.sampleSink || !source.info) return;
+	if (source.info.type !== 'audio' && source.info.type !== 'video') return;
 	// We are going to store 300 values per second to draw waveform
 	// Step is how many samples we need per value
 	const step = source.audioConfig.sampleRate / 300;
-	const durationInSeconds = source.duration / source.frameRate;
-	const data = new Float32Array(durationInSeconds * 300);
+	const data = new Float32Array(source.info.duration * 300);
 
 	const state = {
 		currentIndex: 0,
@@ -372,7 +372,6 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 			}
 		} else {
 			await decodeSource(audioBuffer, clip, sourceStartFrame);
-			console.log(audioBuffer);
 		}
 
 		const gainNode = offlineAudioContext.createGain();
@@ -409,7 +408,6 @@ const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: nu
 	if (!clip.source.sampleSink) return;
 	let currentWriteOffset = 0;
 	for await (const sample of clip.source.sampleSink.samples(startFrame / 30)) {
-		console.log(sample.format);
 		for (let c = 0; c < sample.numberOfChannels; c++) {
 			const finalBufferChannelData = audioBuffer.getChannelData(c);
 

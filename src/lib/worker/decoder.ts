@@ -147,7 +147,6 @@ export class VDecoder {
 		}
 
 		await packets.return();
-		console.log(`decoder ${this.id} cleaned up`);
 	}
 
 	/** Called quickly during playback and encoding */

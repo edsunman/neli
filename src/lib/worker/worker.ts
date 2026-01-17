@@ -1,6 +1,6 @@
 import { WebGPURenderer } from './renderer';
 import { Encoder } from './encoder';
-import { loadFileNew } from './file';
+import { loadFile } from './file';
 import { DecoderPool } from './pool';
 import type { WorkerClip, WorkerVideoSource } from '$lib/types';
 
@@ -31,10 +31,9 @@ self.addEventListener('message', async function (e) {
 		case 'load-file':
 			{
 				if (e.data.type === 'video') {
-					const newSource = await loadFileNew(e.data.file, e.data.id);
+					const newSource = await loadFile(e.data.file, e.data.id);
 					if (!newSource) return;
 					sources.push(newSource);
-					//console.log(newSource);
 					sendFrameForThumbnail(newSource);
 				} else if (e.data.type === 'image') {
 					const bitmap = await createImageBitmap(e.data.file);
@@ -83,7 +82,6 @@ self.addEventListener('message', async function (e) {
 			break;
 		}
 		case 'clip': {
-			//console.log(e.data.clip);
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
 			if (foundClipIndex > -1) {
@@ -319,7 +317,6 @@ const encodeAndCreateFile = async (
 
 		if (cancelEncode) {
 			await encoder.cancel();
-			console.log('canceled!');
 			return;
 		}
 
@@ -412,7 +409,6 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const success = await buildAndDrawFrame(frameIndex, true);
 		if (success) return;
-		console.log('retry', frameIndex);
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
 	throw new Error(

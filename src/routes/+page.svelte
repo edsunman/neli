@@ -44,9 +44,9 @@
 			localStorage.setItem('alreadyVisited', 'true');
 		}
 
-		const textSource = createSource('text');
+		const textSource = createSource('text', { type: 'text' });
 		textSource.preset = true;
-		const testSource = createSource('test');
+		const testSource = createSource('test', { type: 'test' });
 		testSource.preset = true;
 
 		const font = await loadFont('/text.json');
@@ -104,6 +104,7 @@
 				if (appState.disableKeyboardShortcuts) break;
 				if (!appState.showPalette) {
 					appState.palettePage = 'import';
+					appState.import.importStarted = false;
 					appState.showPalette = true;
 				}
 				break;
