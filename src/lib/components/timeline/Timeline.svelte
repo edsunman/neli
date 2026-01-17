@@ -73,7 +73,7 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
-			shortcuts: ['shift', mouseIcon]
+			shortcuts: ['ctrl', mouseIcon]
 		},
 		{
 			text: 'focus clip',

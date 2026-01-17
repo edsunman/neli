@@ -68,9 +68,9 @@
 							{button.text}
 						</span>
 						{#if button.shortcuts.length > 0}
-							<span class="ml-10 text-xs">
+							<span class="ml-10 text-xs text-zinc-500">
 								{#each button.shortcuts as shortcut, i}
-									<span class="px-1.5 py-0.5 rounded-sm bg-zinc-350 group-hover:bg-zinc-370">
+									<span class="px-1.5 py-0.5 rounded-sm border border-zinc-400">
 										{#if typeof shortcut === 'string'}
 											{shortcut}
 										{:else}
