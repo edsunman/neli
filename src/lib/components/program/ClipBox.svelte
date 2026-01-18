@@ -3,7 +3,7 @@
 	import { getClipInitialScaleFactor } from '$lib/clip/utils';
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import { measureText } from '$lib/text/utils';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 	import { undoIcon } from '../icons/Icons.svelte';
@@ -40,8 +40,9 @@
 		return clip.params[1] * clip.source.info.resolution.height * (scale / 100);
 	});
 	let position = $derived({
-		top: height / 2 - boxSizeY / 2 - (clip.params[3] / 2) * 1080 * (scale / 100),
-		left: width / 2 - boxSizeX / 2 + (clip.params[2] / 2) * 1920 * (scale / 100)
+		top:
+			height / 2 - boxSizeY / 2 - (clip.params[3] / 2) * programState.canvasHeight * (scale / 100),
+		left: width / 2 - boxSizeX / 2 + (clip.params[2] / 2) * programState.canvasWidth * (scale / 100)
 	});
 
 	const mouseMove = (e: MouseEvent) => {
@@ -58,9 +59,11 @@
 		if (dragging) {
 			draggedOffset.x = e.clientX - mouseDownPosition.x;
 			draggedOffset.y = e.clientY - mouseDownPosition.y;
-			const newX = savedClipPosition.x + (draggedOffset.x / (scale / 100) / 1920) * 2;
+			const newX =
+				savedClipPosition.x + (draggedOffset.x / (scale / 100) / programState.canvasWidth) * 2;
 			timelineState.selectedClip.params[2] = Math.round(newX * 100) / 100;
-			const newY = savedClipPosition.y - (draggedOffset.y / (scale / 100) / 1080) * 2;
+			const newY =
+				savedClipPosition.y - (draggedOffset.y / (scale / 100) / programState.canvasHeight) * 2;
 			timelineState.selectedClip.params[3] = Math.round(newY * 100) / 100;
 
 			updateWorkerClip(timelineState.selectedClip);

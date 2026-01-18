@@ -96,6 +96,15 @@ self.addEventListener('message', async function (e) {
 			seeking = false;
 			break;
 		}
+		case 'resizeCanvas': {
+			renderer.resizeCanvas(e.data.width, e.data.height);
+
+			if (seeking) return;
+			seeking = true;
+			await buildAndDrawFrame(e.data.frame);
+			seeking = false;
+			break;
+		}
 	}
 });
 
@@ -245,16 +254,13 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	let i = 0;
 	for (const clip of activeClips) {
 		i++;
-		const height = clip.params[0] * (clip.sourceWidth / 1920);
-		const width = clip.params[1] * (clip.sourceHeight / 1080);
-
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
-			renderer.videoPass(i, frame, clip.params, height, width);
+			renderer.videoPass(i, frame, clip.params, clip.sourceHeight, clip.sourceWidth);
 		}
 		if (clip.type === 'image') {
-			renderer.imagePass(i, clip.sourceId, clip.params, height, width);
+			renderer.imagePass(i, clip.sourceId, clip.params, clip.sourceHeight, clip.sourceWidth);
 		}
 		if (clip.type === 'text') {
 			if (!clip.text) clip.text = '_';

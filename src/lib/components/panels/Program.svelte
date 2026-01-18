@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, programState, timelineState } from '$lib/state.svelte';
 	import { setupWorker } from '$lib/worker/actions.svelte';
 	import { getClipsAtFrame } from '$lib/clip/actions';
 	import { measureText } from '$lib/text/utils';
@@ -15,8 +15,8 @@
 	let width = $state(0);
 	let height = $state(0);
 	let scale = $derived.by(() => {
-		const widthScale = (width / 1920) * 90;
-		const heightScale = (height / 1080) * 90;
+		const widthScale = (width / programState.canvasWidth) * 90;
+		const heightScale = (height / programState.canvasHeight) * 90;
 		return heightScale < widthScale ? heightScale : widthScale;
 	});
 
@@ -39,8 +39,8 @@
 				box.width = 1920 * clip.params[0];
 				box.height = 1080 * clip.params[1];
 			}
-			box.centerX = (clip.params[2] / 2 + 0.5) * 1920;
-			box.centerY = (1 - (clip.params[3] / 2 + 0.5)) * 1080;
+			box.centerX = (clip.params[2] / 2 + 0.5) * programState.canvasWidth;
+			box.centerY = (1 - (clip.params[3] / 2 + 0.5)) * programState.canvasHeight;
 			if (
 				e.offsetX > box.centerX - box.width / 2 &&
 				e.offsetX < box.centerX + box.width / 2 &&
@@ -70,8 +70,8 @@
 	>
 		<div
 			class="absolute"
-			style:top={`${height / 2 - 540}px`}
-			style:left={`${width / 2 - 960}px`}
+			style:top={`${height / 2 - programState.canvasHeight / 2}px`}
+			style:left={`${width / 2 - programState.canvasWidth / 2}px`}
 			style:transform={`scale(${scale}%)`}
 		>
 			<canvas

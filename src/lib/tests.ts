@@ -1,14 +1,14 @@
 import { createClip } from './clip/actions';
-import { createSource } from './source/actions';
+//import { createSource } from './source/actions';
 import { appState } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
-import type { SourceType } from './types';
+//import type { SourceType } from './types';
 
 export const setupTests = () => {
 	if (!window) return;
 
 	// @ts-expect-error append function to window
-	window.tests = { lotsOfClips, addSource };
+	window.tests = { lotsOfClips /*  addSource */ };
 };
 
 const lotsOfClips = () => {
@@ -22,10 +22,10 @@ const lotsOfClips = () => {
 	}
 };
 
-const addSource = (type: SourceType, count = 1, name = 'test') => {
+/* const addSource = (type: SourceType, count = 1, name = 'test') => {
 	for (let i = 0; i < count; i++) {
-		const newSource = createSource(type);
-		newSource.name = i + name;
+		//const newSource = createSource(type);
+		//newSource.name = i + name;
 		//appState.sources.push(newSource);
 	}
-};
+}; */

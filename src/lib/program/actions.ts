@@ -1,4 +1,5 @@
 import { programState, timelineState } from '$lib/state.svelte';
+import { resizeWorkerCanvas } from '$lib/worker/actions.svelte';
 import { programTimelinePixelToFrame } from './utils';
 
 export const showSourceInProgram = () => {
@@ -23,4 +24,11 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 	// if (timelineState.playing) pause();
 	const frame = programTimelinePixelToFrame(canvasOffset);
 	setCurrentFrame(frame);
+};
+
+export const resizeCanvas = (width: number, height: number) => {
+	programState.canvasHeight = height;
+	programState.canvasWidth = width;
+	// update workerresizeCanvas(width, height);
+	resizeWorkerCanvas(width, height);
 };

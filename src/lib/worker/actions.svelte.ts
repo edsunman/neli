@@ -163,6 +163,15 @@ export const cancelEncode = () => {
 	});
 };
 
+export const resizeWorkerCanvas = (width: number, height: number) => {
+	appState.mediaWorker?.postMessage({
+		command: 'resizeCanvas',
+		width,
+		height,
+		frame: timelineState.currentFrame
+	});
+};
+
 const createThumbnail = async (
 	image: ImageBitmap | VideoFrame,
 	imageWidth: number,

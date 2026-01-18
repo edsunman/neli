@@ -74,15 +74,16 @@ export class WebGPURenderer {
 
 	startPaint() {
 		if (!this.device || !this.ctx) return;
-		this.commandEncoder = this.device.createCommandEncoder();
-		this.blankFramePass();
 		const textureView = this.ctx.getCurrentTexture().createView();
+		this.commandEncoder = this.device.createCommandEncoder();
+
 		const renderPassDescriptor = {
 			colorAttachments: [
 				{
 					view: textureView,
-					loadOp: 'load' as GPULoadOp,
-					storeOp: 'store' as GPUStoreOp
+					loadOp: 'clear' as GPULoadOp,
+					storeOp: 'store' as GPUStoreOp,
+					clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
 				}
 			]
 		};
@@ -101,23 +102,11 @@ export class WebGPURenderer {
 		return this.device.queue.onSubmittedWorkDone();
 	}
 
-	blankFramePass() {
-		if (!this.commandEncoder || !this.ctx) return;
-		const pass = this.commandEncoder.beginRenderPass({
-			colorAttachments: [
-				{
-					view: this.ctx.getCurrentTexture().createView(),
-					loadOp: 'clear',
-					storeOp: 'store'
-				}
-			]
-		});
-		pass.end();
-	}
-
 	textPass(trackNumber: number, params: number[], inputText: string) {
-		if (!this.textRenderer || !this.font || !this.passEncoder) return;
-		this.uniformArray.set([1, 0, params[0], params[1], params[2], params[3]]);
+		if (!this.textRenderer || !this.font || !this.passEncoder || !this.canvas) return;
+		const height = params[0] * (1920 / this.canvas.width);
+		const width = params[1] * (1080 / this.canvas.height);
+		this.uniformArray.set([1, 0, height, width, params[2], params[3]]);
 		const text = this.textRenderer.prepareText(
 			this.font,
 			inputText,
@@ -129,9 +118,10 @@ export class WebGPURenderer {
 	}
 
 	testPass(trackNumber: number, frameNumber: number, params: number[]) {
-		if (!this.passEncoder || !this.textRenderer || !this.testFont) return;
-
-		this.uniformArray.set([frameNumber, 0, params[0], params[1], params[2], params[3]], 0);
+		if (!this.passEncoder || !this.textRenderer || !this.testFont || !this.canvas) return;
+		const height = params[0] * (1920 / this.canvas.width);
+		const width = params[1] * (1080 / this.canvas.height);
+		this.uniformArray.set([frameNumber, 0, height, width, params[2], params[3]], 0);
 		this.testRenderer?.draw(
 			this.passEncoder,
 			this.uniformArray,
@@ -165,10 +155,12 @@ export class WebGPURenderer {
 		trackNumber: number,
 		frame: VideoFrame,
 		params: number[],
-		height: number,
-		width: number
+		sourceHeight: number,
+		sourceWidth: number
 	) {
-		if (!this.passEncoder) return;
+		if (!this.passEncoder || !this.canvas) return;
+		const height = params[0] * (sourceWidth / this.canvas.width);
+		const width = params[1] * (sourceHeight / this.canvas.height);
 		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.videoRenderer?.draw(
 			this.passEncoder,
@@ -182,9 +174,12 @@ export class WebGPURenderer {
 		trackNumber: number,
 		sourceId: string,
 		params: number[],
-		height: number,
-		width: number
+		sourceHeight: number,
+		sourceWidth: number
 	) {
+		if (!this.canvas) return;
+		const height = params[0] * (sourceWidth / this.canvas.width);
+		const width = params[1] * (sourceHeight / this.canvas.height);
 		const texture = this.loadedTextures.get(sourceId);
 		if (!this.passEncoder || !texture) return;
 		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
@@ -213,5 +208,11 @@ export class WebGPURenderer {
 			{ width: image.width, height: image.height }
 		);
 		this.loadedTextures.set(soruceId, texture);
+	}
+
+	resizeCanvas(width: number, height: number) {
+		if (!this.canvas) return;
+		this.canvas.height = height;
+		this.canvas.width = width;
 	}
 }

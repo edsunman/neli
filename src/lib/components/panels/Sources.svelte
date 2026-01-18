@@ -121,11 +121,6 @@
 
 		processFile(files[0]);
 	};
-
-	const fileSelected = (file: File) => {
-		appState.palettePage = 'import';
-		appState.showPalette = true;
-	};
 </script>
 
 <Tooltip.Provider delayDuration={500}>
@@ -331,21 +326,6 @@
 				{@render addIcon('size-5 mr-2 pointer-events-none')} import
 				<span class="hidden lg:block">&nbsp;file</span>
 			</div>
-			<input
-				onclick={(e) => {
-					// allow on change to run for same file
-					e.currentTarget.value = '';
-				}}
-				onchange={(e) => {
-					if (!e.currentTarget.files || (e.currentTarget.files && e.currentTarget.files.length < 1))
-						return;
-					const file = e.currentTarget.files[0];
-					fileSelected(file);
-				}}
-				bind:this={fileInput}
-				type="file"
-				class="hidden"
-			/>
 		</div>
 	</div>
 </Tooltip.Provider>

@@ -37,6 +37,11 @@ class AppState {
 		warningMessage: '',
 		fileDetails: null
 	});
+	project = $state({
+		name: '',
+		resolution: { height: 1080, width: 1920 }
+	});
+
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
@@ -72,6 +77,8 @@ class TimelineState {
 }
 
 class ProgramState {
+	canvasHeight = $state(1080);
+	canvasWidth = $state(1920);
 	timelineWidth = $state(0); // pixels
 	duration = $state(1000); // frames
 	currentFrame = $state(0);

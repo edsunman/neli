@@ -15,6 +15,7 @@
 	import Slider from '../ui/Slider.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
 	import Properties from '../ui/Properties';
+	import { changeProjectResolution } from '$lib/project/actions';
 
 	/* type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
 	let previousSelected: Section;
@@ -180,10 +181,29 @@
 				<Properties.Group label={'aspect ratio'}>
 					<!-- <Properties.Input bind:value={clip.params[8]} fallback={0} /> -->
 					<Properties.Toggle
+						updateWorker={false}
 						items={[
-							{ value: 0, icon: justifyLeftIcon },
-							{ value: 1, icon: justifyCenterIcon },
-							{ value: 2, icon: justifyRightIcon }
+							{
+								value: 0,
+								icon: justifyLeftIcon,
+								onClick: () => {
+									changeProjectResolution(1920, 1080);
+								}
+							},
+							{
+								value: 1,
+								icon: justifyCenterIcon,
+								onClick: () => {
+									changeProjectResolution(1080, 1080);
+								}
+							},
+							{
+								value: 2,
+								icon: justifyRightIcon,
+								onClick: () => {
+									changeProjectResolution(1080, 1920);
+								}
+							}
 						]}
 					/>
 				</Properties.Group>

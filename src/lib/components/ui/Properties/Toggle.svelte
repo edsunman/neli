@@ -5,9 +5,10 @@
 
 	type Props = {
 		value?: number;
-		items: { value: number; icon: Snippet<[string]> }[];
+		items: { value: number; icon: Snippet<[string]>; onClick?: () => void }[];
+		updateWorker?: boolean;
 	};
-	let { value = $bindable(0), items }: Props = $props();
+	let { value = $bindable(0), items, updateWorker = true }: Props = $props();
 
 	let selectedIndex = $derived.by(() => {
 		let index = 0;
@@ -27,7 +28,8 @@
 			]}
 			onclick={() => {
 				value = item.value;
-				updateWorkerClip(timelineState.selectedClip);
+				if (item.onClick) item.onClick();
+				if (updateWorker) updateWorkerClip(timelineState.selectedClip);
 			}}>{@render item.icon('size-6')}</button
 		>
 	{/each}
