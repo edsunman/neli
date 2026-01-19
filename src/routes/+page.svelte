@@ -5,7 +5,7 @@
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
-	import { hideSourceInProgram } from '$lib/program/actions';
+	import { showTimelineInProgram } from '$lib/program/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -62,8 +62,7 @@
 		switch (e.code) {
 			case 'Escape':
 				if (appState.selectedSource && !appState.showPalette) {
-					appState.selectedSource = null;
-					hideSourceInProgram();
+					showTimelineInProgram();
 				}
 				break;
 			case 'KeyZ':

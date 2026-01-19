@@ -23,7 +23,7 @@
 	} from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
 	import { processFile } from '$lib/source/actions';
-	import { hideSourceInProgram, showSourceInProgram } from '$lib/program/actions';
+	import { showSourceInProgram } from '$lib/program/actions';
 
 	let dragHover = $state(false);
 	let fileInput = $state<HTMLInputElement>();
@@ -76,10 +76,8 @@
 
 	const onClick = (source: Source) => {
 		if (cursorMovedEnough) return;
-
-		appState.selectedSource = source;
 		hoverSelected = true;
-		showSourceInProgram();
+		showSourceInProgram(source);
 
 		/* timelineState.selectedClips.clear();
 		if (source.type === 'srt') {
@@ -128,8 +126,8 @@
 	<div
 		class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative"
 		onmouseup={() => {
-			appState.selectedSource = null;
-			hideSourceInProgram();
+			//appState.selectedSource = null;
+			//hideSourceInProgram();
 		}}
 	>
 		<div class="absolute -left-13">

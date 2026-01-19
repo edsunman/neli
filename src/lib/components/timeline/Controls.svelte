@@ -13,7 +13,10 @@
 	});
 
 	let formattedProgramTime = $derived.by(() => {
-		return framesToTimecode(programState.currentFrame);
+		let fps = 30;
+		if (appState.selectedSource && appState.selectedSource.info.type === 'video')
+			fps = appState.selectedSource.info.frameRate;
+		return framesToTimecode(programState.currentFrame, fps);
 	});
 
 	let contextMenu: ContextMenu;

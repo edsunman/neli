@@ -15,6 +15,8 @@ export class Source {
 	audioConfig?: AudioEncoderConfig;
 	audioWaveform?: Float32Array;
 	srtEntries: SrtEntry[] = [];
+	// Frame numbers, out is the last frame of the selection
+	selection = { in: 0, out: 0, currentFrame: 0 };
 
 	constructor(type: SourceType, info: FileInfo) {
 		this.type = type;

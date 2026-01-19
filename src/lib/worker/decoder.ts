@@ -43,7 +43,7 @@ export class VDecoder {
 	}
 
 	/** Called when seeking */
-	async decodeFrame(frameNumber: number) {
+	async decodeFrame(frameNumber: number, frameRate = 30) {
 		if (!this.decoder || !this.ready || !this.packetSink) return;
 		this.bestChunkTimestamp = -1;
 
@@ -56,7 +56,7 @@ export class VDecoder {
 			}
 		}
 
-		let keyPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
+		let keyPacket = await this.packetSink.getKeyPacket(frameNumber / frameRate, {
 			verifyKeyPackets: true
 		});
 		if (!keyPacket) keyPacket = await this.packetSink.getFirstPacket();
@@ -65,7 +65,7 @@ export class VDecoder {
 		const packets = this.packetSink.packets(keyPacket, undefined);
 		await packets.next(); // Skip the start packet as we already have it
 
-		const targetTimestamp = Math.floor((frameNumber / 30) * 1_000_000);
+		const targetTimestamp = Math.floor((frameNumber / frameRate) * 1_000_000);
 		this.bestChunkTimestamp = this.currentChunk.timestamp;
 		let minDelta = Math.abs(targetTimestamp - this.currentChunk.timestamp);
 

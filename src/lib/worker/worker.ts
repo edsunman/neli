@@ -14,6 +14,7 @@ let seeking = false;
 let encoding = false;
 let latestSeekFrame = 0;
 let cancelEncode = false;
+let selectedSource: WorkerVideoSource | null = null;
 
 const clips: WorkerClip[] = [];
 const sources: WorkerVideoSource[] = [];
@@ -81,6 +82,13 @@ self.addEventListener('message', async function (e) {
 			processSeekFrame();
 			break;
 		}
+		case 'seekSource': {
+			if (!selectedSource) break;
+			latestSeekFrame = e.data.frame;
+			if (seeking) break;
+			processSeekFrame(selectedSource);
+			break;
+		}
 		case 'clip': {
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
 
@@ -90,7 +98,7 @@ self.addEventListener('message', async function (e) {
 				clips.push(e.data.clip);
 			}
 
-			if (seeking) return;
+			if (seeking) break;
 			seeking = true;
 			await buildAndDrawFrame(e.data.frame);
 			seeking = false;
@@ -99,7 +107,30 @@ self.addEventListener('message', async function (e) {
 		case 'resizeCanvas': {
 			renderer.resizeCanvas(e.data.width, e.data.height);
 
-			if (seeking) return;
+			if (seeking) break;
+			seeking = true;
+			await buildAndDrawFrame(e.data.frame);
+			seeking = false;
+			break;
+		}
+		case 'showSource': {
+			const source = sources.find((source) => source.id === e.data.sourceId);
+			if (!source) break;
+			selectedSource = source;
+
+			renderer.resizeCanvas(source.width, source.height);
+
+			if (seeking) break;
+			seeking = true;
+			await drawSourceFrame(e.data.frame, false, selectedSource);
+			seeking = false;
+			break;
+		}
+		case 'showTimeline': {
+			selectedSource = null;
+			renderer.resizeCanvas(e.data.width, e.data.height);
+
+			if (seeking) break;
 			seeking = true;
 			await buildAndDrawFrame(e.data.frame);
 			seeking = false;
@@ -119,14 +150,17 @@ const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	]);
 };
 
-const processSeekFrame = async () => {
+const processSeekFrame = async (source?: WorkerVideoSource) => {
 	seeking = true;
 	while (true) {
 		const frameToProcess = latestSeekFrame;
 
 		decoderPool.pauseAll();
-		await buildAndDrawFrame(frameToProcess);
-
+		if (source) {
+			await drawSourceFrame(frameToProcess, false, source);
+		} else {
+			await buildAndDrawFrame(frameToProcess);
+		}
 		if (latestSeekFrame === frameToProcess) {
 			break;
 		}
@@ -187,6 +221,31 @@ const setupFrame = async (frameNumber: number) => {
 	}
 };
 
+const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerVideoSource) => {
+	if (!renderer) return;
+
+	let decoder = decoderPool.decoders.get(source.id);
+	let frame;
+	if (run) {
+		//
+	} else {
+		if (!decoder) {
+			decoder = decoderPool.assignDecoder(source.id);
+			if (!decoder) return;
+			decoder.setup(source.videoConfig, source.encodedPacketSink);
+		}
+		frame = await decoder?.decodeFrame(frameNumber, source.frameRate);
+	}
+
+	if (!frame) return;
+
+	const params = [1, 1, 0, 0];
+	renderer.startPaint();
+	renderer.videoPass(1, frame, params, source.height, source.width);
+	await renderer.endPaint(encoding);
+	return true;
+};
+
 const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	if (!renderer) return;
 
@@ -209,20 +268,20 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		if (videoClip.type !== 'video') continue;
 		let decoder = decoderPool.decoders.get(videoClip.id);
 		const clipFrame = frameNumber - videoClip.start + videoClip.sourceOffset;
-		let f;
+		let frame;
 		if (run) {
-			f = decoder?.run(clipFrame * 33.33333333, encoding);
+			frame = decoder?.run(clipFrame * 33.33333333, encoding);
 		} else {
 			if (!decoder) {
 				decoder = setupNewDecoder(videoClip);
 			}
-			f = await decoder?.decodeFrame(clipFrame);
+			frame = await decoder?.decodeFrame(clipFrame);
 		}
-		if (encoding && !f) {
+		if (encoding && !frame) {
 			// A blank frame from a decoder while encoding, so abort
 			return;
 		}
-		videoFrames.set(videoClip.id, f);
+		videoFrames.set(videoClip.id, frame);
 		if (decoder) {
 			decoder.lastUsedTime = performance.now();
 			decoder.usedThisFrame = true;

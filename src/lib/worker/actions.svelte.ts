@@ -127,6 +127,13 @@ export const seekWorker = (frame: number) => {
 	});
 };
 
+export const seekWorkerSource = (frame: number) => {
+	appState.mediaWorker?.postMessage({
+		command: 'seekSource',
+		frame
+	});
+};
+
 export const playWorker = (frame: number) => {
 	appState.mediaWorker?.postMessage({
 		command: 'play',
@@ -168,6 +175,23 @@ export const resizeWorkerCanvas = (width: number, height: number) => {
 		command: 'resizeCanvas',
 		width,
 		height,
+		frame: timelineState.currentFrame
+	});
+};
+
+export const showSource = (sourceId: string, frame: number) => {
+	appState.mediaWorker?.postMessage({
+		command: 'showSource',
+		sourceId,
+		frame
+	});
+};
+
+export const showTimeline = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'showTimeline',
+		width: appState.project.resolution.width,
+		height: appState.project.resolution.height,
 		frame: timelineState.currentFrame
 	});
 };

@@ -17,6 +17,9 @@ export const loadFile = async (file: File, sourceId: string): Promise<WorkerVide
 		throw new Error('No video config ');
 	}
 
+	const stats = await videoTrack.computePacketStats(100);
+	const frameRate = stats.averagePacketRate;
+
 	const encodedPacketSink = new EncodedPacketSink(videoTrack);
 
 	const sink = new EncodedPacketSink(videoTrack);
@@ -42,5 +45,14 @@ export const loadFile = async (file: File, sourceId: string): Promise<WorkerVide
 		i++;
 	}
 
-	return { videoTrack, videoConfig, encodedPacketSink, id: sourceId, gap: largestKeyframeGap };
+	return {
+		videoTrack,
+		videoConfig,
+		encodedPacketSink,
+		id: sourceId,
+		gap: largestKeyframeGap,
+		height: videoTrack.codedHeight,
+		width: videoTrack.codedWidth,
+		frameRate
+	};
 };

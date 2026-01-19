@@ -35,9 +35,9 @@ export const secondsToTimecode = (seconds: number) => {
 };
 
 /** Returns format MM:SS:FF */
-export const framesToTimecode = (frames: number) => {
-	const FF = frames % 30;
-	const seconds = (frames - FF) / 30;
+export const framesToTimecode = (frames: number, framerate = 30) => {
+	const FF = frames % framerate;
+	const seconds = (frames - FF) / framerate;
 	const SS = seconds % 60;
 	const minutes = (seconds - SS) / 60;
 	const MM = minutes % 60;

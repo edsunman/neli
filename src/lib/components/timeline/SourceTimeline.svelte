@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
-	import { setCurrentFrameFromOffset } from '$lib/program/actions';
+	import {
+		setCurrentFrame,
+		setCurrentFrameFromOffset,
+		setInPoint,
+		setOutPoint
+	} from '$lib/program/actions';
 	import { appState, programState } from '$lib/state.svelte';
 	import { drawSourceCanvas } from '$lib/timeline/canvas';
 	import { onMount, tick } from 'svelte';
@@ -12,17 +17,20 @@
 	let canvasContainer: HTMLDivElement;
 	let height = 0;
 	let scrubbing = false;
+	let invalidateScrub = false;
+	let latestScrubPosition = 0;
 
 	const mouseDown = (e: MouseEvent) => {
 		appState.mouseIsDown = true;
 		scrubbing = true;
+		latestScrubPosition = e.clientX - canvasContainer.offsetLeft;
+		invalidateScrub = true;
 	};
 
 	const mouseMove = (e: MouseEvent) => {
 		if (scrubbing) {
-			const offsetX = e.clientX - canvasContainer.offsetLeft;
-			setCurrentFrameFromOffset(offsetX);
-			programState.invalidateTimeline = true;
+			latestScrubPosition = e.clientX - canvasContainer.offsetLeft;
+			invalidateScrub = true;
 		}
 	};
 
@@ -50,6 +58,11 @@
 	};
 
 	onFrame(() => {
+		if (invalidateScrub) {
+			invalidateScrub = false;
+			setCurrentFrameFromOffset(latestScrubPosition);
+			programState.invalidateTimeline = true;
+		}
 		if (programState.invalidateTimeline) {
 			if (context) drawSourceCanvas(context, programState.timelineWidth, height);
 			programState.invalidateTimeline = false;
@@ -66,7 +79,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="h-14 flex-none bg-zinc-700" bind:this={canvasContainer} onmousedown={mouseDown}>
+<div class="h-14 flex-none" bind:this={canvasContainer} onmousedown={mouseDown}>
 	<canvas class="absolute" bind:this={canvas}></canvas>
 </div>
 
@@ -80,5 +93,23 @@
 		setCanvasSize();
 
 		drawSourceCanvas(context, programState.timelineWidth, height);
+	}}
+	onkeydown={(event) => {
+		if (appState.disableKeyboardShortcuts) return;
+		if (appState.showPalette) return;
+		switch (event.code) {
+			case 'KeyG':
+				setInPoint();
+				break;
+			case 'KeyH':
+				setOutPoint();
+				break;
+			case 'ArrowLeft':
+				setCurrentFrame(programState.currentFrame - 1);
+				break;
+			case 'ArrowRight':
+				setCurrentFrame(programState.currentFrame + 1);
+				break;
+		}
 	}}
 />

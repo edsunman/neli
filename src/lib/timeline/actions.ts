@@ -3,18 +3,18 @@ import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-export const setCurrentFrame = (frame: number) => {
+export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
-	seekWorker(frame);
+	if (updateWorker) seekWorker(frame);
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
 };
 
-export const setCurrentFrameFromOffset = (canvasOffset: number) => {
+export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = true) => {
 	if (timelineState.playing) pause();
 	const frame = canvasPixelToFrame(canvasOffset);
-	setCurrentFrame(frame);
+	setCurrentFrame(frame, updateWorker);
 };
 
 export const play = () => {
@@ -73,6 +73,7 @@ export const startPlayLoop = () => {
 };
 
 export const pause = () => {
+	if (!timelineState.playing) return;
 	timelineState.playing = false;
 	pauseWorker(timelineState.currentFrame);
 	pauseAudio();

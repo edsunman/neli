@@ -44,7 +44,7 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
-	import { hideSourceInProgram } from '$lib/program/actions';
+	import { showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
 
@@ -64,6 +64,8 @@
 	let contextMenu: ContextMenu;
 	let clickedFrame = 0;
 	let mainScrollDirection: 'x' | 'y' = 'y';
+	let invalidateScrub = false;
+	let latestScrubPosition = 0;
 
 	const buttons = $state([
 		{
@@ -94,8 +96,8 @@
 		const offsetY = e.clientY - canvasContainer.offsetTop;
 
 		if (scrubbing) {
-			setCurrentFrameFromOffset(e.clientX);
-			timelineState.invalidate = true;
+			latestScrubPosition = e.clientX;
+			invalidateScrub = true;
 			return;
 		}
 		if (dragging || resizing || scrolling || timelineState.action === 'selecting') {
@@ -164,10 +166,7 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.selectedSource) {
-			appState.selectedSource = null;
-			hideSourceInProgram();
-		}
+
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
@@ -180,7 +179,12 @@
 		}
 		if (e.offsetY < (timelineState.height - 32) * 0.2) {
 			scrubbing = true;
-			setCurrentFrameFromOffset(e.offsetX);
+			if (appState.selectedSource) {
+				setCurrentFrameFromOffset(e.offsetX, false);
+				showTimelineInProgram();
+			} else {
+				setCurrentFrameFromOffset(e.offsetX);
+			}
 		}
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
@@ -367,6 +371,11 @@
 	};
 
 	onFrame(() => {
+		if (invalidateScrub) {
+			invalidateScrub = false;
+			setCurrentFrameFromOffset(latestScrubPosition);
+			timelineState.invalidate = true;
+		}
 		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveforms(waveContext, timelineState.width);
 			timelineState.invalidateWaveform = false;
@@ -473,9 +482,13 @@
 				centerViewOnPlayhead();
 				break;
 			case 'ArrowLeft':
+				if (appState.selectedSource) break;
+				if (timelineState.playing) pause();
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;
 			case 'ArrowRight':
+				if (appState.selectedSource) break;
+				if (timelineState.playing) pause();
 				setCurrentFrame(timelineState.currentFrame + 1);
 				break;
 			case 'Minus':

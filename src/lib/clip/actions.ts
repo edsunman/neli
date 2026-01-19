@@ -11,27 +11,46 @@ export const createClip = (
 	track = 0,
 	start = 0,
 	duration = 0,
-	sourceOffset = 0,
+	sourceOffset?: number,
 	temp = false
 ) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	if (start > timelineState.duration && !temp) {
-		// clip added after end of timeline
+	if (start && start > timelineState.duration && !temp) {
+		// Clip added after end of timeline
 		return;
 	}
 
 	if (duration === 0) {
-		// no duration set so use defaults
+		// No duration set so use defaults
 		duration = 500;
-		if (source.info.type === 'audio' || source.info.type === 'video') {
+		if (source.info.type === 'audio') {
 			duration = source.info.duration * 30;
+		} else if (source.info.type === 'video') {
+			// Source may have different framerate to timeline so
+			// convert to seconds and back
+			const inSeconds = source.selection.in / source.info.frameRate;
+			// We add 1 because the out frame is inclusive
+			// so we need to account for the duration of that frame
+			const outSeconds = (source.selection.out + 1) / source.info.frameRate;
+			const durationSeconds = outSeconds - inSeconds;
+			duration = Math.round(durationSeconds * 30);
+		}
+	}
+
+	if (!sourceOffset) {
+		if (source.info.type === 'video') {
+			const inSeconds = source.selection.in / source.info.frameRate;
+			const inFrames = Math.floor(inSeconds * 30);
+			sourceOffset = inFrames;
+		} else {
+			sourceOffset = 0;
 		}
 	}
 
 	if (start + duration > timelineState.duration && !temp) {
-		// clip duration outside timeline bounds
+		// Clip duration outside timeline bounds
 		duration = timelineState.duration - start;
 	}
 

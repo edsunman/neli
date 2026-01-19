@@ -48,6 +48,9 @@ export type WorkerVideoSource = {
 	encodedPacketSink: EncodedPacketSink;
 	videoConfig: VideoDecoderConfig;
 	gap: number;
+	height: number;
+	width: number;
+	frameRate: number;
 };
 
 export type DragAndDropState = {

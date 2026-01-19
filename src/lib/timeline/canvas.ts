@@ -1,5 +1,5 @@
 import type { Clip } from '$lib/clip/clip.svelte';
-import { programState, timelineState } from '$lib/state.svelte';
+import { appState, programState, timelineState } from '$lib/state.svelte';
 import { frameToCanvasPixel, secondsToTimecode } from './utils';
 import { programFrameToCanvasPixel } from '$lib/program/utils';
 
@@ -16,6 +16,9 @@ const BLUE_DARK = '#1e425b';
 
 const PLAYHEAD_PATH = new Path2D(
 	'M 10.259 0.2125 h -6.3285 C 1.9385 0.2125 0.3235 1.828 0.3235 3.82 v 6.4675 c 0 1.694 0.408 3.3635 1.189 4.8665 l 2.381 4.5815 c 1.347 2.592 5.0555 2.592 6.402 0 l 2.3825 -4.5865 c 0.7805 -1.503 1.1885 -3.1715 1.1885 -4.865 V 3.82 c 0 -1.992 -1.615 -3.6075 -3.6075 -3.6075 Z M 10.917 6.0255 c 0 1.129 -0.2715 2.215 -0.792 3.217 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.0885 -0.7925 -3.2175 v -0.6305 c 0 -1.1245 0.9115 -2.036 2.036 -2.036 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 0.628 Z'
+);
+const MARKER_PATH = new Path2D(
+	'M11.3087 5.9281c0 1.2419-.2987 2.4365-.8712 3.5387l-1.3459 2.5905c-.836 1.6093-3.1389 1.6099-3.9749 0l-1.3448-2.5878c-.5731-1.1022-.8718-2.2973-.8718-3.5393v-.6935c0-1.237 1.0027-2.2396 2.2396-2.2396h3.9292c1.237 0 2.2396 1.0027 2.2396 2.2396v.6908Z '
 );
 
 let pattern: CanvasPattern;
@@ -152,6 +155,8 @@ export const drawSourceCanvas = (
 	width: number,
 	height: number
 ) => {
+	if (!appState.selectedSource) return;
+
 	context.fillStyle = ZINC_900;
 	context.fillRect(0, 0, width, height);
 
@@ -160,16 +165,35 @@ export const drawSourceCanvas = (
 	context.roundRect(10, 35, width - 20, 8, 4);
 	context.fill();
 
+	const inPosition = programFrameToCanvasPixel(appState.selectedSource.selection.in);
+	drawMarker(context, 12, inPosition - 1);
+
+	const outPosition = programFrameToCanvasPixel(appState.selectedSource.selection.out + 1);
+	drawMarker(context, 12, outPosition);
+
 	context.fillStyle = '#696971';
-	context.strokeStyle = ZINC_900;
-	context.lineWidth = 6;
+	context.save();
 	context.beginPath();
-	context.rect(100, 35, width - 300, 8);
-	context.stroke();
+	context.rect(inPosition, 35, outPosition - inPosition, 8);
+	context.clip();
+	context.beginPath();
+	context.roundRect(10, 35, width - 20, 8, 4);
 	context.fill();
+	context.restore();
+
+	context.fillStyle = ZINC_900;
+	context.fillRect(inPosition - 3, 35, 3, 8);
+	context.fillRect(outPosition, 35, 3, 8);
 
 	const playheadPosition = programFrameToCanvasPixel(programState.currentFrame);
-	drawPlayhead(context, 8, height - 16, playheadPosition);
+	drawPlayhead(context, 12, height - 20, playheadPosition);
+};
+
+const drawMarker = (context: CanvasRenderingContext2D, top: number, position: number) => {
+	context.fillStyle = '#73737c';
+	context.translate(position - 6, top);
+	context.fill(MARKER_PATH);
+	context.translate(-position + 6, -top);
 };
 
 const drawPlayhead = (
@@ -178,8 +202,6 @@ const drawPlayhead = (
 	length: number,
 	position: number
 ) => {
-	//const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-
 	context.fillStyle = 'white';
 	context.fillRect(position, top + 15, 2, length - 15);
 

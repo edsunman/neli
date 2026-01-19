@@ -12,6 +12,7 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 
 	if (type === 'text') newSource.name = 'Text';
 	if (type === 'test') newSource.name = 'Test video';
+	if (info.type === 'video') newSource.selection.out = Math.round(info.duration * info.frameRate);
 
 	if (file) {
 		const lastDotIndex = file.name.lastIndexOf('.');
