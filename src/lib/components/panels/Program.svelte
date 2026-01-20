@@ -89,6 +89,9 @@
 		{/if}
 	</div>
 	{#if appState.selectedSource}
-		<SourceTimeline />
+		{@const sourceType = appState.selectedSource.type}
+		{#if sourceType === 'video' || sourceType === 'audio'}
+			<SourceTimeline />
+		{/if}
 	{/if}
 </div>

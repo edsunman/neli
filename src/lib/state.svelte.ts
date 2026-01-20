@@ -22,6 +22,8 @@ class AppState {
 	audioLevel = $state([0, 0]);
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
+	folderGroups: FolderGroup[] = $state([]);
+
 	dragAndDrop = $state<DragAndDropState>({
 		clicked: false,
 		active: false,
@@ -30,16 +32,18 @@ class AppState {
 		showIcon: false,
 		source: null
 	});
-	folderGroups: FolderGroup[] = $state([]);
+
 	import = $state<ImportState>({
 		importStarted: false,
 		thumbnail: '',
 		warningMessage: '',
 		fileDetails: null
 	});
+
 	project = $state({
-		name: '',
-		resolution: { height: 1080, width: 1920 }
+		name: 'untitled project',
+		resolution: { height: 1080, width: 1920 },
+		aspect: 0
 	});
 
 	fonts: Font[] = [];

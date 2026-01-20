@@ -5,7 +5,7 @@
 	type Props = {
 		buttons: {
 			text: string;
-			icon: Snippet<[string]> | null;
+			icon?: Snippet<[string]>;
 			onclick: () => void;
 			shortcuts: (string | Snippet<[string]>)[];
 		}[];

@@ -1,18 +1,36 @@
+import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
-import { appState, programState, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 import {
 	resizeWorkerCanvas,
 	seekWorkerSource,
 	showSource,
-	showTimeline
+	showTimeline,
+	updateWorkerClip
 } from '$lib/worker/actions.svelte';
-import { programTimelinePixelToFrame } from './utils';
+import { programTimelinePixelToFrame, scaleToFit } from './utils';
 
 export const showSourceInProgram = (source: Source) => {
+	if (source.info.type !== 'video' && source.info.type !== 'image' && source.info.type !== 'audio')
+		return;
+
 	if (appState.selectedSource && appState.selectedSource.id !== source.id) {
 		appState.selectedSource.selection.currentFrame = programState.currentFrame;
 	}
 	appState.selectedSource = source;
+
+	if (source.info.type === 'image') {
+		const { width, height } = scaleToFit(
+			1920,
+			1080,
+			source.info.resolution.width,
+			source.info.resolution.height
+		);
+		programState.canvasHeight = height;
+		programState.canvasWidth = width;
+		showSource(appState.selectedSource.id, 0, true, height, width);
+		return;
+	}
 
 	if (source.info.type !== 'video') return;
 	const info = source.info;
@@ -88,4 +106,27 @@ export const setOutPoint = () => {
 	}
 	console.log('set out ', selection.out);
 	programState.invalidateTimeline = true;
+};
+
+export const transformClip = (
+	clip: Clip,
+	scaleX: number,
+	scaleY: number,
+	positionX: number,
+	positionY: number
+) => {
+	historyManager.newCommand({
+		action: 'clipParam',
+		data: {
+			clipId: clip.id,
+			paramIndex: [0, 1, 2, 3],
+			oldValue: [clip.params[0], clip.params[1], clip.params[2], clip.params[3]],
+			newValue: [scaleX, scaleY, positionX, positionY]
+		}
+	});
+	clip.params[0] = scaleX;
+	clip.params[1] = scaleY;
+	clip.params[2] = positionX;
+	clip.params[3] = positionY;
+	updateWorkerClip(timelineState.selectedClip);
 };

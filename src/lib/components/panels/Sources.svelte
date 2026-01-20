@@ -26,8 +26,6 @@
 	import { showSourceInProgram } from '$lib/program/actions';
 
 	let dragHover = $state(false);
-	let fileInput = $state<HTMLInputElement>();
-
 	let hoverName = $state('');
 	let hoverNameIndex = $state(0);
 	let showHoverName = $state(false);
@@ -76,8 +74,10 @@
 
 	const onClick = (source: Source) => {
 		if (cursorMovedEnough) return;
+		if (source.preset) return;
 		hoverSelected = true;
 		showSourceInProgram(source);
+		appState.propertiesSection = 'source';
 
 		/* timelineState.selectedClips.clear();
 		if (source.type === 'srt') {

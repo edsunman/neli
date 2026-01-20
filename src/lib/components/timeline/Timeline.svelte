@@ -70,7 +70,6 @@
 	const buttons = $state([
 		{
 			text: 'split clip',
-			icon: null,
 			onclick: () => {
 				if (timelineState.selectedClip) {
 					splitClip(timelineState.selectedClip.id, clickedFrame);
@@ -82,7 +81,6 @@
 		},
 		{
 			text: 'focus clip',
-			icon: null,
 			onclick: () => focusClip(),
 			shortcuts: ['shift', 'F']
 		}
@@ -247,7 +245,7 @@
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
 			timelineState.action = 'selecting';
-			appState.propertiesSection = 'masterAudio';
+			appState.propertiesSection = 'outputAudio';
 		}
 		removeHoverAllClips();
 		timelineState.invalidate = true;

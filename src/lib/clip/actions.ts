@@ -1,9 +1,9 @@
-import { historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
-import { getClipInitialScaleFactor } from './utils';
+import { getClipFitScaleFactor } from './utils';
 import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
 
 export const createClip = (
@@ -56,8 +56,8 @@ export const createClip = (
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
-	if (source.type === 'video' || source.type === 'image') {
-		const scaleFactor = getClipInitialScaleFactor(clip);
+	if (source.type === 'video' || source.type === 'image' || source.type === 'test') {
+		const scaleFactor = getClipFitScaleFactor(clip);
 		clip.params[0] = scaleFactor;
 		clip.params[1] = scaleFactor;
 	}
@@ -81,6 +81,7 @@ export const deleteClip = (clip: Clip) => {
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
+	appState.propertiesSection = 'outputAudio';
 };
 
 /** Unlike delete this will permanently remove clip and not write to history */

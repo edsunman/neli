@@ -6,13 +6,15 @@
 		value: any;
 		fallback?: number | string;
 		type?: 'text' | 'number';
+		fullWidth?: boolean;
 	};
-	let { value = $bindable(), fallback = 0, type = 'number' }: Props = $props();
+	let { value = $bindable(), fallback = 0, type = 'number', fullWidth = false }: Props = $props();
 </script>
 
 <div
 	class={[
-		'rounded-sm relative overflow-hidden w-12 z-0',
+		fullWidth ? '' : 'w-12',
+		'rounded-sm relative overflow-hidden z-0',
 		// before
 		'before:transition-all before:duration-200',
 		"before:bg-hover before:content-[''] before:z-1 before:w-full before:h-full before:absolute before:left-0",

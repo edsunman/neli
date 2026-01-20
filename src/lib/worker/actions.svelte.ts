@@ -179,11 +179,20 @@ export const resizeWorkerCanvas = (width: number, height: number) => {
 	});
 };
 
-export const showSource = (sourceId: string, frame: number) => {
+export const showSource = (
+	sourceId: string,
+	frame: number,
+	image = false,
+	imageHeight = 0,
+	imageWidth = 0
+) => {
 	appState.mediaWorker?.postMessage({
 		command: 'showSource',
 		sourceId,
-		frame
+		frame,
+		image,
+		imageHeight,
+		imageWidth
 	});
 };
 

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { Clip } from '$lib/clip/clip.svelte';
-	import { getClipInitialScaleFactor } from '$lib/clip/utils';
+	import { getClipFillScaleFactor, getClipFitScaleFactor } from '$lib/clip/utils';
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
+	import { transformClip } from '$lib/program/actions';
 	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import { measureText } from '$lib/text/utils';
 	import { updateWorkerClip } from '$lib/worker/actions.svelte';
-	import { undoIcon } from '../icons/Icons.svelte';
 
 	type Props = {
 		clip: Clip;
@@ -150,26 +150,22 @@
 
 	const buttons = $state([
 		{
-			text: 'reset transform',
-			icon: undoIcon,
+			text: 'scale to fit',
 			onclick: () => {
 				const clip = timelineState.selectedClip;
 				if (!clip) return;
-				historyManager.pushAction({
-					action: 'clipParam',
-					data: {
-						clipId: clip.id,
-						paramIndex: [0, 1, 2, 3],
-						oldValue: [clip.params[0], clip.params[1], clip.params[2], clip.params[3]],
-						newValue: [1, 1, 0, 0]
-					}
-				});
-				const scaleFactor = getClipInitialScaleFactor(clip);
-				clip.params[0] = scaleFactor;
-				clip.params[1] = scaleFactor;
-				clip.params[2] = 0;
-				clip.params[3] = 0;
-				updateWorkerClip(timelineState.selectedClip);
+				const scaleFactor = getClipFitScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+			},
+			shortcuts: []
+		},
+		{
+			text: 'scale to fill',
+			onclick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				const scaleFactor = getClipFillScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
 			},
 			shortcuts: []
 		}

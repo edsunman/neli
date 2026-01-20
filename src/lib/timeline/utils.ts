@@ -28,9 +28,9 @@ export const frameToCanvasPixel = (frame: number, includeOffset = true) => {
 
 /** Returns format MM:SS */
 export const secondsToTimecode = (seconds: number) => {
-	const SS = seconds % 60;
-	const minutes = (seconds - SS) / 60;
-	const MM = minutes % 60;
+	const totalSeconds = Math.floor(seconds);
+	const SS = totalSeconds % 60;
+	const MM = Math.floor(totalSeconds / 60);
 	return String(MM).padStart(2, '0') + ':' + String(SS).padStart(2, '0');
 };
 

@@ -36,40 +36,40 @@ type Command =
 	  };
 
 export class HistoryManager {
-	#debug = false;
-	#undoStack: Command[][] = [];
-	#redoStack: Command[][] = [];
-	#tempCommand: Command[] = [];
+	private debug = false;
+	private undoStack: Command[][] = [];
+	private redoStack: Command[][] = [];
+	private tempCommand: Command[] = [];
 
 	newCommand(command: Command) {
-		this.#redoStack = [];
-		this.#undoStack.unshift([command]);
-		if (this.#debug) console.debug('new command ', command);
+		this.redoStack = [];
+		this.undoStack.unshift([command]);
+		if (this.debug) console.debug('new command ', command);
 	}
 
 	pushAction(command: Command) {
-		this.#tempCommand.push(command);
-		if (this.#debug) console.debug('new action ', command);
+		this.tempCommand.push(command);
+		if (this.debug) console.debug('new action ', command);
 	}
 
 	finishCommand() {
-		if (this.#tempCommand.length < 1) return;
-		this.#redoStack = [];
-		const newCommand = structuredClone(this.#tempCommand);
-		this.#undoStack.unshift(newCommand);
-		this.#tempCommand = [];
-		if (this.#debug) console.debug('new command ', newCommand);
+		if (this.tempCommand.length < 1) return;
+		this.redoStack = [];
+		const newCommand = structuredClone(this.tempCommand);
+		this.undoStack.unshift(newCommand);
+		this.tempCommand = [];
+		if (this.debug) console.debug('new command ', newCommand);
 	}
 
 	undo() {
-		const commands = this.#undoStack.splice(0, 1)[0];
+		const commands = this.undoStack.splice(0, 1)[0];
 		if (!commands) {
-			if (this.#debug) console.debug('nothing to undo');
+			if (this.debug) console.debug('nothing to undo');
 			return;
 		}
 
-		this.#redoStack.unshift(commands);
-		if (this.#debug) console.debug('added to redo stack ', commands);
+		this.redoStack.unshift(commands);
+		if (this.debug) console.debug('added to redo stack ', commands);
 
 		const updatedClips = new Set<Clip>();
 		const reversed = commands.toReversed();
@@ -148,13 +148,13 @@ export class HistoryManager {
 	}
 
 	redo() {
-		const commands = this.#redoStack.splice(0, 1)[0];
+		const commands = this.redoStack.splice(0, 1)[0];
 		if (!commands) {
-			if (this.#debug) console.debug('nothing to redo');
+			if (this.debug) console.debug('nothing to redo');
 			return;
 		}
-		this.#undoStack.unshift(commands);
-		if (this.#debug) console.debug('added to undo stack ', commands);
+		this.undoStack.unshift(commands);
+		if (this.debug) console.debug('added to undo stack ', commands);
 
 		const updatedClips = new Set<Clip>();
 		for (const command of commands) {

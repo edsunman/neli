@@ -4,7 +4,7 @@ import type { AudioSampleSink, EncodedPacketSink } from 'mediabunny';
 export class Source {
 	id: string = '';
 	type: FileInfo['type'];
-	name?: string;
+	name = $state('');
 	folderId = 0;
 	preset = false;
 	info: FileInfo;

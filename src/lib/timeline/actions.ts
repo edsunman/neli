@@ -19,7 +19,7 @@ export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = t
 
 export const play = () => {
 	playWorker(timelineState.currentFrame);
-	appState.propertiesSection = 'masterAudio';
+	appState.propertiesSection = 'outputAudio';
 };
 
 export const startPlayLoop = () => {

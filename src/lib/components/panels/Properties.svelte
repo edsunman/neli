@@ -8,238 +8,123 @@
 		justifyCenterIcon,
 		justifyLeftIcon,
 		justifyRightIcon,
-		settingsIcon,
-		filmIcon
+		filmIcon,
+		fileIcon,
+		aspectLandscape,
+		aspectSquare,
+		aspectPortrait
 	} from '../icons/Icons.svelte';
+	import { changeProjectResolution } from '$lib/project/actions';
+	import { secondsToTimecode } from '$lib/timeline/utils';
+	import { Tooltip as BitsTooltip } from 'bits-ui';
+	import type { PropertiesSection } from '$lib/types';
+	import type { Snippet } from 'svelte';
 
 	import Slider from '../ui/Slider.svelte';
-	import MyTooltip from '../ui/Tooltip.svelte';
+	import Tooltip from '../ui/Tooltip.svelte';
 	import Properties from '../ui/Properties';
-	import { changeProjectResolution } from '$lib/project/actions';
-
-	/* type Section = 'masterAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
-	let previousSelected: Section;
-	let selected: Section = $derived.by<Section>(() => {
-		timelineState.playing;
-		if (timelineState.selectedClip && !timelineState.selectedClip.temp) {
-			const type = timelineState.selectedClip.source.type;
-			if (type === 'audio') {
-				return 'audio';
-			}
-			if (type === 'text') {
-				return 'text';
-			}
-			if ((type === 'video' || type === 'test') && previousSelected === 'audio') return 'audio';
-			previousSelected = 'layout';
-			return 'layout';
-		} else {
-			previousSelected = 'masterAudio';
-			return 'masterAudio';
-		}
-	}); */
 </script>
 
-<!-- <Tooltip.Provider> -->
 <div
 	class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative"
 >
-	<div class="absolute -right-13">
-		<div class=" bg-zinc-950 rounded flex flex-col mb-5">
-			<!-- svelte-ignore a11y_consider_explicit_label -->
-			<!-- 	<MyTooltip
-					contentProps={{ side: 'left' }}
-					triggerProps={{ onclick: () => (selected = 'masterAudio') }}
-				>
-					{#snippet trigger()} -->
-			<button
-				onclick={() => (appState.propertiesSection = 'project')}
-				class={[
-					appState.propertiesSection === 'project'
-						? 'text-zinc-200'
-						: 'text-zinc-600 hover:text-zinc-400',
-					'p-2'
-				]}
-			>
-				{@render settingsIcon('w-6 h-6')}
-			</button>
-			<button
-				onclick={() => (appState.propertiesSection = 'masterAudio')}
-				class={[
-					appState.propertiesSection === 'masterAudio'
-						? 'text-zinc-200'
-						: 'text-zinc-600 hover:text-zinc-400',
-					'p-2'
-				]}
-			>
-				{@render speakerIcon('w-6 h-6')}
-			</button>
-			<!-- 	{/snippet}
-					output audio
-				</MyTooltip> -->
-		</div>
-		{#if appState.selectedSource}
-			<div class="bg-zinc-950 rounded flex flex-col">
-				<button
-					onclick={() => {
-						appState.propertiesSection = 'source';
-						//previousSelected = 'source';
-					}}
-					class={[
-						appState.propertiesSection === 'source'
-							? 'text-zinc-200'
-							: 'text-zinc-600 hover:text-zinc-400',
-						'p-2'
-					]}
-				>
-					{@render filmIcon('w-6 h-6')}
-					<!-- <MoveIcon class="w-6 h-6" /> -->
-				</button>
+	<div class="absolute -right-13 z-10">
+		<BitsTooltip.Provider delayDuration={500}>
+			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+				{@render sideButton('project', 'project settings', fileIcon)}
 			</div>
-		{/if}
-		{#if timelineState.selectedClip && !timelineState.selectedClip.temp}
-			{@const source = timelineState.selectedClip.source}
-			<div class="bg-zinc-950 rounded flex flex-col">
-				{#if source.type !== 'audio'}
-					<!-- 	<MyTooltip
-							contentProps={{ side: 'left' }}
-							triggerProps={{ onclick: () => (selected = 'layout') }}
-						>
-							{#snippet trigger()} -->
-					<button
-						onclick={() => {
-							appState.propertiesSection = 'layout';
-							//previousSelected = 'layout';
-						}}
-						class={[
-							appState.propertiesSection === 'layout'
-								? 'text-zinc-200'
-								: 'text-zinc-600 hover:text-zinc-400',
-							'p-2'
-						]}
-					>
-						{@render moveIcon('w-6 h-6')}
-						<!-- <MoveIcon class="w-6 h-6" /> -->
-					</button>
-					<!-- 	{/snippet}
-							clip transform
-						</MyTooltip> -->
-				{/if}
-				{#if source.type === 'text'}
-					<!-- <MyTooltip
-							contentProps={{ side: 'left' }}
-							triggerProps={{ onclick: () => (selected = 'text') }}
-						>
-							{#snippet trigger()} -->
-					<button
-						onclick={() => {
-							appState.propertiesSection = 'text';
-							//previousSelected = 'text';
-						}}
-						class={[
-							appState.propertiesSection === 'text'
-								? 'text-zinc-200'
-								: 'text-zinc-600 hover:text-zinc-400',
-							'p-2'
-						]}
-					>
-						{@render textIcon('w-6 h-6')}
-					</button>
-					<!--	{/snippet}
-							 clip text
-						</MyTooltip> -->
-				{/if}
-				{#if source.type !== 'text'}
-					<!-- 		<MyTooltip
-							contentProps={{ side: 'left' }}
-							triggerProps={{ onclick: () => (selected = 'audio') }}
-						>
-							{#snippet trigger()} -->
-					<button
-						onclick={() => {
-							appState.propertiesSection = 'audio';
-							// previousSelected = 'audio';
-						}}
-						class={[
-							appState.propertiesSection === 'audio'
-								? 'text-zinc-200'
-								: 'text-zinc-600 hover:text-zinc-400',
-							'p-2'
-						]}
-					>
-						{@render audioIcon('w-6 h-6')}
-					</button>
-					<!-- {/snippet}
-							clip audio
-						</MyTooltip> -->
-				{/if}
+			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+				{@render sideButton('outputAudio', 'output audio', speakerIcon)}
 			</div>
-		{/if}
+			{#if appState.selectedSource}
+				<div class="bg-zinc-950 rounded flex flex-col">
+					{@render sideButton('source', 'source details', filmIcon)}
+				</div>
+			{/if}
+			{#if timelineState.selectedClip && !timelineState.selectedClip.temp}
+				{@const source = timelineState.selectedClip.source}
+				<div class="bg-zinc-950 rounded flex flex-col">
+					{#if source.type !== 'audio'}
+						{@render sideButton('layout', 'layout settings', moveIcon)}
+					{/if}
+					{#if source.type === 'text'}
+						{@render sideButton('text', 'text settings', textIcon)}
+					{/if}
+					{#if source.type === 'audio' || source.type === 'video'}
+						{@render sideButton('audio', 'audio settings', audioIcon)}
+					{/if}
+				</div>
+			{/if}
+		</BitsTooltip.Provider>
 	</div>
-	<div class="flex-1 flex flex-col gap-3 mt-2 mr-3">
+
+	<div class="flex-1 flex flex-col gap-5 height-xl:gap-7 mt-2 mr-3">
 		{#if appState.propertiesSection === 'project'}
-			<div class="text-sm font-medium">
-				<Properties.Group label={'aspect ratio'}>
-					<!-- <Properties.Input bind:value={clip.params[8]} fallback={0} /> -->
-					<Properties.Toggle
-						updateWorker={false}
-						items={[
-							{
-								value: 0,
-								icon: justifyLeftIcon,
-								onClick: () => {
-									changeProjectResolution(1920, 1080);
-								}
-							},
-							{
-								value: 1,
-								icon: justifyCenterIcon,
-								onClick: () => {
-									changeProjectResolution(1080, 1080);
-								}
-							},
-							{
-								value: 2,
-								icon: justifyRightIcon,
-								onClick: () => {
-									changeProjectResolution(1080, 1920);
-								}
-							}
-						]}
-					/>
-				</Properties.Group>
-				<!-- <span>Aspect ratio</span>
-				<ToggleGroup.Root type="multiple" class="flex justify-end gap-x-2 mt-2">
-					{#each { length: 3 } as _}
-						<ToggleGroup.Item
-							aria-label="toggle bold"
-							value="bold"
-							class="rounded-sm hover:bg-zinc-800 hover:text-white active:bg-zinc-700 data-[state=on]:bg-zinc-700 data-[state=off]:text-foreground-alt data-[state=on]:text-foreground active:data-[state=on]:bg-dark-10 inline-flex size-8 items-center justify-center transition-all"
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" class="size-6"
-								><rect width="256" height="256" fill="none" /><rect
-									x="78"
-									y="32"
-									width="100"
-									height="192"
-									rx="8"
-									fill="none"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="18"
-								/></svg
-							>
-						</ToggleGroup.Item>
-					{/each}
-				</ToggleGroup.Root> -->
-			</div>
+			<Properties.Group label={'project name'}>
+				<Properties.Input
+					bind:value={appState.project.name}
+					type="text"
+					fullWidth
+					fallback="untitled project"
+				/>
+			</Properties.Group>
+			<Properties.Group label={'aspect ratio'}>
+				<Properties.Toggle
+					bind:value={appState.project.aspect}
+					updateWorker={false}
+					items={[
+						{
+							value: 0,
+							icon: aspectLandscape,
+							onClick: () => changeProjectResolution(1920, 1080)
+						},
+						{
+							value: 1,
+							icon: aspectSquare,
+							onClick: () => changeProjectResolution(1080, 1080)
+						},
+						{
+							value: 2,
+							icon: aspectPortrait,
+							onClick: () => changeProjectResolution(1080, 1920)
+						}
+					]}
+				/>
+			</Properties.Group>
 		{/if}
 
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
 			<Properties.Group label={'name'}>
-				{source.name}
+				{#if source.preset}
+					{source.name}
+				{:else}
+					<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
+				{/if}
 			</Properties.Group>
+			{#if source.info.type === 'video'}
+				<Properties.Group label={'duration'}>
+					<span class="text-zinc-300">{secondsToTimecode(source.info.duration)}</span>
+				</Properties.Group>
+				<Properties.Group label={'resolution'}>
+					<span class="text-zinc-300">
+						{source.info.resolution.height} x {source.info.resolution.width}
+					</span>
+				</Properties.Group>
+				<Properties.Group label={'frame rate'}>
+					<span class="text-zinc-300">{source.info.frameRate} fps</span>
+				</Properties.Group>
+			{/if}
+			{#if source.info.type === 'image'}
+				<Properties.Group label={'resolution'}>
+					<span class="text-zinc-300">
+						{source.info.resolution.height} x {source.info.resolution.width}
+					</span>
+				</Properties.Group>
+				<Properties.Group label={'format'}>
+					<span class="text-zinc-300">{source.info.format}</span>
+				</Properties.Group>
+			{/if}
 		{/if}
 
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
@@ -264,7 +149,6 @@
 				<Properties.Input bind:value={clip.params[6]} fallback={20} />
 			</Properties.Group>
 			<Properties.Group label={'justify'}>
-				<!-- <Properties.Input bind:value={clip.params[8]} fallback={0} /> -->
 				<Properties.Toggle
 					bind:value={clip.params[8]}
 					items={[
@@ -287,7 +171,7 @@
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
 			</Properties.Group>
 		{/if}
-		{#if appState.propertiesSection === 'masterAudio'}
+		{#if appState.propertiesSection === 'outputAudio'}
 			<div class="flex h-full w-full justify-end pr-3">
 				<Slider
 					bind:value={audioState.masterGain}
@@ -299,7 +183,7 @@
 		{/if}
 	</div>
 
-	{#if appState.propertiesSection === 'masterAudio'}
+	{#if appState.propertiesSection === 'outputAudio'}
 		<div
 			class="flex-none w-3.5 h-68 flex justify-between bg-zinc-950"
 			style="background:linear-gradient(90deg,#090909 43%, #18181b 43%, #18181b 57%,#090909 57%);"
@@ -317,4 +201,24 @@
 		</div>
 	{/if}
 </div>
-<!-- </Tooltip.Provider> -->
+
+{#snippet sideButton(section: PropertiesSection, description: string, icon: Snippet<[string]>)}
+	<Tooltip
+		contentProps={{ side: 'left' }}
+		triggerProps={{ onclick: () => (appState.propertiesSection = section) }}
+	>
+		{#snippet trigger()}
+			<div
+				class={[
+					appState.propertiesSection === section
+						? 'text-zinc-200'
+						: 'text-zinc-600 hover:text-zinc-400',
+					'p-2'
+				]}
+			>
+				{@render icon('w-6 h-6')}
+			</div>
+		{/snippet}
+		{description}
+	</Tooltip>
+{/snippet}

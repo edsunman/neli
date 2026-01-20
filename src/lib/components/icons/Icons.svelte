@@ -1,11 +1,15 @@
 <script lang="ts" module>
 	export {
 		addIcon,
+		aspectLandscape,
+		aspectPortrait,
+		aspectSquare,
 		audioIcon,
 		backIcon,
 		backArrowIcon,
 		copyIcon,
 		exportIcon,
+		fileIcon,
 		filmIcon,
 		folderIcon,
 		forwardIcon,
@@ -49,6 +53,51 @@
 		fill="none"
 	>
 		<path d="M17 12L7 12M12 17L12 7" /><!-- <circle cx="12" cy="12" r="10" /> -->
+	</svg>
+{/snippet}
+
+{#snippet aspectLandscape(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M200-240q-33 0-56.5-23.5T120-320v-320q0-33 23.5-56.5T200-720h560q33 0 56.5 23.5T840-640v320q0 33-23.5 56.5T760-240H200Zm0-80h560v-320H200v320Zm0 0v-320 320Z"
+		/>
+	</svg>
+{/snippet}
+
+{#snippet aspectPortrait(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M240-760q-0-33 23.5-56.5T320-840h320q33-0 56.5 23.5T720-760v560q0 33-23.5 56.5T640-120h-320q-33 0-56.5-23.5T240-200V-760Zm80-0v560h320V-760h-320Zm0 0h320-320Z"
+		/>
+	</svg>
+{/snippet}
+
+{#snippet aspectSquare(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0 0v-560 560Z"
+		/>
 	</svg>
 {/snippet}
 
@@ -134,6 +183,22 @@
 		fill="none"
 	>
 		<path d="M12,3 L12,16" /> <polyline points="7 12 12 17 17 12" /> <path d="M20,21 L4,21" />
+	</svg>
+{/snippet}
+
+{#snippet fileIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path stroke-linecap="round" d="M13 3v6h6" /> <path d="M13 3l6 6v12H5V3z" />
 	</svg>
 {/snippet}
 

@@ -114,16 +114,27 @@ self.addEventListener('message', async function (e) {
 			break;
 		}
 		case 'showSource': {
-			const source = sources.find((source) => source.id === e.data.sourceId);
-			if (!source) break;
-			selectedSource = source;
+			if (e.data.image) {
+				if (seeking) break;
+				seeking = true;
+				const params = [1, 1, 0, 0];
+				renderer.resizeCanvas(e.data.imageWidth, e.data.imageHeight);
+				renderer.startPaint();
+				renderer.imagePass(1, e.data.sourceId, params, e.data.imageHeight, e.data.imageWidth);
+				await renderer.endPaint(encoding);
+				seeking = false;
+			} else {
+				const source = sources.find((source) => source.id === e.data.sourceId);
+				if (!source) break;
+				selectedSource = source;
 
-			renderer.resizeCanvas(source.width, source.height);
+				renderer.resizeCanvas(source.width, source.height);
 
-			if (seeking) break;
-			seeking = true;
-			await drawSourceFrame(e.data.frame, false, selectedSource);
-			seeking = false;
+				if (seeking) break;
+				seeking = true;
+				await drawSourceFrame(e.data.frame, false, selectedSource);
+				seeking = false;
+			}
 			break;
 		}
 		case 'showTimeline': {
@@ -227,7 +238,7 @@ const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerV
 	let decoder = decoderPool.decoders.get(source.id);
 	let frame;
 	if (run) {
-		//
+		// TODO
 	} else {
 		if (!decoder) {
 			decoder = decoderPool.assignDecoder(source.id);
