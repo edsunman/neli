@@ -10,12 +10,9 @@
 
 	type Props = {
 		clip: Clip;
-		scale: number;
-		width: number;
-		height: number;
 		canvasContainer: HTMLDivElement;
 	};
-	let { clip, scale, width, height, canvasContainer }: Props = $props();
+	let { clip, canvasContainer }: Props = $props();
 
 	let contextMenu: ContextMenu;
 	let dragging = false;
@@ -29,6 +26,11 @@
 	let savedClipScale = { x: 0, y: 0 };
 	let savedClipCenter = { x: 0, y: 0 };
 
+	let scale = $derived.by(() => {
+		const widthScale = (canvasContainer.clientWidth / programState.canvasWidth) * 90;
+		const heightScale = (canvasContainer.clientHeight / programState.canvasHeight) * 90;
+		return heightScale < widthScale ? heightScale : widthScale;
+	});
 	let boxSizeX = $derived.by(() => {
 		if (clip.source.info.type === 'test') return clip.params[0] * 1920 * (scale / 100);
 		if (clip.source.info.type !== 'video' && clip.source.info.type !== 'image') return 0;
@@ -41,8 +43,13 @@
 	});
 	let position = $derived({
 		top:
-			height / 2 - boxSizeY / 2 - (clip.params[3] / 2) * programState.canvasHeight * (scale / 100),
-		left: width / 2 - boxSizeX / 2 + (clip.params[2] / 2) * programState.canvasWidth * (scale / 100)
+			canvasContainer.clientHeight / 2 -
+			boxSizeY / 2 -
+			(clip.params[3] / 2) * programState.canvasHeight * (scale / 100),
+		left:
+			canvasContainer.clientWidth / 2 -
+			boxSizeX / 2 +
+			(clip.params[2] / 2) * programState.canvasWidth * (scale / 100)
 	});
 
 	const mouseMove = (e: MouseEvent) => {
@@ -182,8 +189,10 @@
 		style:height={`${boxSizeY}px`}
 		class="border-2 border-white absolute top-0 left-0"
 		onmousedown={(e) => {
+			console.log('box');
 			if (e.button > 0) return;
 			e.preventDefault();
+			e.stopPropagation();
 			dragging = true;
 			savedClipPosition = { x: clip.params[2], y: clip.params[3] };
 			mouseDownPosition = { x: e.clientX, y: e.clientY };

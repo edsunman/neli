@@ -120,7 +120,7 @@
 					</span>
 				</Properties.Group>
 				<Properties.Group label={'frame rate'}>
-					<span class="text-zinc-300">{source.info.frameRate} fps</span>
+					<span class="text-zinc-300">{Math.round(source.info.frameRate * 100) / 100} fps</span>
 				</Properties.Group>
 			{/if}
 			{#if source.info.type === 'audio'}

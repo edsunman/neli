@@ -3,7 +3,7 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
 import { setSourceThumbnail } from '$lib/source/actions';
 import type { Source } from '$lib/source/source.svelte';
-import { appState, timelineState } from '$lib/state.svelte';
+import { appState, programState, timelineState } from '$lib/state.svelte';
 import { startPlayLoop } from '$lib/timeline/actions';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';

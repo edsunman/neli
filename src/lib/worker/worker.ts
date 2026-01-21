@@ -20,37 +20,39 @@ let programTimelineActive = false;
 const clips: WorkerClip[] = [];
 const sources: WorkerVideoSource[] = [];
 
-self.addEventListener('message', async function (e) {
-	switch (e.data.command) {
+self.addEventListener('message', async function (event) {
+	switch (event.data.command) {
 		case 'init':
 			{
 				decoderPool = new DecoderPool();
 				encoder = new Encoder();
-				canvas = e.data.canvas;
+				canvas = event.data.canvas;
 				renderer = new WebGPURenderer(canvas);
 			}
 			break;
 		case 'load-file':
 			{
-				if (e.data.type === 'video') {
-					const newSource = await loadFile(e.data.file, e.data.id);
+				if (event.data.type === 'video') {
+					const newSource = await loadFile(event.data.file, event.data.id);
 					if (!newSource) return;
 					sources.push(newSource);
 					sendFrameForThumbnail(newSource);
-				} else if (e.data.type === 'image') {
-					const bitmap = await createImageBitmap(e.data.file);
-					renderer.loadTexture(bitmap, e.data.id);
-					self.postMessage({ command: 'thumbnail', sourceId: e.data.id, gap: 0, bitmap }, [bitmap]);
+				} else if (event.data.type === 'image') {
+					const bitmap = await createImageBitmap(event.data.file);
+					renderer.loadTexture(bitmap, event.data.id);
+					self.postMessage({ command: 'thumbnail', sourceId: event.data.id, gap: 0, bitmap }, [
+						bitmap
+					]);
 				}
 			}
 			break;
 		case 'encode':
 			{
 				encodeAndCreateFile(
-					e.data.audioBuffer,
-					e.data.fileName,
-					e.data.startFrame,
-					e.data.endFrame
+					event.data.audioBuffer,
+					event.data.fileName,
+					event.data.startFrame,
+					event.data.endFrame
 				);
 			}
 			break;
@@ -65,58 +67,64 @@ self.addEventListener('message', async function (e) {
 				self.postMessage({ command: 'ready-to-play' });
 				playing = true;
 				seeking = false;
-				startPlayLoop(e.data.frame);
+				startPlayLoop(event.data.frame);
 			}
 			break;
 		case 'pause':
 			{
 				playing = false;
 				decoderPool.pauseAll();
-				latestSeekFrame = e.data.frame;
+				latestSeekFrame = event.data.frame;
 				if (seeking) break;
 				processSeekFrame();
 			}
 			break;
 		case 'seek': {
-			latestSeekFrame = e.data.frame;
+			latestSeekFrame = event.data.frame;
 			if (seeking) break;
 			processSeekFrame();
 			break;
 		}
 		case 'clip': {
-			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
+			const foundClipIndex = clips.findIndex((clip) => event.data.clip.id === clip.id);
 			if (foundClipIndex > -1) {
-				clips[foundClipIndex] = e.data.clip;
+				clips[foundClipIndex] = event.data.clip;
 			} else {
-				clips.push(e.data.clip);
+				clips.push(event.data.clip);
 			}
 			if (!programTimelineActive) {
-				latestSeekFrame = e.data.frame;
+				latestSeekFrame = event.data.frame;
 				if (seeking) break;
 				processSeekFrame();
 			}
 			break;
 		}
 		case 'resizeCanvas': {
-			renderer.resizeCanvas(e.data.width, e.data.height);
-
 			if (seeking) break;
+			renderer.resizeCanvas(event.data.width, event.data.height);
 			processSeekFrame();
+			//sendResizeComplete(event.data.height, event.data.width);
 			break;
 		}
 		case 'showSource': {
 			programTimelineActive = true;
-			if (e.data.image) {
+			if (event.data.image) {
 				if (seeking) break;
 				seeking = true;
 				const params = [1, 1, 0, 0];
-				renderer.resizeCanvas(e.data.imageWidth, e.data.imageHeight);
+				renderer.resizeCanvas(event.data.imageWidth, event.data.imageHeight);
 				renderer.startPaint();
-				renderer.imagePass(1, e.data.sourceId, params, e.data.imageHeight, e.data.imageWidth);
+				renderer.imagePass(
+					1,
+					event.data.sourceId,
+					params,
+					event.data.imageHeight,
+					event.data.imageWidth
+				);
 				await renderer.endPaint(encoding);
 				seeking = false;
 			} else {
-				const source = sources.find((source) => source.id === e.data.sourceId);
+				const source = sources.find((source) => source.id === event.data.sourceId);
 				if (!source) break;
 				selectedSource = source;
 
@@ -124,7 +132,7 @@ self.addEventListener('message', async function (e) {
 
 				if (seeking) break;
 				seeking = true;
-				await drawSourceFrame(e.data.frame, false, selectedSource);
+				await drawSourceFrame(event.data.frame, false, selectedSource);
 				seeking = false;
 			}
 			break;
@@ -132,8 +140,8 @@ self.addEventListener('message', async function (e) {
 		case 'showTimeline': {
 			programTimelineActive = false;
 			selectedSource = null;
-			renderer.resizeCanvas(e.data.width, e.data.height);
-			latestSeekFrame = e.data.frame;
+			renderer.resizeCanvas(event.data.width, event.data.height);
+			latestSeekFrame = event.data.frame;
 			if (seeking) break;
 			processSeekFrame();
 			break;
@@ -151,6 +159,16 @@ self.addEventListener('message', async function (e) {
 		}
 	}
 });
+
+/* const sendResizeComplete = (height: number, width: number) => {
+	self.postMessage({
+		command: 'resize-complete',
+		origin: performance.timeOrigin,
+		timestamp: performance.now(),
+		height,
+		width
+	});
+}; */
 
 const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');

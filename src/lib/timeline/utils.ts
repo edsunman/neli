@@ -42,11 +42,11 @@ export const framesToTimecode = (frames: number, framerate = 30) => {
 	const minutes = (seconds - SS) / 60;
 	const MM = minutes % 60;
 	return (
-		String(MM).padStart(2, '0') +
+		String(Math.floor(MM)).padStart(2, '0') +
 		':' +
-		String(SS).padStart(2, '0') +
+		String(Math.floor(SS)).padStart(2, '0') +
 		':' +
-		String(FF).padStart(2, '0')
+		String(Math.floor(FF)).padStart(2, '0')
 	);
 };
 
