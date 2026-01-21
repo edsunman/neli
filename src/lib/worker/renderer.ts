@@ -2,6 +2,7 @@ import { MsdfFont, MsdfTextRenderer } from './render/text';
 import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
 import { ImageRenderer } from './render/image';
+import { SolidColorRenderer } from './render/solidColor';
 
 export class WebGPURenderer {
 	bitmap?: ImageBitmap;
@@ -21,6 +22,7 @@ export class WebGPURenderer {
 	private testRenderer?: TestRenderer;
 	private videoRenderer?: VideoRenderer;
 	private imageRenderer?: ImageRenderer;
+	private solidColorRenderer?: SolidColorRenderer;
 
 	private uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
 	private uniformBuffers: GPUBuffer[] = [];
@@ -56,6 +58,7 @@ export class WebGPURenderer {
 		this.testRenderer = new TestRenderer(this.device, this.format);
 		this.videoRenderer = new VideoRenderer(this.device, this.format, this.sampler);
 		this.imageRenderer = new ImageRenderer(this.device, this.format, this.sampler);
+		this.solidColorRenderer = new SolidColorRenderer(this.device, this.format, this.sampler);
 		this.textRenderer = new MsdfTextRenderer(this.device, this.format);
 		this.font = await this.textRenderer.createFont('/text.json');
 		this.testFont = await this.textRenderer.createFont('/FiraMono-Bold-msdf.json');
@@ -189,6 +192,11 @@ export class WebGPURenderer {
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
+	}
+
+	audioSourcePass() {
+		if (!this.passEncoder) return;
+		this.solidColorRenderer?.draw(this.passEncoder);
 	}
 
 	loadTexture(image: ImageBitmap, soruceId: string) {

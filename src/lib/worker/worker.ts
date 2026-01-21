@@ -15,6 +15,7 @@ let encoding = false;
 let latestSeekFrame = 0;
 let cancelEncode = false;
 let selectedSource: WorkerVideoSource | null = null;
+let programTimelineActive = false;
 
 const clips: WorkerClip[] = [];
 const sources: WorkerVideoSource[] = [];
@@ -82,38 +83,29 @@ self.addEventListener('message', async function (e) {
 			processSeekFrame();
 			break;
 		}
-		case 'seekSource': {
-			if (!selectedSource) break;
-			latestSeekFrame = e.data.frame;
-			if (seeking) break;
-			processSeekFrame(selectedSource);
-			break;
-		}
 		case 'clip': {
 			const foundClipIndex = clips.findIndex((clip) => e.data.clip.id === clip.id);
-
 			if (foundClipIndex > -1) {
 				clips[foundClipIndex] = e.data.clip;
 			} else {
 				clips.push(e.data.clip);
 			}
-
-			if (seeking) break;
-			seeking = true;
-			await buildAndDrawFrame(e.data.frame);
-			seeking = false;
+			if (!programTimelineActive) {
+				latestSeekFrame = e.data.frame;
+				if (seeking) break;
+				processSeekFrame();
+			}
 			break;
 		}
 		case 'resizeCanvas': {
 			renderer.resizeCanvas(e.data.width, e.data.height);
 
 			if (seeking) break;
-			seeking = true;
-			await buildAndDrawFrame(e.data.frame);
-			seeking = false;
+			processSeekFrame();
 			break;
 		}
 		case 'showSource': {
+			programTimelineActive = true;
 			if (e.data.image) {
 				if (seeking) break;
 				seeking = true;
@@ -138,12 +130,22 @@ self.addEventListener('message', async function (e) {
 			break;
 		}
 		case 'showTimeline': {
+			programTimelineActive = false;
 			selectedSource = null;
 			renderer.resizeCanvas(e.data.width, e.data.height);
-
+			latestSeekFrame = e.data.frame;
+			if (seeking) break;
+			processSeekFrame();
+			break;
+		}
+		case 'showAudioSource': {
+			programTimelineActive = true;
 			if (seeking) break;
 			seeking = true;
-			await buildAndDrawFrame(e.data.frame);
+			//renderer.resizeCanvas(1920, 1080);
+			renderer.startPaint();
+			renderer.audioSourcePass();
+			await renderer.endPaint(encoding);
 			seeking = false;
 			break;
 		}
@@ -161,14 +163,14 @@ const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	]);
 };
 
-const processSeekFrame = async (source?: WorkerVideoSource) => {
+const processSeekFrame = async () => {
 	seeking = true;
 	while (true) {
 		const frameToProcess = latestSeekFrame;
 
 		decoderPool.pauseAll();
-		if (source) {
-			await drawSourceFrame(frameToProcess, false, source);
+		if (selectedSource) {
+			await drawSourceFrame(frameToProcess, false, selectedSource);
 		} else {
 			await buildAndDrawFrame(frameToProcess);
 		}
@@ -179,12 +181,38 @@ const processSeekFrame = async (source?: WorkerVideoSource) => {
 	seeking = false;
 };
 
+const setupFrame = async (frameNumber: number) => {
+	for (const clip of clips) {
+		if (clip.type !== 'video' || clip.deleted) continue;
+		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
+			const source = sources.find((source) => source.id === clip.sourceId);
+			if (!source) return;
+			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
+			const frameDurationMs = 1000 / 30;
+			const frameTimeMs = clipFrame * frameDurationMs;
+			decoderPool.decoders.get(clip.id)?.play(frameTimeMs, true);
+		}
+	}
+};
+
+const setupSourceFrame = async (frameNumber: number, source: WorkerVideoSource) => {
+	const frameDurationMs = 1000 / source.frameRate;
+	const frameTimeMs = frameNumber * frameDurationMs;
+	decoderPool.decoders.get(source.id)?.play(frameTimeMs, true);
+};
+
 const startPlayLoop = async (startingFrame: number) => {
-	await setupFrame(startingFrame);
+	let fps = 30;
 
-	const msPerFrame = 1000 / 30;
+	if (selectedSource) {
+		fps = selectedSource.frameRate;
+		await setupSourceFrame(startingFrame, selectedSource);
+	} else {
+		await setupFrame(startingFrame);
+	}
+
+	const msPerFrame = 1000 / fps;
 	const epsilon = 1; // Tolerance for smoother playback
-
 	let lastTime = 0;
 	let accumulator = 0;
 	let currentFrame = startingFrame;
@@ -193,7 +221,7 @@ const startPlayLoop = async (startingFrame: number) => {
 	const loop = (timestamp: number) => {
 		if (!playing) return;
 
-		// Warm up decoders
+		// Wait for decoders
 		if (warmUpCycles < 2) {
 			warmUpCycles++;
 			return self.requestAnimationFrame(loop);
@@ -213,23 +241,16 @@ const startPlayLoop = async (startingFrame: number) => {
 		}
 
 		if (frameChanged) {
-			buildAndDrawFrame(currentFrame, true);
+			if (selectedSource) {
+				drawSourceFrame(currentFrame, true, selectedSource);
+			} else {
+				buildAndDrawFrame(currentFrame, true);
+			}
 		}
 
 		self.requestAnimationFrame(loop);
 	};
-
 	self.requestAnimationFrame(loop);
-};
-
-const setupFrame = async (frameNumber: number) => {
-	for (const clip of clips) {
-		if (clip.type !== 'video' || clip.deleted) continue;
-		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
-			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
-			decoderPool.decoders.get(clip.id)?.play(clipFrame, true);
-		}
-	}
 };
 
 const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerVideoSource) => {
@@ -238,7 +259,9 @@ const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerV
 	let decoder = decoderPool.decoders.get(source.id);
 	let frame;
 	if (run) {
-		// TODO
+		const frameDurationMs = 1000 / source.frameRate;
+		const frameTimeMs = frameNumber * frameDurationMs;
+		frame = decoder?.run(frameTimeMs, encoding);
 	} else {
 		if (!decoder) {
 			decoder = decoderPool.assignDecoder(source.id);
@@ -281,6 +304,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 		const clipFrame = frameNumber - videoClip.start + videoClip.sourceOffset;
 		let frame;
 		if (run) {
+			// timeline frame rate
 			frame = decoder?.run(clipFrame * 33.33333333, encoding);
 		} else {
 			if (!decoder) {
@@ -311,7 +335,8 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 				if (!decoder) decoder = setupNewDecoder(clip);
 				if (decoder) {
 					decoder.usedThisFrame = true;
-					decoder.play(clipStartFrame);
+					// timeline frame rate
+					decoder.play(clipStartFrame * 33.33333333);
 				}
 			}
 		}

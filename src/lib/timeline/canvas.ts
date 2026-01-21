@@ -168,7 +168,7 @@ export const drawSourceCanvas = (
 	const inPosition = programFrameToCanvasPixel(appState.selectedSource.selection.in);
 	drawMarker(context, 12, inPosition - 1);
 
-	const outPosition = programFrameToCanvasPixel(appState.selectedSource.selection.out + 1);
+	const outPosition = programFrameToCanvasPixel(appState.selectedSource.selection.out);
 	drawMarker(context, 12, outPosition);
 
 	context.fillStyle = '#696971';

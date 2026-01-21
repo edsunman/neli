@@ -26,7 +26,8 @@ export const startPlayLoop = () => {
 	timelineState.playing = true;
 	timelineState.selectedClip = null;
 
-	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
+	const msPerFrame = 1000 / 30;
+	const epsilon = 1; // Tolerance for smoother playback
 	let accumulator = 0;
 	let lastTime = 0;
 	let firstTimestamp = 0;
@@ -34,38 +35,25 @@ export const startPlayLoop = () => {
 	const loop = (timestamp: number) => {
 		if (!timelineState.playing) return;
 
-		if (lastTime === 0) {
-			lastTime = timestamp;
-		}
-
-		if (firstTimestamp === 0) {
-			firstTimestamp = timestamp;
+		if (lastTime === 0) lastTime = timestamp;
+		if (firstTimestamp === 0) firstTimestamp = timestamp;
+		if (timelineState.currentFrame >= timelineState.duration - 1) {
+			timelineState.currentFrame = timelineState.duration - 1;
+			pause();
 		}
 
 		const deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
-
 		accumulator += deltaTime;
 
-		const oldFrame = timelineState.currentFrame;
-
-		if (oldFrame >= timelineState.duration - 1) {
-			// dont play past timeine end
-			pause();
-		}
-
-		// the - 1 here is an epsilon to make playback smoother
-		while (accumulator >= MS_PER_FRAME - 1) {
+		while (accumulator >= msPerFrame - epsilon) {
 			timelineState.currentFrame++;
-			accumulator -= MS_PER_FRAME;
+			accumulator -= msPerFrame;
+			timelineState.invalidate = true;
 		}
 
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		runAudio(timelineState.currentFrame, elapsedTimeMs);
-
-		if (timelineState.currentFrame !== oldFrame) {
-			timelineState.invalidate = true;
-		}
 
 		if (timelineState.playing) requestAnimationFrame(loop);
 	};

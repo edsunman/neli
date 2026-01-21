@@ -1,16 +1,78 @@
+import { pauseAudio, runSourceAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
 import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
+import { pause } from '$lib/timeline/actions';
 import {
+	pauseWorker,
+	playWorker,
 	resizeWorkerCanvas,
-	seekWorkerSource,
+	seekWorker,
+	showAudioSource,
 	showSource,
 	showTimeline,
 	updateWorkerClip
 } from '$lib/worker/actions.svelte';
 import { programTimelinePixelToFrame, scaleToFit } from './utils';
 
+export const playProgram = () => {
+	if (appState.selectedSource?.type !== 'video' && appState.selectedSource?.type !== 'audio')
+		return;
+	playWorker(programState.currentFrame);
+};
+
+export const startProgramPlayLoop = () => {
+	programState.playing = true;
+
+	let fps = 30;
+	if (appState.selectedSource?.info.type === 'video') {
+		fps = appState.selectedSource?.info.frameRate;
+	}
+
+	const msPerFrame = 1000 / fps;
+	const epsilon = 1; // Tolerance for smoother playback
+	let accumulator = 0;
+	let lastTime = 0;
+	let firstTimestamp = 0;
+
+	const loop = (timestamp: number) => {
+		if (!programState.playing) return;
+
+		if (lastTime === 0) lastTime = timestamp;
+		if (firstTimestamp === 0) firstTimestamp = timestamp;
+
+		if (programState.currentFrame >= programState.duration - 1) {
+			programState.currentFrame = programState.duration - 1;
+			pauseProgram();
+		}
+
+		const deltaTime = timestamp - lastTime;
+		lastTime = timestamp;
+		accumulator += deltaTime;
+
+		while (accumulator >= msPerFrame - epsilon) {
+			programState.currentFrame++;
+			accumulator -= msPerFrame;
+			programState.invalidateTimeline = true;
+		}
+
+		const elapsedTimeMs = timestamp - firstTimestamp;
+		runSourceAudio(programState.currentFrame, elapsedTimeMs);
+
+		if (programState.playing) requestAnimationFrame(loop);
+	};
+	requestAnimationFrame(loop);
+};
+
+export const pauseProgram = () => {
+	if (!programState.playing) return;
+	programState.playing = false;
+	pauseWorker(programState.currentFrame);
+	pauseAudio();
+};
+
 export const showSourceInProgram = (source: Source) => {
+	if (timelineState.playing) pause();
 	if (source.info.type !== 'video' && source.info.type !== 'image' && source.info.type !== 'audio')
 		return;
 
@@ -18,34 +80,39 @@ export const showSourceInProgram = (source: Source) => {
 		appState.selectedSource.selection.currentFrame = programState.currentFrame;
 	}
 	appState.selectedSource = source;
+	const info = source.info;
 
-	if (source.info.type === 'image') {
-		const { width, height } = scaleToFit(
-			1920,
-			1080,
-			source.info.resolution.width,
-			source.info.resolution.height
-		);
+	timelineState.showPlayhead = false;
+	timelineState.invalidate = true;
+
+	if (info.type === 'image') {
+		const { width, height } = scaleToFit(1920, 1080, info.resolution.width, info.resolution.height);
 		programState.canvasHeight = height;
 		programState.canvasWidth = width;
 		showSource(appState.selectedSource.id, 0, true, height, width);
 		return;
 	}
 
-	if (source.info.type !== 'video') return;
-	const info = source.info;
-	timelineState.showPlayhead = false;
-	timelineState.invalidate = true;
-	programState.canvasHeight = info.resolution.height;
-	programState.canvasWidth = info.resolution.width;
-	programState.duration = Math.floor(info.duration * info.frameRate) + 1;
 	programState.currentFrame = source.selection.currentFrame;
 	programState.invalidateTimeline = true;
+
+	if (info.type === 'audio') {
+		programState.duration = Math.round(info.duration * 30);
+		showAudioSource();
+	}
+
+	if (info.type === 'video') {
+		programState.duration = Math.round(info.duration * info.frameRate);
+		programState.canvasHeight = info.resolution.height;
+		programState.canvasWidth = info.resolution.width;
+	}
+
 	showSource(appState.selectedSource.id, programState.currentFrame);
 };
 
 export const showTimelineInProgram = () => {
 	if (!appState.selectedSource) return;
+	if (programState.playing) pauseProgram();
 	appState.selectedSource.selection.currentFrame = programState.currentFrame;
 	appState.selectedSource = null;
 	timelineState.showPlayhead = true;
@@ -57,13 +124,14 @@ export const showTimelineInProgram = () => {
 
 export const setCurrentFrame = (frame: number) => {
 	if (frame < 0) frame = 0;
-	if (frame > programState.duration - 1) frame = programState.duration - 1;
-	seekWorkerSource(frame);
+	if (frame > programState.duration) frame = programState.duration;
+	if (appState.selectedSource?.type === 'video') seekWorker(frame);
 	programState.currentFrame = frame;
 	programState.invalidateTimeline = true;
 };
 
 export const setCurrentFrameFromOffset = (canvasOffset: number) => {
+	if (programState.playing) pauseProgram();
 	const frame = programTimelinePixelToFrame(canvasOffset);
 	setCurrentFrame(frame);
 };

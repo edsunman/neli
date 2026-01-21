@@ -102,7 +102,7 @@ export class VDecoder {
 		return this.savedFrame;
 	}
 
-	async play(frameNumber: number, useSavedFrame = false) {
+	async play(timeMs: number, useSavedFrame = false) {
 		if (!this.decoder || !this.packetSink) return;
 		if (this.running) return;
 
@@ -119,10 +119,10 @@ export class VDecoder {
 			this.savedFrame = null;
 		}
 
-		this.targetTimestamp = Math.floor((frameNumber / 30) * 1_000_000);
+		this.targetTimestamp = Math.floor(timeMs * 1000);
 		this.foundTargetFrame = false;
 
-		let keyPacket = await this.packetSink.getKeyPacket(frameNumber / 30, {
+		let keyPacket = await this.packetSink.getKeyPacket(timeMs / 1000, {
 			verifyKeyPackets: true
 		});
 		if (!keyPacket) keyPacket = await this.packetSink.getFirstPacket();

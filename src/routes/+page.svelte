@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { appState, historyManager, timelineState } from '$lib/state.svelte';
-	import { createSource } from '$lib/source/actions';
+	import { assignSourcesToFolders, createSource } from '$lib/source/actions';
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
@@ -29,6 +29,7 @@
 		textSource.preset = true;
 		const testSource = createSource('test', { type: 'test' });
 		testSource.preset = true;
+		assignSourcesToFolders();
 
 		const font = await loadFont('/text.json');
 		appState.fonts.push(font);

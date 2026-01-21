@@ -2,33 +2,27 @@ import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type {
-	DragAndDropState,
-	FolderGroup,
-	Font,
-	PropertiesSection,
-	ImportState,
-	Track
-} from './types';
+import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } from './types';
 
 class AppState {
 	mediaWorker?: Worker;
 	waveformCanvas?: HTMLCanvasElement;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
+	selectedSourceFolder = $state(0);
 	propertiesSection = $state<PropertiesSection>('project');
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
 	audioLevel = $state([0, 0]);
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
-	folderGroups: FolderGroup[] = $state([]);
+	sourceFolders: { id: number; selected: boolean }[] = $state([]);
 
 	dragAndDrop = $state<DragAndDropState>({
+		currentCursor: { x: 0, y: 0 },
+		dragFrom: 'sources',
 		clicked: false,
 		active: false,
-		x: 0,
-		y: 0,
 		showIcon: false,
 		source: null
 	});
@@ -87,6 +81,7 @@ class ProgramState {
 	duration = $state(1000); // frames
 	currentFrame = $state(0);
 	invalidateTimeline = false;
+	playing = false;
 }
 
 export const appState = new AppState();

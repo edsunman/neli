@@ -17,16 +17,17 @@ export const createClip = (
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	if (start && start > timelineState.duration && !temp) {
-		// Clip added after end of timeline
-		return;
-	}
+	// Clip added after timeline max length
+	if (start && start > 9000) return;
+
+	if (start < 0) return;
 
 	if (duration === 0) {
 		// No duration set so use defaults
 		duration = 500;
 		if (source.info.type === 'audio') {
-			duration = source.info.duration * 30;
+			// assume audio and timeline is 30 fps
+			duration = source.selection.out - source.selection.in;
 		} else if (source.info.type === 'video') {
 			// Source may have different framerate to timeline so
 			// convert to seconds and back
@@ -44,14 +45,16 @@ export const createClip = (
 			const inSeconds = source.selection.in / source.info.frameRate;
 			const inFrames = Math.floor(inSeconds * 30);
 			sourceOffset = inFrames;
+		} else if (source.info.type === 'audio') {
+			sourceOffset = source.selection.in;
 		} else {
 			sourceOffset = 0;
 		}
 	}
 
-	if (start + duration > timelineState.duration && !temp) {
+	if (start + duration > 9000) {
 		// Clip duration outside timeline bounds
-		duration = timelineState.duration - start;
+		duration = 9000 - start;
 	}
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);

@@ -1,11 +1,9 @@
 import type { EncodedPacketSink, InputVideoTrack } from 'mediabunny';
 import type { Source } from './source/source.svelte';
 
-//export type SourceType = 'text' | 'video' | 'audio' | 'test' | 'srt' | 'image';
+export type PropertiesSection = 'outputAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
-
-export type PropertiesSection = 'outputAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
 
 export type Track = {
 	height: number;
@@ -14,11 +12,6 @@ export type Track = {
 	lockBottom: boolean;
 	lockTop: boolean;
 	type: TrackType;
-};
-
-export type FolderGroup = {
-	type: TrackType;
-	folders: { id: number; selected: boolean }[];
 };
 
 export type SrtEntry = {
@@ -54,10 +47,10 @@ export type WorkerVideoSource = {
 };
 
 export type DragAndDropState = {
+	currentCursor: { x: number; y: number };
+	dragFrom: 'sources' | 'program';
 	clicked: boolean;
 	active: boolean;
-	x: number;
-	y: number;
 	showIcon: boolean;
 	source: Source | null;
 };

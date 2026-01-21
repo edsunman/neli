@@ -1,5 +1,6 @@
 import { renderAudioForExport } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
+import { startProgramPlayLoop } from '$lib/program/actions';
 import { setSourceThumbnail } from '$lib/source/actions';
 import type { Source } from '$lib/source/source.svelte';
 import { appState, timelineState } from '$lib/state.svelte';
@@ -21,7 +22,11 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker.addEventListener('message', async (event) => {
 		switch (event.data.command) {
 			case 'ready-to-play': {
-				startPlayLoop();
+				if (appState.selectedSource) {
+					startProgramPlayLoop();
+				} else {
+					startPlayLoop();
+				}
 				break;
 			}
 			case 'thumbnail': {
@@ -87,10 +92,8 @@ export const sendFileToWorker = (source: Source) => {
 	});
 };
 
-// TODO: updates should be batched together
-// so multiple clip updates are sent in one message
-// Also do we really need to send everything or can
-// we decide what to send?
+// TODO: updates should be batched together so multiple clip updates are sent in one message
+// Also do we really need to send everything or can we decide what to send?
 export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
 	let height = 0;
@@ -123,13 +126,6 @@ export const updateWorkerClip = (clip: Clip | null) => {
 export const seekWorker = (frame: number) => {
 	appState.mediaWorker?.postMessage({
 		command: 'seek',
-		frame
-	});
-};
-
-export const seekWorkerSource = (frame: number) => {
-	appState.mediaWorker?.postMessage({
-		command: 'seekSource',
 		frame
 	});
 };
@@ -176,6 +172,12 @@ export const resizeWorkerCanvas = (width: number, height: number) => {
 		width,
 		height,
 		frame: timelineState.currentFrame
+	});
+};
+
+export const showAudioSource = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'showAudioSource'
 	});
 };
 

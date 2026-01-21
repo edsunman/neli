@@ -1,8 +1,9 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
-import { appState, audioState, timelineState } from '$lib/state.svelte';
+import { appState, audioState, programState, timelineState } from '$lib/state.svelte';
 
 export const runAudio = (frame: number, elapsedTimeMs: number) => {
+	if (!timelineState.playing) return;
 	// run decoders
 	const currentClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
@@ -16,7 +17,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				// not yet playing so play
 				const clipFrame = frame - clip.start + clip.sourceOffset;
 
-				setupNewDecoder(clip);
+				setupNewDecoder(clip.source, clip.id);
 				audioState.decoderPool.playDecoder(clip.id, clipFrame);
 				audioState.playingClips.push(clip.id);
 
@@ -58,7 +59,101 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 		}
 	}
 
-	// play audio in decoder buffers
+	scheduleDecoderBuffers();
+
+	for (const clip of currentClips) {
+		if (clip.source.type !== 'test') continue;
+
+		const nextMultiple = Math.ceil((frame - clip.start + 15) / 30) * 30 - 15;
+
+		const nextToneFrame = audioState.testTones.get(clip.id);
+		if (!nextToneFrame || nextToneFrame !== nextMultiple) {
+			audioState.testTones.set(clip.id, nextMultiple);
+
+			const sampleRate = audioState.audioContext.sampleRate;
+			const duration = 2 / 30;
+			const frameCount = sampleRate * duration;
+			const high = ((nextMultiple - 15) / 30) % 4 === 0;
+
+			const f32 = generateTone(high, sampleRate, frameCount);
+			const buffer = audioState.audioContext.createBuffer(1, frameCount, sampleRate);
+			buffer.copyToChannel(f32, 0);
+
+			const sourceNode = audioState.audioContext.createBufferSource();
+			sourceNode.buffer = buffer;
+
+			const gainNode = audioState.gainNodes.get(clip.id);
+			if (gainNode) sourceNode.connect(gainNode);
+			sourceNode.start(
+				audioState.audioContext.currentTime + (nextMultiple - (frame - clip.start)) / 30
+			);
+		}
+	}
+
+	updateMeter();
+};
+
+export const runSourceAudio = (frame: number, elapsedTimeMs: number) => {
+	if (!programState.playing) return;
+	// run decoders
+
+	const source = appState.selectedSource;
+	if (!source) return;
+	if (audioState.playingClips.find((c) => c === source.id)) {
+		// already playing so run
+		audioState.decoderPool.runDecoder(source.id, elapsedTimeMs);
+	} else {
+		// not yet playing so play
+		setupNewDecoder(source);
+
+		let fps = 30;
+		if (source.info.type === 'video') fps = source.info.frameRate;
+		audioState.decoderPool.playDecoder(source.id, frame, fps);
+		audioState.playingClips.push(source.id);
+
+		const panNode = audioState.audioContext.createStereoPanner();
+		panNode.pan.value = 0;
+		panNode.connect(audioState.masterGainNode);
+		audioState.panNodes.set(source.id, panNode);
+
+		const gainNode = audioState.audioContext.createGain();
+		gainNode.gain.value = 1;
+		gainNode.connect(panNode);
+		audioState.gainNodes.set(source.id, gainNode);
+
+		audioState.offsets.set(source.id, audioState.audioContext.currentTime);
+	}
+
+	scheduleDecoderBuffers();
+};
+
+export const pauseAudio = () => {
+	audioState.decoderPool.pauseAll();
+	audioState.panNodes.forEach((node) => {
+		if (node) node.disconnect();
+	});
+	audioState.panNodes.clear();
+	audioState.gainNodes.forEach((node) => {
+		if (node) node.disconnect();
+	});
+	audioState.gainNodes.clear();
+	audioState.offsets.clear();
+	audioState.testTones.clear();
+
+	audioState.playingClips.length = 0;
+	appState.audioLevel = [0, 0];
+};
+
+const setupNewDecoder = (source: Source, clipId?: string) => {
+	//	const source = appState.sources.find((s) => s.id === clip.source.id);
+	if (!source.audioConfig || !source.sink) return;
+	const decoder = audioState.decoderPool.assignDecoder(clipId ? clipId : source.id);
+	if (!decoder) return;
+	decoder.setup(source.audioConfig, source.sink);
+	return decoder;
+};
+
+const scheduleDecoderBuffers = () => {
 	for (const [clipId, decoder] of audioState.decoderPool.decoders) {
 		if (decoder.running && decoder.audioDataQueue.length > 4) {
 			let totalFrames = 0;
@@ -102,63 +197,6 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			audioState.offsets.set(clipId, scheduledTime + audioBuffer.duration);
 		}
 	}
-
-	for (const clip of currentClips) {
-		if (clip.source.type !== 'test') continue;
-
-		const nextMultiple = Math.ceil((frame - clip.start + 15) / 30) * 30 - 15;
-
-		const nextToneFrame = audioState.testTones.get(clip.id);
-		if (!nextToneFrame || nextToneFrame !== nextMultiple) {
-			audioState.testTones.set(clip.id, nextMultiple);
-
-			const sampleRate = audioState.audioContext.sampleRate;
-			const duration = 2 / 30;
-			const frameCount = sampleRate * duration;
-			const high = ((nextMultiple - 15) / 30) % 4 === 0;
-
-			const f32 = generateTone(high, sampleRate, frameCount);
-			const buffer = audioState.audioContext.createBuffer(1, frameCount, sampleRate);
-			buffer.copyToChannel(f32, 0);
-
-			const sourceNode = audioState.audioContext.createBufferSource();
-			sourceNode.buffer = buffer;
-
-			const gainNode = audioState.gainNodes.get(clip.id);
-			if (gainNode) sourceNode.connect(gainNode);
-			sourceNode.start(
-				audioState.audioContext.currentTime + (nextMultiple - (frame - clip.start)) / 30
-			);
-		}
-	}
-
-	updateMeter();
-};
-
-export const pauseAudio = () => {
-	audioState.decoderPool.pauseAll();
-	audioState.panNodes.forEach((node) => {
-		if (node) node.disconnect();
-	});
-	audioState.panNodes.clear();
-	audioState.gainNodes.forEach((node) => {
-		if (node) node.disconnect();
-	});
-	audioState.gainNodes.clear();
-	audioState.offsets.clear();
-	audioState.testTones.clear();
-
-	audioState.playingClips.length = 0;
-	appState.audioLevel = [0, 0];
-};
-
-const setupNewDecoder = (clip: Clip) => {
-	const source = appState.sources.find((s) => s.id === clip.source.id);
-	if (!source || !source.audioConfig || !source.sink) return;
-	const decoder = audioState.decoderPool.assignDecoder(clip.id);
-	if (!decoder) return;
-	decoder.setup(source.audioConfig, source.sink);
-	return decoder;
 };
 
 const updateMeter = () => {

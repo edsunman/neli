@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setCurrentFrameFromOffset,
@@ -44,7 +44,7 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
-	import { showTimelineInProgram } from '$lib/program/actions';
+	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
 
@@ -264,7 +264,11 @@
 				if (appState.dragAndDrop.active) {
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
-					showClipPropertiesSection(clip);
+					if (appState.selectedSource) {
+						timelineState.selectedClip = null;
+					} else {
+						showClipPropertiesSection(clip);
+					}
 				} else {
 					finaliseClip(clip, 'moveClip');
 				}
@@ -507,10 +511,10 @@
 				break;
 			case 'Space':
 				event.preventDefault();
-				if (timelineState.playing) {
-					pause();
+				if (timelineState.playing || programState.playing) {
+					appState.selectedSource ? pauseProgram() : pause();
 				} else if (!appState.mouseIsDown) {
-					play();
+					appState.selectedSource ? playProgram() : play();
 				}
 				break;
 			case 'Backspace':

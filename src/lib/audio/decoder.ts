@@ -30,13 +30,13 @@ export class ADecoder {
 		this.sampleRate = config.sampleRate;
 	}
 
-	async play(frameNumber: number) {
+	async play(timeMs: number) {
 		if (!this.packetSink) return;
 		if (this.running) return;
 		this.running = true;
 		this.audioDataQueueFull = false;
 
-		let startPacket = await this.packetSink.getPacket(frameNumber / 30);
+		let startPacket = await this.packetSink.getPacket(timeMs / 1000);
 		if (!startPacket) startPacket = await this.packetSink.getFirstPacket();
 		if (!startPacket) throw new Error('No start packet');
 

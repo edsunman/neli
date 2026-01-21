@@ -24,7 +24,7 @@
 >
 	<textarea
 		class={[
-			'relative w-full resize-none h-17 px-2 py-1 z-2 text-zinc-400 focus:text-zinc-100 outline-0',
+			'relative w-full resize-none h-17 px-2 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {

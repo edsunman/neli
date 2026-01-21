@@ -27,7 +27,7 @@
 	<input
 		{type}
 		class={[
-			'relative w-full text-right px-1 py-1 z-2 text-zinc-400 focus:text-zinc-100 outline-0',
+			'relative w-full text-right px-1 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {

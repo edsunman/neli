@@ -50,7 +50,7 @@
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
 					{/if}
-					{#if source.type === 'audio' || source.type === 'video'}
+					{#if source.type === 'audio' || source.type === 'video' || source.type === 'test'}
 						{@render sideButton('audio', 'audio settings', audioIcon)}
 					{/if}
 				</div>
@@ -91,6 +91,14 @@
 					]}
 				/>
 			</Properties.Group>
+			<Properties.Group label={'resolution'}>
+				<span class="text-zinc-300">
+					{appState.project.resolution.height} x {appState.project.resolution.width}
+				</span>
+			</Properties.Group>
+			<Properties.Group label={'frame rate'}>
+				<span class="text-zinc-300">30 fps</span>
+			</Properties.Group>
 		{/if}
 
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
@@ -113,6 +121,17 @@
 				</Properties.Group>
 				<Properties.Group label={'frame rate'}>
 					<span class="text-zinc-300">{source.info.frameRate} fps</span>
+				</Properties.Group>
+			{/if}
+			{#if source.info.type === 'audio'}
+				<Properties.Group label={'duration'}>
+					<span class="text-zinc-300">{secondsToTimecode(source.info.duration)}</span>
+				</Properties.Group>
+				<Properties.Group label={'sampleRate'}>
+					<span class="text-zinc-300">{source.info.sampleRate / 1000} kHz</span>
+				</Properties.Group>
+				<Properties.Group label={'channels'}>
+					<span class="text-zinc-300">{source.info.channelCount}</span>
 				</Properties.Group>
 			{/if}
 			{#if source.info.type === 'image'}

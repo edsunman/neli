@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import {
 		centerViewOnPlayhead,
 		focusTrack,
@@ -27,6 +27,7 @@
 		redoIcon,
 		forwardIcon
 	} from '../icons/Icons.svelte';
+	import { pauseProgram, playProgram } from '$lib/program/actions';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -124,10 +125,10 @@
 					icon: playIcon,
 					shortcuts: ['space'],
 					action: () => {
-						if (timelineState.playing) {
-							pause();
+						if (timelineState.playing || programState.playing) {
+							appState.selectedSource ? pauseProgram() : pause();
 						} else {
-							play();
+							appState.selectedSource ? playProgram() : play();
 						}
 						appState.showPalette = false;
 					}

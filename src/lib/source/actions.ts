@@ -3,8 +3,7 @@ import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
-import type { FileInfo, FolderGroup, SourceType, SrtEntry, TrackType } from '$lib/types';
-import { getTrackTypeFromSourceType } from '$lib/timeline/actions';
+import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
 
 export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	const newSource = new Source(type, info);
@@ -13,6 +12,7 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	if (type === 'text') newSource.name = 'Text';
 	if (type === 'test') newSource.name = 'Test video';
 	if (info.type === 'video') newSource.selection.out = Math.round(info.duration * info.frameRate);
+	if (info.type === 'audio') newSource.selection.out = Math.round(info.duration * 30);
 
 	if (file) {
 		const lastDotIndex = file.name.lastIndexOf('.');
@@ -27,38 +27,28 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	return newSource;
 };
 
-const assignSourcesToFolders = () => {
-	if (appState.sources.length < 5) return;
-	appState.folderGroups.length = 0;
+export const assignSourcesToFolders = () => {
+	appState.sourceFolders.length = 0;
 
-	const sourceTypes = new Map<TrackType, number>();
+	const sourceCount = appState.sources.filter((source) => !source.preset).length;
+
+	let folderId = 0;
+	for (let i = 0; i < sourceCount / 7; i++) {
+		folderId++;
+		appState.sourceFolders.push({ id: folderId, selected: false });
+	}
+
+	let i = 0;
 	for (const source of appState.sources) {
-		if (source.preset) continue;
-		const type = getTrackTypeFromSourceType(source.type);
-		const currentCount = sourceTypes.get(type) || 0;
-		sourceTypes.set(type, currentCount + 1);
+		if (source.preset) {
+			source.folderId = 0;
+			continue;
+		}
+		source.folderId = Math.floor(i / 7) + 1;
+		i++;
 	}
 
-	let id = 0;
-	for (const [type, count] of sourceTypes) {
-		const startingId = id;
-		const newFolderGroup: FolderGroup = { type, folders: [] };
-		for (let i = 0; i < count / 7; i++) {
-			id++;
-			newFolderGroup.folders.push({ id, selected: false });
-		}
-
-		let i = 0;
-		for (const source of appState.sources) {
-			if (source.preset) continue;
-			const sourceType = getTrackTypeFromSourceType(source.type);
-			if (type !== sourceType) continue;
-			source.folderId = Math.floor(i / 7) + startingId + 1;
-			i++;
-		}
-
-		appState.folderGroups.push(newFolderGroup);
-	}
+	appState.selectedSourceFolder = folderId;
 };
 
 export const createVideoSource = async (file: File, info: FileInfo) => {
@@ -152,13 +142,13 @@ export const processFile = async (file: File) => {
 		return;
 	}
 
-	if (file.size > 1e9) {
+	/* if (file.size > 1e9) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = 'file exceeds 1GB size limit';
 		appState.palettePage = 'import';
 		appState.showPalette = true;
 		return;
-	}
+	} */
 
 	const info = await checkDroppedSource(file, appState.import.fileDetails.type);
 	if (!info) return;
@@ -173,9 +163,11 @@ export const processFile = async (file: File) => {
 
 	appState.import.fileDetails.info = info;
 
-	if (info.type === 'video' && info.duration > 120) {
+	/* 	if (info.type === 'video' && info.duration > 120) {
 		appState.import.warningMessage = 'File duration is currently limited to 2 minutes';
-	}
+		appState.palettePage = 'import';
+		appState.showPalette = true;
+	} */
 
 	appState.importSuccessCallback = (source: Source, gap: number) => {
 		appState.import.thumbnail = source.thumbnail;

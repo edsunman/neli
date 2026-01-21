@@ -2,12 +2,11 @@
 	import { onMount } from 'svelte';
 	import { appState, programState, timelineState } from '$lib/state.svelte';
 	import { setupWorker } from '$lib/worker/actions.svelte';
-	import { getClipsAtFrame } from '$lib/clip/actions';
-	import { measureText } from '$lib/text/utils';
 
 	import ClipBox from '../program/ClipBox.svelte';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
+	import { getClipAtCanvasPoint } from '$lib/program/utils';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -21,38 +20,21 @@
 	});
 
 	const canvasMouseDown = (e: MouseEvent) => {
-		timelineState.selectedClip = null;
-		const clips = getClipsAtFrame(timelineState.currentFrame);
-		for (const clip of clips) {
-			if (clip.source.type === 'audio') continue;
-			const box = { height: 0, width: 0, centerX: 0, centerY: 0 };
-			if (clip.source.type === 'text') {
-				const measurements = measureText(clip.text, appState.fonts[0], clip.params[7]);
-				// scale factor based on font size and arbitrary number
-				const scaleFactor = clip.params[6] / 9.3;
-				box.width = measurements.width * scaleFactor;
-				box.height = measurements.height * scaleFactor;
-			} else if (clip.source.info.type === 'video' || clip.source.info.type === 'image') {
-				box.width = clip.source.info.resolution.width * clip.params[0];
-				box.height = clip.source.info.resolution.height * clip.params[1];
-			} else if (clip.source.info.type === 'test') {
-				box.width = 1920 * clip.params[0];
-				box.height = 1080 * clip.params[1];
-			}
-			box.centerX = (clip.params[2] / 2 + 0.5) * programState.canvasWidth;
-			box.centerY = (1 - (clip.params[3] / 2 + 0.5)) * programState.canvasHeight;
-			if (
-				e.offsetX > box.centerX - box.width / 2 &&
-				e.offsetX < box.centerX + box.width / 2 &&
-				e.offsetY > box.centerY - box.height / 2 &&
-				e.offsetY < box.centerY + box.height / 2
-			) {
+		if (appState.selectedSource) {
+			appState.mouseIsDown = true;
+			appState.dragAndDrop.currentCursor = { x: e.clientX, y: e.clientY };
+			appState.dragAndDrop.clicked = true;
+			appState.dragAndDrop.source = appState.selectedSource;
+			appState.dragAndDrop.dragFrom = 'program';
+		} else {
+			timelineState.selectedClip = null;
+			const clip = getClipAtCanvasPoint(e.offsetX, e.offsetY);
+			if (clip) {
 				timelineState.selectedClip = clip;
 				showClipPropertiesSection(clip);
-				break;
 			}
+			timelineState.invalidate = true;
 		}
-		timelineState.invalidate = true;
 	};
 
 	onMount(async () => {

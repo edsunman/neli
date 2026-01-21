@@ -15,7 +15,7 @@ export class DecoderPool {
 			decoder = new ADecoder();
 			this.decoderCount++;
 			decoder.id = this.decoderCount;
-			if (DEBUG) console.log(`[Pool] Created new decoder`);
+			if (DEBUG) console.log(`[Pool] Created new decoder.`);
 		} else {
 			// Use the oldest active decoder
 			let smallest = Infinity;
@@ -39,12 +39,14 @@ export class DecoderPool {
 		decoder.pause();
 		this.decoders.set(clipId, decoder);
 
-		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.maxDecoders}`);
+		if (DEBUG) console.log(`[Pool] Decoders in pool: ${this.decoders.size}/${this.maxDecoders}`);
 		return decoder;
 	}
 
-	playDecoder(clipId: string, frame: number) {
-		this.decoders.get(clipId)?.play(frame);
+	playDecoder(clipId: string, frame: number, frameRate = 30) {
+		const frameDurationMs = 1000 / frameRate;
+		const frameTimeMs = frame * frameDurationMs;
+		this.decoders.get(clipId)?.play(frameTimeMs);
 	}
 
 	runDecoder(clipId: string, elapsedTimeMs: number, encoding = false) {
