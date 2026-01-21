@@ -189,7 +189,6 @@
 		style:height={`${boxSizeY}px`}
 		class="border-2 border-white absolute top-0 left-0"
 		onmousedown={(e) => {
-			console.log('box');
 			if (e.button > 0) return;
 			e.preventDefault();
 			e.stopPropagation();

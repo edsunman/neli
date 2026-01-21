@@ -388,7 +388,7 @@ const drawClip = (
 		context.stroke();
 	}
 	if (clipWidth < 32 || clip.invalid) return;
-	if (selected || (clip.hovered && !multiSelected)) {
+	if (selected || (clip.hovered && !multiSelected && !appState.selectedSource)) {
 		// handles
 		context.save();
 		context.beginPath();

@@ -195,9 +195,15 @@
 			timelineState.offsetStart = timelineState.offset;
 			return;
 		}
+
 		if (timelineState.hoverClipId) {
 			// Clicked a clip
+			if (appState.selectedSource) {
+				showTimelineInProgram();
+				return;
+			}
 			if (timelineState.playing) pause();
+
 			const clip = getClip(timelineState.hoverClipId);
 			if (!clip) return;
 
@@ -242,6 +248,8 @@
 				dragging = true;
 			}
 		} else {
+			if (appState.selectedSource) return;
+			pause();
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
 			timelineState.action = 'selecting';

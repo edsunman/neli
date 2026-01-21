@@ -82,7 +82,7 @@
 <Tooltip.Provider delayDuration={500}>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative"
+		class="mt-5 z-0 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative"
 		onmouseup={() => {
 			//appState.selectedSource = null;
 			//hideSourceInProgram();
@@ -91,6 +91,7 @@
 		<div class="absolute -left-13">
 			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
 				<MyTooltip
+					disabled={true}
 					contentProps={{ side: 'right' }}
 					triggerProps={{ onclick: () => (appState.showPalette = true) }}
 				>
@@ -241,10 +242,11 @@
 			{/each}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div
+			<button
 				class={[
 					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
+					'focus:border-zinc-300 focus:text-zinc-200 focus:outline-none',
 					'[&:nth-child(n+8)]:hidden height-xl:[&:nth-child(n+8)]:flex rounded-lg border-2 select-none ',
 					'border-dashed items-center justify-center flex h-14 mt-2 ml-2'
 				]}
@@ -260,7 +262,7 @@
 			>
 				{@render addIcon('size-5 mr-2 pointer-events-none')} import
 				<span class="hidden lg:block">&nbsp;file</span>
-			</div>
+			</button>
 		</div>
 	</div>
 </Tooltip.Provider>
