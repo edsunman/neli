@@ -141,11 +141,10 @@ export const pauseAudio = () => {
 	audioState.testTones.clear();
 
 	audioState.playingClips.length = 0;
-	appState.audioLevel = [0, 0];
+	audioState.audioLevel = [0, 0];
 };
 
 const setupNewDecoder = (source: Source, clipId?: string) => {
-	//	const source = appState.sources.find((s) => s.id === clip.source.id);
 	if (!source.audioConfig || !source.sink) return;
 	const decoder = audioState.decoderPool.assignDecoder(clipId ? clipId : source.id);
 	if (!decoder) return;
@@ -226,10 +225,10 @@ const updateMeter = () => {
 	// Apply non linear curve so -6 is about 0.8
 	const peakValueL = Math.pow(normalisedDbForVisual, 3);
 
-	if (peakValueL > appState.audioLevel[0]) {
-		appState.audioLevel[0] = peakValueL;
+	if (peakValueL > audioState.audioLevel[0]) {
+		audioState.audioLevel[0] = peakValueL;
 	} else {
-		appState.audioLevel[0] = appState.audioLevel[0] - 0.02;
+		audioState.audioLevel[0] = audioState.audioLevel[0] - 0.02;
 	}
 
 	// Right channel
@@ -249,10 +248,10 @@ const updateMeter = () => {
 	normalisedDbForVisual = Math.max(0, Math.min(1, normalisedDbForVisual));
 	const peakValueR = Math.pow(normalisedDbForVisual, 3);
 
-	if (peakValueR > appState.audioLevel[1]) {
-		appState.audioLevel[1] = peakValueR;
+	if (peakValueR > audioState.audioLevel[1]) {
+		audioState.audioLevel[1] = peakValueR;
 	} else {
-		appState.audioLevel[1] = appState.audioLevel[1] - 0.02;
+		audioState.audioLevel[1] = audioState.audioLevel[1] - 0.02;
 	}
 };
 

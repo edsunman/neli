@@ -16,9 +16,8 @@ import {
 import { programTimelinePixelToFrame, scaleToFit } from './utils';
 
 export const playProgram = () => {
-	if (appState.selectedSource?.type !== 'video' && appState.selectedSource?.type !== 'audio')
-		return;
-	playWorker(programState.currentFrame);
+	if (appState.selectedSource?.type === 'audio') startProgramPlayLoop();
+	if (appState.selectedSource?.type == 'video') playWorker(programState.currentFrame);
 };
 
 export const startProgramPlayLoop = () => {
@@ -67,7 +66,7 @@ export const startProgramPlayLoop = () => {
 export const pauseProgram = () => {
 	if (!programState.playing) return;
 	programState.playing = false;
-	pauseWorker(programState.currentFrame);
+	if (appState.selectedSource?.type == 'video') pauseWorker(programState.currentFrame);
 	pauseAudio();
 };
 
@@ -99,6 +98,7 @@ export const showSourceInProgram = (source: Source) => {
 	if (info.type === 'audio') {
 		programState.duration = Math.round(info.duration * 30);
 		showAudioSource();
+		return;
 	}
 
 	if (info.type === 'video') {
@@ -172,7 +172,6 @@ export const setOutPoint = () => {
 		selection.out = lastFrame;
 		if (selection.in > lastFrame - 5) selection.in = lastFrame - 5;
 	}
-	console.log('set out ', selection.out);
 	programState.invalidateTimeline = true;
 };
 

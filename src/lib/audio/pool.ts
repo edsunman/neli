@@ -9,28 +9,30 @@ export class DecoderPool {
 	private decoderCount = 0;
 
 	assignDecoder(clipId: string) {
-		let decoder;
-		if (this.decoders.size < this.maxDecoders) {
-			// Create a new decoder
-			decoder = new ADecoder();
-			this.decoderCount++;
-			decoder.id = this.decoderCount;
-			if (DEBUG) console.log(`[Pool] Created new decoder.`);
-		} else {
-			// Use the oldest active decoder
-			let smallest = Infinity;
-			let oldestDecoder;
-			let oldestDecoderKey;
-			for (const [key, d] of this.decoders) {
-				if (d.lastUsedTime < smallest) {
-					smallest = d.lastUsedTime;
-					oldestDecoder = d;
-					oldestDecoderKey = key;
+		let decoder = this.decoders.get(clipId);
+		if (!decoder) {
+			if (this.decoders.size < this.maxDecoders) {
+				// Create a new decoder
+				decoder = new ADecoder();
+				this.decoderCount++;
+				decoder.id = this.decoderCount;
+				if (DEBUG) console.log(`[Pool] Created new decoder. Pool size:${this.decoders.size}`);
+			} else {
+				// Use the oldest active decoder
+				let smallest = Infinity;
+				let oldestDecoder;
+				let oldestDecoderKey;
+				for (const [key, d] of this.decoders) {
+					if (d.lastUsedTime < smallest) {
+						smallest = d.lastUsedTime;
+						oldestDecoder = d;
+						oldestDecoderKey = key;
+					}
 				}
+				if (oldestDecoderKey) this.decoders.delete(oldestDecoderKey);
+				decoder = oldestDecoder;
+				if (DEBUG) console.log(`[Pool] Using decoder ${decoder!.id}`);
 			}
-			if (oldestDecoderKey) this.decoders.delete(oldestDecoderKey);
-			decoder = oldestDecoder;
-			if (DEBUG) console.log(`[Pool] Using decoder ${decoder!.id}`);
 		}
 
 		if (!decoder) return;

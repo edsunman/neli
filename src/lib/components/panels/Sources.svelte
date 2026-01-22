@@ -101,7 +101,9 @@
 						</div>
 					{/snippet}
 					command palette
-					<span class="ml-1 px-1.5 py-0.5 rounded-sm bg-zinc-350">P</span>
+					<span class="ml-1 px-1.5 py-0.5 text-xs rounded-sm border border-zinc-400 text-zinc-500"
+						>P</span
+					>
 				</MyTooltip>
 			</div>
 
@@ -139,7 +141,7 @@
 						>{#snippet trigger()}
 							<div
 								class={[
-									appState.selectedSourceFolder
+									appState.selectedSourceFolder === folder.id
 										? 'text-zinc-200'
 										: 'text-zinc-600 hover:text-zinc-400',
 									'p-2'

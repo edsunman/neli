@@ -35,7 +35,7 @@ export const assignSourcesToFolders = () => {
 	let folderId = 0;
 	for (let i = 0; i < sourceCount / 7; i++) {
 		folderId++;
-		appState.sourceFolders.push({ id: folderId, selected: false });
+		appState.sourceFolders.push({ id: folderId });
 	}
 
 	let i = 0;

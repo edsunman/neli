@@ -6,17 +6,15 @@ import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } fr
 
 class AppState {
 	mediaWorker?: Worker;
-	waveformCanvas?: HTMLCanvasElement;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
 	selectedSourceFolder = $state(0);
+	sourceFolders: { id: number }[] = $state([]);
 	propertiesSection = $state<PropertiesSection>('project');
 	showPalette = $state(false);
 	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
-	audioLevel = $state([0, 0]);
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
-	sourceFolders: { id: number; selected: boolean }[] = $state([]);
 
 	dragAndDrop = $state<DragAndDropState>({
 		currentCursor: { x: 0, y: 0 },

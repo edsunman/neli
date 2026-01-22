@@ -338,7 +338,7 @@
 		const sourceId = appState.dragAndDrop.source?.id;
 		if (!sourceId) return;
 
-		const start = canvasPixelToFrame(e.offsetX - 50);
+		const start = canvasPixelToFrame(e.offsetX - 35);
 		const newClip = createClip(sourceId, -1, start, 0, 0, true);
 		if (!newClip) return;
 
@@ -348,6 +348,7 @@
 		timelineState.dragStart.x = e.offsetX;
 		setTrackLocks();
 		moveSelectedClip(e.offsetY);
+		newClip.start = start;
 		dragging = true;
 	};
 

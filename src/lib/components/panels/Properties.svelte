@@ -210,12 +210,12 @@
 			<div
 				class="w-1.5 h-full"
 				style="background:linear-gradient(0deg,rgba(34, 138, 106, 1) 0%, rgba(34, 138, 106, 1) 70%, rgba(80, 207, 175, 1) 70%);"
-				style:clip-path={`rect(${(1 - appState.audioLevel[0]) * 100}% 100% 100% 0%)`}
+				style:clip-path={`rect(${(1 - audioState.audioLevel[0]) * 100}% 100% 100% 0%)`}
 			></div>
 			<div
 				class="w-1.5 h-full"
 				style="background:linear-gradient(0deg,rgba(34, 138, 106, 1) 0%, rgba(34, 138, 106, 1) 70%, rgba(80, 207, 175, 1) 70%);"
-				style:clip-path={`rect(${(1 - appState.audioLevel[1]) * 100}% 100% 100% 0%)`}
+				style:clip-path={`rect(${(1 - audioState.audioLevel[1]) * 100}% 100% 100% 0%)`}
 			></div>
 		</div>
 	{/if}

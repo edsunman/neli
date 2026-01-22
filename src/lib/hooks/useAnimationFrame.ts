@@ -1,6 +1,6 @@
 import { onDestroy } from 'svelte';
 
-export function useAnimationFrame() {
+export const useAnimationFrame = () => {
 	let frameId: number | null = null;
 	let callback: ((timestamp: number) => void) | null = null;
 	let isRunning = false;
@@ -36,4 +36,4 @@ export function useAnimationFrame() {
 	});
 
 	return { onFrame, play, pause };
-}
+};
