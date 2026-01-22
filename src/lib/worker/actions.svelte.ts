@@ -275,7 +275,6 @@ const createThumbnail = async (
 };
 
 export const sendFileToWavefromWorker = (source: Source) => {
-	console.log('go');
 	appState.waveformWorker?.postMessage({
 		command: 'load-file',
 		sourceId: source.id,

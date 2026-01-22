@@ -151,7 +151,7 @@ export class VDecoder {
 
 	/** Called quickly during playback and encoding */
 	run(timeMs: number, encoding = false) {
-		if (this.startToQueueFrames && this.frameQueue.length < 3) {
+		if (this.startToQueueFrames && this.frameQueue.length < 5) {
 			this.resumeFeedingChunks?.();
 		}
 

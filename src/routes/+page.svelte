@@ -54,7 +54,7 @@
 	<DragAndDropIcon />
 </div>
 
-<div id="tooltipPortal" class="relative overflow-hidden h-dvh z-8"></div>
+<div id="tooltipPortal" class="relative overflow-hidden z-8"></div>
 
 {#if appState.showPalette}
 	<Palette />
@@ -63,11 +63,11 @@
 <svelte:window
 	onkeydown={(e) => {
 		switch (e.code) {
-			case 'Escape':
+			/* 			case 'Escape':
 				if (appState.selectedSource && !appState.showPalette) {
 					showTimelineInProgram();
 				}
-				break;
+				break; */
 			case 'KeyZ':
 				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;

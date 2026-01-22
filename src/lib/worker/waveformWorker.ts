@@ -54,7 +54,7 @@ export const generateWaveformData = async (
 		processAudioChunk(rawData, step, state, data);
 		sample.close();
 	}
-	console.log('weveform done');
+
 	self.postMessage({ command: 'waveform-complete', sourceId, data }, [data.buffer]);
 };
 

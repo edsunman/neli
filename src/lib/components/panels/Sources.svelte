@@ -15,7 +15,7 @@
 	import { pause } from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
 	import { processFile } from '$lib/source/actions';
-	import { showSourceInProgram } from '$lib/program/actions';
+	import { showSourceInProgram, showTimelineInProgram } from '$lib/program/actions';
 
 	let dragHover = $state(false);
 	let hoverName = $state('');
@@ -262,3 +262,15 @@
 		</div>
 	</div>
 </Tooltip.Provider>
+<svelte:window
+	onkeydown={(e) => {
+		switch (e.code) {
+			case 'Escape':
+				if (appState.selectedSource && !appState.showPalette) {
+					showTimelineInProgram();
+					showHoverName = false;
+				}
+				break;
+		}
+	}}
+/>

@@ -47,6 +47,6 @@ export class SolidColorRenderer {
 		});
  */
 		passEncoder.setPipeline(this.pipeline);
-		passEncoder.draw(3);
+		passEncoder.draw(6, 8);
 	}
 }
