@@ -7,9 +7,11 @@ import { appState, timelineState } from '$lib/state.svelte';
 import { startPlayLoop } from '$lib/timeline/actions';
 import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
+import WaveformWorker from './waveformWorker?worker';
 
 export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker = new MediaWorker();
+	appState.waveformWorker = new WaveformWorker();
 	const offscreenCanvas = canvas.transferControlToOffscreen();
 
 	appState.mediaWorker.postMessage(
@@ -78,6 +80,18 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				appState.encoderProgress.percentage = 100;
 
 				break;
+			}
+		}
+	});
+	appState.waveformWorker.addEventListener('message', async (event) => {
+		switch (event.data.command) {
+			case 'waveform-complete': {
+				const waveform = event.data.data;
+				if (!waveform) return;
+				const source = appState.sources.find((source) => source.id === event.data.sourceId);
+				if (!source) return;
+				source.audioWaveform = waveform;
+				timelineState.invalidateWaveform = true;
 			}
 		}
 	});
@@ -258,4 +272,13 @@ const createThumbnail = async (
 	});
 
 	return URL.createObjectURL(blob);
+};
+
+export const sendFileToWavefromWorker = (source: Source) => {
+	console.log('go');
+	appState.waveformWorker?.postMessage({
+		command: 'load-file',
+		sourceId: source.id,
+		file: source.file
+	});
 };

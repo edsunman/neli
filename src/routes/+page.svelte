@@ -54,6 +54,8 @@
 	<DragAndDropIcon />
 </div>
 
+<div id="tooltipPortal" class="relative overflow-hidden h-dvh z-8"></div>
+
 {#if appState.showPalette}
 	<Palette />
 {/if}

@@ -6,6 +6,7 @@ import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } fr
 
 class AppState {
 	mediaWorker?: Worker;
+	waveformWorker?: Worker;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
 	selectedSourceFolder = $state(0);

@@ -81,13 +81,7 @@
 
 <Tooltip.Provider delayDuration={500}>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="mt-5 z-0 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative"
-		onmouseup={() => {
-			//appState.selectedSource = null;
-			//hideSourceInProgram();
-		}}
-	>
+	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
 			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
 				<MyTooltip
@@ -161,7 +155,7 @@
 			class={[
 				showHoverName ? 'visible' : 'invisible',
 				hoverSelected ? 'bg-zinc-700 text-zinc-100' : 'bg-hover text-zinc-300',
-				'absolute  h-14 ml-20 text-left flex ',
+				'absolute h-14 ml-20 text-left flex ',
 				'items-center z-2 rounded-lg pointer-events-none text-sm pr-3 text-nowrap'
 			]}
 		>

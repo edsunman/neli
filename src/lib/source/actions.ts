@@ -1,7 +1,6 @@
-import { sendFileToWorker } from '$lib/worker/actions.svelte';
+import { sendFileToWavefromWorker, sendFileToWorker } from '$lib/worker/actions.svelte';
 import { appState } from '$lib/state.svelte';
 import { Source } from './source.svelte';
-import { generateWaveformData } from '$lib/audio/actions';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
 
@@ -70,7 +69,7 @@ export const createVideoSource = async (file: File, info: FileInfo) => {
 	}
 
 	sendFileToWorker(newSource);
-	await generateWaveformData(newSource);
+	sendFileToWavefromWorker(newSource);
 	return newSource.id;
 };
 
@@ -82,6 +81,7 @@ export const createImageSource = async (file: File, info: FileInfo) => {
 
 export const createAudioSource = async (file: File, info: FileInfo) => {
 	const newSource = createSource('audio', info, file);
+
 	newSource.info = info;
 
 	const input = new Input({
@@ -98,7 +98,7 @@ export const createAudioSource = async (file: File, info: FileInfo) => {
 	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
 
-	await generateWaveformData(newSource);
+	sendFileToWavefromWorker(newSource);
 	return newSource.id;
 };
 
