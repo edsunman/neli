@@ -25,9 +25,9 @@
 	<Tooltip.Trigger {...triggerProps}>
 		{@render trigger()}
 	</Tooltip.Trigger>
-	<Tooltip.Portal>
+	<Tooltip.Portal to="#tooltipPortal">
 		<Tooltip.Content {...contentProps} sideOffset={15}>
-			<div class="text-sm bg-zinc-200 px-3 py-2 rounded-lg relative">
+			<div class="text-sm bg-zinc-200 px-3 py-2 z-10 relative rounded-lg">
 				{@render children?.()}
 			</div>
 		</Tooltip.Content>

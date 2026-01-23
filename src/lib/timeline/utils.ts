@@ -28,25 +28,25 @@ export const frameToCanvasPixel = (frame: number, includeOffset = true) => {
 
 /** Returns format MM:SS */
 export const secondsToTimecode = (seconds: number) => {
-	const SS = seconds % 60;
-	const minutes = (seconds - SS) / 60;
-	const MM = minutes % 60;
+	const totalSeconds = Math.floor(seconds);
+	const SS = totalSeconds % 60;
+	const MM = Math.floor(totalSeconds / 60);
 	return String(MM).padStart(2, '0') + ':' + String(SS).padStart(2, '0');
 };
 
 /** Returns format MM:SS:FF */
-export const framesToTimecode = (frames: number) => {
-	const FF = frames % 30;
-	const seconds = (frames - FF) / 30;
+export const framesToTimecode = (frames: number, framerate = 30) => {
+	const FF = frames % framerate;
+	const seconds = (frames - FF) / framerate;
 	const SS = seconds % 60;
 	const minutes = (seconds - SS) / 60;
 	const MM = minutes % 60;
 	return (
-		String(MM).padStart(2, '0') +
+		String(Math.floor(MM)).padStart(2, '0') +
 		':' +
-		String(SS).padStart(2, '0') +
+		String(Math.floor(SS)).padStart(2, '0') +
 		':' +
-		String(FF).padStart(2, '0')
+		String(Math.floor(FF)).padStart(2, '0')
 	);
 };
 

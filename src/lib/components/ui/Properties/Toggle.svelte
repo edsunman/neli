@@ -4,10 +4,11 @@
 	import type { Snippet } from 'svelte';
 
 	type Props = {
-		value: number;
-		items: { value: number; icon: Snippet<[string]> }[];
+		value?: number;
+		items: { value: number; icon: Snippet<[string]>; onClick?: () => void }[];
+		updateWorker?: boolean;
 	};
-	let { value = $bindable(), items }: Props = $props();
+	let { value = $bindable(0), items, updateWorker = true }: Props = $props();
 
 	let selectedIndex = $derived.by(() => {
 		let index = 0;
@@ -18,7 +19,7 @@
 	});
 </script>
 
-<div style:min-width={`${36 * items.length}px`} class="bg-hover rounded-sm relative">
+<div style:min-width={`${36 * items.length}px`} class="bg-hover rounded-sm relative z-0">
 	{#each items as item}
 		<button
 			class={[
@@ -27,7 +28,8 @@
 			]}
 			onclick={() => {
 				value = item.value;
-				updateWorkerClip(timelineState.selectedClip);
+				if (item.onClick) item.onClick();
+				if (updateWorker) updateWorkerClip(timelineState.selectedClip);
 			}}>{@render item.icon('size-6')}</button
 		>
 	{/each}

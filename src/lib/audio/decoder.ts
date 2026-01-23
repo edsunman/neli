@@ -1,144 +1,100 @@
-const DEBUG = false;
+import type { EncodedPacketSink } from 'mediabunny';
 
 export class ADecoder {
-	#decoder;
-	#decoderConfig: AudioDecoderConfig | null = null;
-	//#ready = false;
-	running = false;
+	private decoder;
+	private decoderConfig: AudioDecoderConfig | null = null;
+	private packetSink: EncodedPacketSink | undefined;
+	private currentChunk: EncodedAudioChunk | undefined;
 
-	/** all chunks */
-	#chunks: EncodedAudioChunk[] = [];
-	/** chunks waiting to be decoded */
-	#chunkBuffer: EncodedAudioChunk[] = [];
-	audioDataQueue: AudioData[] = [];
+	private lastAudioDataTimestamp = 0;
+	private audioDataQueueFull = false;
+	private startingFrameTimeStamp = 0;
 
-	#lastChunkIndex = 0;
-	#lastAudioDataTimestamp = 0;
-	#feedingPaused = false;
-
-	#startingFrameTimeStamp = 0;
+	private queueDequeue: Promise<void> | undefined;
+	private resumeFeedingChunks: ((value: void | PromiseLike<void>) => void) | undefined;
 
 	id = 0;
 	lastUsedTime = 0;
 	sampleRate = 0;
+	running = false;
+	audioDataQueue: AudioData[] = [];
 
 	constructor() {
-		this.#decoder = new AudioDecoder({ output: this.#onOutput, error: this.#onError });
+		this.decoder = new AudioDecoder({ output: this.onOutput, error: this.onError });
 	}
 
-	setup(config: AudioDecoderConfig, chunks: EncodedAudioChunk[]) {
-		this.#decoderConfig = config;
-		this.#decoder.configure(this.#decoderConfig);
-		this.#chunks = chunks;
+	setup(config: AudioDecoderConfig, sink: EncodedPacketSink) {
+		this.decoderConfig = config;
+		this.decoder.configure(this.decoderConfig);
+		this.packetSink = sink;
 		this.sampleRate = config.sampleRate;
 	}
 
-	play(frameNumber: number) {
+	async play(timeMs: number) {
+		if (!this.packetSink) return;
 		if (this.running) return;
 		this.running = true;
+		this.audioDataQueueFull = false;
 
-		const frameTimestamp = Math.floor(frameNumber * 33333.3333333) + 33333 / 2;
+		let startPacket = await this.packetSink.getPacket(timeMs / 1000);
+		if (!startPacket) startPacket = await this.packetSink.getFirstPacket();
+		if (!startPacket) throw new Error('No start packet');
 
-		let startingChunkIndex = 0;
-		for (let i = 0; i < this.#chunks.length; i++) {
-			if (frameTimestamp <= this.#chunks[i].timestamp) {
-				startingChunkIndex = i;
-				break;
+		this.currentChunk = startPacket.toEncodedAudioChunk();
+		this.startingFrameTimeStamp = this.currentChunk.timestamp;
+		const packets = this.packetSink.packets(startPacket, undefined);
+		await packets.next(); // Skip the start packet as we already have it
+
+		while (this.running) {
+			if (this.decoder.decodeQueueSize > 8 || this.audioDataQueueFull) {
+				({ promise: this.queueDequeue, resolve: this.resumeFeedingChunks } =
+					Promise.withResolvers());
+				await this.queueDequeue;
+				continue;
 			}
-		}
 
-		this.#startingFrameTimeStamp = this.#chunks[startingChunkIndex].timestamp;
+			this.decoder.decode(this.currentChunk);
+			const packetResult = await packets.next();
+			if (packetResult.done) break;
 
-		this.#chunkBuffer = [];
-		for (let i = startingChunkIndex; i < startingChunkIndex + 30; i++) {
-			this.#chunkBuffer.push(this.#chunks[i]);
-			this.#lastChunkIndex = i;
+			this.currentChunk = packetResult.value.toEncodedAudioChunk();
 		}
-		this.#feedDecoder();
+		await packets.return();
+	}
+
+	run(elapsedTimeMs: number, encoding = false) {
+		const elapsedMicroSeconds = Math.floor(elapsedTimeMs * 1000);
+		this.audioDataQueueFull = false;
+		if (
+			elapsedMicroSeconds + this.startingFrameTimeStamp + 3e6 < this.lastAudioDataTimestamp &&
+			!encoding
+		) {
+			// more that three seconds of audio buffer
+			this.audioDataQueueFull = true;
+		}
+		this.resumeFeedingChunks?.();
 	}
 
 	pause() {
 		if (!this.running) return;
 		this.running = false;
-		if (DEBUG) console.log('Paused. Audio data left in queue:', this.audioDataQueue.length);
-
+		this.resumeFeedingChunks?.();
 		for (let i = 0; i < this.audioDataQueue.length; i++) {
 			this.audioDataQueue[i].close();
 		}
-		this.audioDataQueue = [];
-		this.#chunkBuffer = [];
-		//this.#currentBatchFrames = 0;
-		this.#lastAudioDataTimestamp = 0;
-		this.#decoder.flush();
+		this.audioDataQueue.length = 0;
+		this.lastAudioDataTimestamp = 0;
+		this.decoder.flush();
 	}
 
-	run(elapsedTimeMs: number, encoding = false) {
-		const elapsedMicroSeconds = Math.floor(elapsedTimeMs * 1000);
-
-		if (
-			elapsedMicroSeconds + this.#startingFrameTimeStamp + 3e6 < this.#lastAudioDataTimestamp &&
-			!encoding
-		) {
-			// more that three seconds of audio buffer
-			return;
-		}
-
-		if (this.#chunkBuffer.length < 5) {
-			if (DEBUG) console.log('fill chunk buffer starting with index ', this.#lastChunkIndex + 1);
-
-			for (let i = this.#lastChunkIndex + 1, j = 0; j < 10; i++, j++) {
-				this.#chunkBuffer.push(this.#chunks[i]);
-				this.#lastChunkIndex = i;
-			}
-
-			this.#feedDecoder();
-		}
-	}
-
-	#onOutput = (audioData: AudioData) => {
+	private onOutput = (audioData: AudioData) => {
 		if (this.running) {
+			this.resumeFeedingChunks?.();
 			this.audioDataQueue.push(audioData);
-			this.#lastAudioDataTimestamp = audioData.timestamp;
-		}
-		if (this.#feedingPaused && this.#decoder.decodeQueueSize < 3) {
-			this.#feedingPaused = false;
-			if (DEBUG) console.log('Decoder backpressure: Resuming feeding.');
-			this.#feedDecoder();
+			this.lastAudioDataTimestamp = audioData.timestamp;
 		}
 	};
-	#onError(e: DOMException) {
+	private onError(e: DOMException) {
 		console.log(e);
-	}
-	#feedDecoder() {
-		if (this.#feedingPaused) return;
-		if (this.#decoder.decodeQueueSize >= 5) {
-			this.#feedingPaused = true;
-			if (DEBUG)
-				console.log(
-					'Decoder backpressure: Pausing feeding. #audioDataQueue:',
-					this.audioDataQueue.length,
-					'decodeQueueSize:',
-					this.#decoder.decodeQueueSize
-				);
-			return; // Stop feeding for now
-		}
-		if (this.#chunkBuffer.length > 0) {
-			const chunk = this.#chunkBuffer.shift();
-			if (!chunk) {
-				// undefined chunks in the buffer mean we are at the end of the audio file,
-				// so flush the encoder to make sure last few chunks make it through
-				this.#decoder.flush();
-				return;
-			}
-			try {
-				if (DEBUG) console.log('Sending chunk to encoder: ', chunk.timestamp);
-				this.#decoder.decode(chunk);
-				this.#feedDecoder();
-			} catch (e) {
-				if (DEBUG) console.error('Error decoding chunk:', e);
-			}
-		} else {
-			if (DEBUG) console.log('No more chunks in the buffer to feed');
-		}
 	}
 }

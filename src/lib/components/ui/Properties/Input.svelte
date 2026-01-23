@@ -6,13 +6,15 @@
 		value: any;
 		fallback?: number | string;
 		type?: 'text' | 'number';
+		fullWidth?: boolean;
 	};
-	let { value = $bindable(), fallback = 0, type = 'number' }: Props = $props();
+	let { value = $bindable(), fallback = 0, type = 'number', fullWidth = false }: Props = $props();
 </script>
 
 <div
 	class={[
-		'rounded-sm relative overflow-hidden w-12 z-0',
+		fullWidth ? '' : 'w-12',
+		'rounded-sm relative overflow-hidden z-0',
 		// before
 		'before:transition-all before:duration-200',
 		"before:bg-hover before:content-[''] before:z-1 before:w-full before:h-full before:absolute before:left-0",
@@ -25,7 +27,7 @@
 	<input
 		{type}
 		class={[
-			'relative w-full text-right px-1 py-1 z-2 text-zinc-400 focus:text-zinc-100 outline-0',
+			'relative w-full text-right px-1 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {

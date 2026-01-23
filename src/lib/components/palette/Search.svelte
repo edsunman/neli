@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import {
 		centerViewOnPlayhead,
 		focusTrack,
@@ -27,6 +27,7 @@
 		redoIcon,
 		forwardIcon
 	} from '../icons/Icons.svelte';
+	import { pauseProgram, playProgram } from '$lib/program/actions';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -46,15 +47,18 @@
 					text: 'import',
 					selected: true,
 					icon: importIcon,
-					shortcuts: ['I'],
-					action: () => (appState.palettePage = 'import')
+					shortcuts: ['N'],
+					action: () => {
+						appState.import.importStarted = false;
+						appState.palettePage = 'import';
+					}
 				},
 				{
 					id: 102,
 					text: 'export',
 					selected: false,
 					icon: exportIcon,
-					shortcuts: ['E'],
+					shortcuts: ['M'],
 					action: () => (appState.palettePage = 'export')
 				},
 				/* {
@@ -121,10 +125,10 @@
 					icon: playIcon,
 					shortcuts: ['space'],
 					action: () => {
-						if (timelineState.playing) {
-							pause();
+						if (timelineState.playing || programState.playing) {
+							appState.selectedSource ? pauseProgram() : pause();
 						} else {
-							play();
+							appState.selectedSource ? playProgram() : play();
 						}
 						appState.showPalette = false;
 					}
@@ -304,67 +308,71 @@
 			oninput={onInputChange}
 			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
 			type="text"
-			placeholder="Search or type number to seek"
+			placeholder="Search (or type number to seek)"
 		/>
 	</form>
 </div>
+<div class="flex-1 bg-zinc-900 rounded-2xl overflow-y-hidden">
+	<div
+		bind:this={scrollDiv}
+		class="px-8 overflow-y-scroll h-full"
+		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
+	>
+		{#each filtered as category}
+			{#if category.commands.length > 0}
+				<div class="mb-4">
+					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">{category.name}</div>
 
-<div
-	bind:this={scrollDiv}
-	class="px-8 flex-1 overflow-y-scroll"
-	style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
->
-	{#each filtered as category}
-		{#if category.commands.length > 0}
-			<div class="mb-4">
-				<div class="text-zinc-200 select-none text-sm mb-2">{category.name}</div>
-
-				{#each category.commands as command}
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						id={`command-${command.id}`}
-						onmousemove={() => {
-							if (!command.selected) selectDataById(command.id);
-						}}
-						onclick={() => {
-							command.action();
-						}}
-						class={[
-							'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
-							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
-						]}
-					>
-						{@render command.icon('size-5 inline mr-3')}
-						<p class="flex-1">{@html formatString(command.text)}</p>
-						{#each command.shortcuts as key, i}
-							<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
-							<div
-								class={[
-									'text-sm px-1.5 py-0.5 rounded-sm mx-1',
-									command.selected ? 'bg-zinc-700' : ' bg-zinc-800'
-								]}
-							>
-								{key}
-							</div>
-						{/each}
-					</div>
-				{/each}
-			</div>
+					{#each category.commands as command}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							id={`command-${command.id}`}
+							onmousemove={() => {
+								if (!command.selected) selectDataById(command.id);
+							}}
+							onclick={() => {
+								command.action();
+							}}
+							class={[
+								'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
+								command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
+							]}
+						>
+							{@render command.icon('size-5 inline mr-3')}
+							<p class="flex-1">{@html formatString(command.text)}</p>
+							{#each command.shortcuts as key, i}
+								<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
+								<div
+									class={[
+										'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
+										command.selected
+											? 'border-zinc-500 text-zinc-400'
+											: 'border-zinc-700 text-zinc-600'
+									]}
+								>
+									{key}
+								</div>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		{/each}
+		{#if showSeekOptions}
+			<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">Timeline</div>
+			<button
+				class={[
+					'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center',
+					'text-zinc-200 bg-hover'
+				]}
+				onclick={seekEvent}
+			>
+				{@render seekIcon('size-5 inline mr-2')}
+				<p>{targetFrameFormatted}</p>
+			</button>
 		{/if}
-	{/each}
-	{#if showSeekOptions}
-		<button
-			class={[
-				'cursor-pointer w-full p-2 rounded-lg text-left flex items-center',
-				'text-zinc-200 bg-hover'
-			]}
-			onclick={seekEvent}
-		>
-			{@render seekIcon('size-5 inline mr-2')}
-			<p>{targetFrameFormatted}</p>
-		</button>
-	{/if}
+	</div>
 </div>
 <svelte:window
 	onkeydown={(event) => {

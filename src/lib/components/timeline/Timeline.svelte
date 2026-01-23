@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setCurrentFrameFromOffset,
@@ -17,7 +17,8 @@
 		setTrackLocks,
 		zoomToFit,
 		centerViewOnPlayhead,
-		checkViewBounds
+		checkViewBounds,
+		updateGrabbedPosition
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -31,7 +32,8 @@
 		removeClip,
 		multiSelectClip,
 		multiSelectClipsInRange,
-		finaliseClip
+		finaliseClip,
+		splitHoveredClip
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
 	import {
@@ -44,8 +46,11 @@
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { mouseIcon } from '../icons/Icons.svelte';
+	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
+	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
+	import { showClipPropertiesSection } from '$lib/properties/actions';
 
-	let { mouseMove = $bindable(), mouseUp = $bindable() } = $props();
+	const { onFrame } = useAnimationFrame();
 
 	let canvas = $state<HTMLCanvasElement>();
 	let context: CanvasRenderingContext2D | null;
@@ -56,16 +61,18 @@
 	let dragging = false;
 	let resizing = false;
 	let scrolling = false;
+	let grabbing = false;
 	let inDropZone = false;
 	let fontsLoaded = false;
 	let contextMenu: ContextMenu;
 	let clickedFrame = 0;
 	let mainScrollDirection: 'x' | 'y' = 'y';
+	let invalidateScrub = false;
+	let latestScrubPosition = 0;
 
 	const buttons = $state([
 		{
 			text: 'split clip',
-			icon: null,
 			onclick: () => {
 				if (timelineState.selectedClip) {
 					splitClip(timelineState.selectedClip.id, clickedFrame);
@@ -73,39 +80,53 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
-			shortcuts: ['shift', mouseIcon]
+			shortcuts: ['ctrl', mouseIcon]
 		},
 		{
 			text: 'focus clip',
-			icon: null,
 			onclick: () => focusClip(),
 			shortcuts: ['shift', 'F']
 		}
 	]);
 
-	mouseMove = (e: MouseEvent) => {
+	let cursorStyle = $derived.by(() => {
+		if (timelineState.selectedTool === 'hand') {
+			if (appState.mouseIsDown) return 'grabbing';
+			return 'grab';
+		}
+		return 'default';
+	});
+
+	const mouseMove = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
+		let cursor = 'default';
 
-		canvas.style.cursor = 'default';
 		const offsetY = e.clientY - canvasContainer.offsetTop;
+		timelineState.mousePosition.x = e.clientX;
+		timelineState.mousePosition.y = offsetY;
 
 		if (scrubbing) {
-			setCurrentFrameFromOffset(e.clientX);
+			latestScrubPosition = e.clientX;
+			invalidateScrub = true;
+			return;
+		}
+		if (timelineState.selectedTool === 'scissors') {
 			timelineState.invalidate = true;
 			return;
 		}
-		if (dragging || resizing || scrolling || timelineState.action === 'selecting') {
-			timelineState.dragOffset.x = e.clientX - timelineState.dragStart.x;
-			timelineState.dragOffset.y = offsetY - timelineState.dragStart.y;
+		if (timelineState.selectedTool === 'hand') {
+			if (grabbing) {
+				updateGrabbedPosition();
+				timelineState.invalidateWaveform = true;
+			}
+			return;
 		}
-
 		if (timelineState.action === 'selecting') {
 			multiSelectClipsInRange();
 			timelineState.invalidateWaveform = true;
 			return;
 		}
-
 		if (scrolling) {
 			updateScrollPosition();
 			timelineState.invalidateWaveform = true;
@@ -118,7 +139,8 @@
 		}
 		if (resizing) {
 			resizeSelctedClip();
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
+			//canvas.style.cursor = 'col-resize';
 			timelineState.invalidateWaveform = true;
 			return;
 		}
@@ -139,7 +161,7 @@
 
 		if (dragging) return;
 
-		timelineState.hoverClipId = '';
+		if (cursorStyle !== cursor) cursorStyle = cursor;
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
 		if (!clip || timelineState.selectedClips.size > 0) return;
@@ -151,29 +173,48 @@
 		const start = frameToCanvasPixel(clip.start);
 		const end = frameToCanvasPixel(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
 			clip.resizeHover = 'start';
 		} else if (e.offsetX > end - 15) {
 			clip.resizeHover = 'end';
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
 		}
+		if (cursorStyle !== cursor) cursorStyle = cursor;
 	};
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
+
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
-		timelineState.dragStart.x = e.offsetX;
-		timelineState.dragStart.y = e.offsetY;
+		timelineState.mouseDownPosition.x = e.offsetX;
+		timelineState.mouseDownPosition.y = e.offsetY;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
 		}
+		if (timelineState.selectedTool === 'hand') {
+			grabbing = true;
+			timelineState.offsetStart = timelineState.offset;
+			return;
+		}
+
 		if (e.offsetY < (timelineState.height - 32) * 0.2) {
 			scrubbing = true;
-			setCurrentFrameFromOffset(e.offsetX);
+			if (appState.selectedSource) {
+				setCurrentFrameFromOffset(e.offsetX, false);
+				showTimelineInProgram();
+			} else {
+				setCurrentFrameFromOffset(e.offsetX);
+			}
+			return;
+		}
+		if (timelineState.selectedTool === 'scissors') {
+			pause();
+			splitHoveredClip(canvasPixelToFrame(e.offsetX), e.offsetY);
+			return;
 		}
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
@@ -186,11 +227,15 @@
 			timelineState.offsetStart = timelineState.offset;
 			return;
 		}
-		if (timelineState.hoverClipId) {
+
+		const clip = timelineState.clips.find((clip) => clip.hovered);
+		if (clip) {
 			// Clicked a clip
+			if (appState.selectedSource) {
+				showTimelineInProgram();
+				return;
+			}
 			if (timelineState.playing) pause();
-			const clip = getClip(timelineState.hoverClipId);
-			if (!clip) return;
 
 			if (timelineState.selectedClips.has(clip)) {
 				// Clicked a multi-selected clip
@@ -209,17 +254,12 @@
 			if (e.shiftKey) {
 				// If there is a clip selected check we have not clicked it
 				if (timelineState.selectedClip === clip) return;
-				multiSelectClip(timelineState.hoverClipId);
-				return;
-			}
-			if (e.ctrlKey || e.metaKey) {
-				splitClip(clip.id, canvasPixelToFrame(e.offsetX));
-				//historyManager.finishCommand();
-				timelineState.invalidateWaveform = true;
+				multiSelectClip(clip.id);
 				return;
 			}
 			timelineState.selectedClip = clip;
 			timelineState.selectedClips.clear();
+			showClipPropertiesSection(clip);
 			clip.savedStart = clip.start;
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
@@ -232,26 +272,33 @@
 				dragging = true;
 			}
 		} else {
+			if (appState.selectedSource) return;
+			pause();
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
 			timelineState.action = 'selecting';
+			appState.propertiesSection = 'outputAudio';
 		}
 		removeHoverAllClips();
 		timelineState.invalidate = true;
 	};
 
-	mouseUp = () => {
+	const mouseUp = () => {
+		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
-		if (scrubbing) {
-			scrubbing = false;
-		}
+		if (scrubbing) scrubbing = false;
+		if (grabbing) grabbing = false;
 		if (dragging) {
 			dragging = false;
-
 			if (clip) {
 				if (appState.dragAndDrop.active) {
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
+					if (appState.selectedSource) {
+						timelineState.selectedClip = null;
+					} else {
+						showClipPropertiesSection(clip);
+					}
 				} else {
 					finaliseClip(clip, 'moveClip');
 				}
@@ -272,11 +319,14 @@
 			resizing = false;
 			if (clip) finaliseClip(clip, 'trimClip');
 		}
-		if ((timelineState.action = 'selecting')) {
+		if (timelineState.action === 'selecting') {
 			if (timelineState.selectedClips.size === 1) {
 				// if there is only one clip, select it
 				const foundClip = timelineState.selectedClips.values().next().value;
-				if (foundClip) timelineState.selectedClip = foundClip;
+				if (foundClip) {
+					showClipPropertiesSection(foundClip);
+					timelineState.selectedClip = foundClip;
+				}
 				timelineState.selectedClips.clear();
 			}
 		}
@@ -285,8 +335,6 @@
 		}
 		timelineState.action = 'none';
 		timelineState.invalidate = true;
-		timelineState.dragOffset.x = 0;
-		timelineState.dragOffset.y = 0;
 		historyManager.finishCommand();
 	};
 
@@ -310,16 +358,17 @@
 		const sourceId = appState.dragAndDrop.source?.id;
 		if (!sourceId) return;
 
-		const start = canvasPixelToFrame(e.offsetX - 50);
+		const start = canvasPixelToFrame(e.offsetX - 35);
 		const newClip = createClip(sourceId, -1, start, 0, 0, true);
 		if (!newClip) return;
 
 		newClip.savedTrack = 0;
 		newClip.temp = true;
 		timelineState.selectedClip = newClip;
-		timelineState.dragStart.x = e.offsetX;
+		timelineState.mouseDownPosition.x = e.offsetX;
 		setTrackLocks();
 		moveSelectedClip(e.offsetY);
+		newClip.start = start;
 		dragging = true;
 	};
 
@@ -352,7 +401,12 @@
 		drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 	};
 
-	const step = () => {
+	onFrame(() => {
+		if (invalidateScrub) {
+			invalidateScrub = false;
+			setCurrentFrameFromOffset(latestScrubPosition);
+			timelineState.invalidate = true;
+		}
 		if (timelineState.invalidateWaveform) {
 			if (waveContext) drawWaveforms(waveContext, timelineState.width);
 			timelineState.invalidateWaveform = false;
@@ -362,9 +416,7 @@
 			if (context) drawCanvas(context, timelineState.width, timelineState.height, waveCanvas);
 			timelineState.invalidate = false;
 		}
-		requestAnimationFrame(step);
-	};
-	requestAnimationFrame(step);
+	});
 
 	onMount(() => {
 		if (!canvas || !canvasContainer) return;
@@ -414,13 +466,13 @@
 	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
+		style:cursor={cursorStyle}
 		class="flex-1"
 		role="navigation"
 		onmousedown={mouseDown}
 		onwheel={onWheel}
 		oncontextmenu={(e) => {
 			e.preventDefault();
-			timelineState.hoverClipId = '';
 			const hoveredFrame = canvasPixelToFrame(e.offsetX);
 			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 			if (!clip) return;
@@ -436,11 +488,16 @@
 		<canvas class="absolute" bind:this={canvas}></canvas>
 	</div>
 </div>
+
+<ContextMenu bind:this={contextMenu} {buttons} />
+
 <svelte:window
+	onmousemove={mouseMove}
+	onmouseup={mouseUp}
 	onresize={async () => {
 		if (!canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
-		timelineState.height = canvasContainer?.clientHeight;
+		timelineState.height = canvasContainer.clientHeight;
 		setCanvasSize();
 
 		if (waveContext) drawWaveforms(waveContext, timelineState.width);
@@ -456,9 +513,13 @@
 				centerViewOnPlayhead();
 				break;
 			case 'ArrowLeft':
+				if (appState.selectedSource) break;
+				if (timelineState.playing) pause();
 				setCurrentFrame(timelineState.currentFrame - 1);
 				break;
 			case 'ArrowRight':
+				if (appState.selectedSource) break;
+				if (timelineState.playing) pause();
 				setCurrentFrame(timelineState.currentFrame + 1);
 				break;
 			case 'Minus':
@@ -479,10 +540,10 @@
 				break;
 			case 'Space':
 				event.preventDefault();
-				if (timelineState.playing) {
-					pause();
+				if (timelineState.playing || programState.playing) {
+					appState.selectedSource ? pauseProgram() : pause();
 				} else if (!appState.mouseIsDown) {
-					play();
+					appState.selectedSource ? playProgram() : play();
 				}
 				break;
 			case 'Backspace':
@@ -513,5 +574,3 @@
 		}
 	}}
 />
-
-<ContextMenu bind:this={contextMenu} {buttons} />

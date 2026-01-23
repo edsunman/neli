@@ -58,7 +58,7 @@ export class TestRenderer {
 
 		passEncoder.setPipeline(this.pipeline);
 		passEncoder.setBindGroup(0, bindGroup);
-		// Draw 6 vertices for each of the 5 instances
+		// Draw 6 vertices for each of the 32 instances
 		passEncoder.draw(6, 32);
 	}
 }

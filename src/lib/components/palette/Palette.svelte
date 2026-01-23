@@ -10,23 +10,25 @@
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
 	import About from './About.svelte';
+
+	const closePalette = () => {
+		if (appState.lockPalette) return;
+		appState.showPalette = false;
+		appState.palettePage = 'search';
+		appState.disableKeyboardShortcuts = false;
+	};
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
 	class="h-dvh w-dvw absolute top-0 left-0 flex items-center justify-center bg-black/70 backdrop-grayscale z-10"
-	onmousedown={() => {
-		if (appState.lockPalette) return;
-		appState.showPalette = false;
-		appState.palettePage = 'search';
-		appState.disableKeyboardShortcuts = false;
-	}}
+	onmousedown={closePalette}
 >
 	<div
 		class={[
 			smallBox ? 'h-60' : 'h-[30rem]',
-			'bg-zinc-900 w-lg rounded-xl flex flex-col transition-all duration-500 ease-in-out'
+			'bg-zinc-925 w-lg rounded-2xl flex flex-col transition-all duration-500 ease-in-out'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
@@ -48,10 +50,7 @@
 		// TODO: tab focus trap when palette open
 		switch (event.code) {
 			case 'Escape':
-				if (appState.lockPalette) return;
-				appState.showPalette = false;
-				appState.palettePage = 'search';
-				appState.disableKeyboardShortcuts = false;
+				closePalette();
 				break;
 		}
 	}}

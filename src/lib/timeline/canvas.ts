@@ -1,7 +1,9 @@
 import type { Clip } from '$lib/clip/clip.svelte';
-import { timelineState } from '$lib/state.svelte';
-import { frameToCanvasPixel, secondsToTimecode } from './utils';
+import { appState, programState, timelineState } from '$lib/state.svelte';
+import { canvasPixelToFrame, frameToCanvasPixel, secondsToTimecode } from './utils';
+import { programFrameToCanvasPixel } from '$lib/program/utils';
 
+const ZINC_900 = '#18181b';
 const GREEN = '#41a088';
 const GREEN_DARK = '#1f4a42';
 const GREEN_LIGHT = '#50cfaf';
@@ -14,6 +16,9 @@ const BLUE_DARK = '#1e425b';
 
 const PLAYHEAD_PATH = new Path2D(
 	'M 10.259 0.2125 h -6.3285 C 1.9385 0.2125 0.3235 1.828 0.3235 3.82 v 6.4675 c 0 1.694 0.408 3.3635 1.189 4.8665 l 2.381 4.5815 c 1.347 2.592 5.0555 2.592 6.402 0 l 2.3825 -4.5865 c 0.7805 -1.503 1.1885 -3.1715 1.1885 -4.865 V 3.82 c 0 -1.992 -1.615 -3.6075 -3.6075 -3.6075 Z M 10.917 6.0255 c 0 1.129 -0.2715 2.215 -0.792 3.217 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.0885 -0.7925 -3.2175 v -0.6305 c 0 -1.1245 0.9115 -2.036 2.036 -2.036 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 0.628 Z'
+);
+const MARKER_PATH = new Path2D(
+	'M11.3087 5.9281c0 1.2419-.2987 2.4365-.8712 3.5387l-1.3459 2.5905c-.836 1.6093-3.1389 1.6099-3.9749 0l-1.3448-2.5878c-.5731-1.1022-.8718-2.2973-.8718-3.5393v-.6935c0-1.237 1.0027-2.2396 2.2396-2.2396h3.9292c1.237 0 2.2396 1.0027 2.2396 2.2396v.6908Z '
 );
 
 let pattern: CanvasPattern;
@@ -28,7 +33,7 @@ export const drawCanvas = (
 	height: number,
 	waveCanvas: OffscreenCanvas
 ) => {
-	context.fillStyle = '#18181b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(0, 0, width, height);
 
 	const flexHeight = height - 35;
@@ -97,30 +102,43 @@ export const drawCanvas = (
 
 	// select box
 	if (timelineState.action === 'selecting') {
+		const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+		const dragOffsetY = timelineState.mousePosition.y - timelineState.mouseDownPosition.y;
 		const x =
-			timelineState.dragOffset.x < 0
-				? timelineState.dragStart.x + timelineState.dragOffset.x
-				: timelineState.dragStart.x;
+			dragOffsetX < 0
+				? timelineState.mouseDownPosition.x + dragOffsetX
+				: timelineState.mouseDownPosition.x;
 		const y =
-			timelineState.dragOffset.y < 0
-				? timelineState.dragStart.y + timelineState.dragOffset.y
-				: timelineState.dragStart.y;
-		const boxWidth = Math.abs(timelineState.dragOffset.x);
-		const boxHeight = Math.abs(timelineState.dragOffset.y);
+			dragOffsetY < 0
+				? timelineState.mouseDownPosition.y + dragOffsetY
+				: timelineState.mouseDownPosition.y;
+		const boxWidth = Math.abs(dragOffsetX);
+		const boxHeight = Math.abs(dragOffsetY);
 		context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
 		context.lineWidth = 1;
 		context.strokeRect(x + 0.5, y + 0.5, boxWidth, boxHeight);
 	}
 
 	// playhead
-	const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-	const playheadTop = rulerContainerHeight * 0.2;
-	context.fillStyle = 'white';
-	context.fillRect(playheadPosition, playheadTop + 15, 2, flexHeight - 35);
+	if (timelineState.showPlayhead) {
+		const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
+		const playheadTop = rulerContainerHeight * 0.2;
+		drawPlayhead(context, rulerContainerHeight * 0.2, flexHeight - playheadTop, playheadPosition);
+	}
 
-	context.translate(playheadPosition - 6, playheadTop);
-	context.fill(PLAYHEAD_PATH);
-	context.translate(-playheadPosition + 6, -playheadTop);
+	if (
+		timelineState.selectedTool === 'scissors' &&
+		timelineState.mousePosition.y > rulerContainerHeight
+	) {
+		const cursorPosition = frameToCanvasPixel(canvasPixelToFrame(timelineState.mousePosition.x));
+		context.fillStyle = 'rgba(255, 255, 255, 0.6)';
+		context.fillRect(
+			cursorPosition,
+			flexHeight * 0.2 + flexHeight * 0.02,
+			1,
+			flexHeight * 0.8 - flexHeight * 0.04
+		);
+	}
 
 	// scrollbar
 	if (timelineState.zoom > 0.9) {
@@ -139,7 +157,7 @@ export const drawCanvas = (
 	}
 
 	// debug boxes
-	/* 	context.fillStyle = 'rgba(255,0,0,0.2)';
+	/* context.fillStyle = 'rgba(255,0,0,0.2)';
 	context.fillRect(0, height - 35, 200, 35);
 
 	context.fillStyle = 'rgba(0,255,0,0.2)';
@@ -147,6 +165,66 @@ export const drawCanvas = (
 
 	context.fillStyle = 'rgba(0,0,255,0.2)';
 	context.fillRect(0, flexHeight * 0.2, 200, flexHeight * 0.8); */
+};
+
+export const drawSourceCanvas = (
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number
+) => {
+	if (!appState.selectedSource) return;
+
+	context.fillStyle = ZINC_900;
+	context.fillRect(0, 0, width, height);
+
+	context.fillStyle = '#34343c';
+	context.beginPath();
+	context.roundRect(10, 35, width - 20, 8, 4);
+	context.fill();
+
+	const inPosition = programFrameToCanvasPixel(appState.selectedSource.selection.in);
+	drawMarker(context, 12, inPosition - 1);
+
+	const outPosition = programFrameToCanvasPixel(appState.selectedSource.selection.out);
+	drawMarker(context, 12, outPosition);
+
+	context.fillStyle = '#696971';
+	context.save();
+	context.beginPath();
+	context.rect(inPosition, 35, outPosition - inPosition, 8);
+	context.clip();
+	context.beginPath();
+	context.roundRect(10, 35, width - 20, 8, 4);
+	context.fill();
+	context.restore();
+
+	context.fillStyle = ZINC_900;
+	context.fillRect(inPosition - 3, 35, 3, 8);
+	context.fillRect(outPosition, 35, 3, 8);
+
+	const playheadPosition = programFrameToCanvasPixel(programState.currentFrame);
+	drawPlayhead(context, 12, height - 20, playheadPosition);
+};
+
+const drawMarker = (context: CanvasRenderingContext2D, top: number, position: number) => {
+	context.fillStyle = '#73737c';
+	context.translate(position - 6, top);
+	context.fill(MARKER_PATH);
+	context.translate(-position + 6, -top);
+};
+
+const drawPlayhead = (
+	context: CanvasRenderingContext2D,
+	top: number,
+	length: number,
+	position: number
+) => {
+	context.fillStyle = 'white';
+	context.fillRect(position, top + 15, 2, length - 15);
+
+	context.translate(position - 6, top);
+	context.fill(PLAYHEAD_PATH);
+	context.translate(-position + 6, -top);
 };
 
 const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) => {
@@ -327,7 +405,7 @@ const drawClip = (
 		context.stroke();
 	}
 	if (clipWidth < 32 || clip.invalid) return;
-	if (selected || (clip.hovered && !multiSelected)) {
+	if (selected || (clip.hovered && !multiSelected && !appState.selectedSource)) {
 		// handles
 		context.save();
 		context.beginPath();

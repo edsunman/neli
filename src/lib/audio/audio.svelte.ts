@@ -20,6 +20,7 @@ export class AudioState {
 	startingTime = 0;
 
 	masterGain = $state(1);
+	audioLevel = $state([0, 0]);
 
 	constructor() {
 		this.analyserNodeLeft = this.audioContext.createAnalyser();

@@ -1,8 +1,9 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
-import { appState, audioState, timelineState } from '$lib/state.svelte';
+import { appState, audioState, programState, timelineState } from '$lib/state.svelte';
 
 export const runAudio = (frame: number, elapsedTimeMs: number) => {
+	if (!timelineState.playing) return;
 	// run decoders
 	const currentClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
@@ -16,7 +17,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 				// not yet playing so play
 				const clipFrame = frame - clip.start + clip.sourceOffset;
 
-				setupNewDecoder(clip);
+				setupNewDecoder(clip.source, clip.id);
 				audioState.decoderPool.playDecoder(clip.id, clipFrame);
 				audioState.playingClips.push(clip.id);
 
@@ -34,10 +35,10 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 			}
 		}
 		// look ahead
-		if (frame < clip.start && frame > clip.start - 4) {
-			//const frameDistance = clip.start - frame;
-			//console.log(`clip starts in ${frameDistance} frames`);
-		}
+		//if (frame < clip.start && frame > clip.start - 4) {
+		//const frameDistance = clip.start - frame;
+		//console.log(`clip starts in ${frameDistance} frames`);
+		//}
 	}
 
 	// stop decoders
@@ -58,69 +59,7 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 		}
 	}
 
-	// play audio in decoder buffers
-	for (const [clipId, decoder] of audioState.decoderPool.decoders) {
-		if (decoder.running && decoder.audioDataQueue.length > 4) {
-			let currentBatchFrames = 0;
-			for (const audioData of decoder.audioDataQueue) {
-				currentBatchFrames += audioData.numberOfFrames;
-			}
-			const combinedBatchBuffer = new Float32Array(currentBatchFrames * 2);
-			let offset = 0;
-			for (const audioData of decoder.audioDataQueue) {
-				for (let i = 0; i < 2; i++) {
-					const planarData = new Float32Array(audioData.numberOfFrames);
-					audioData.copyTo(planarData, {
-						format: 'f32-planar',
-						planeIndex: i,
-						frameOffset: 0,
-						frameCount: audioData.numberOfFrames
-					});
-
-					for (let j = 0; j < audioData.numberOfFrames; j++) {
-						combinedBatchBuffer[offset + j * 2 + i] = planarData[j];
-					}
-				}
-
-				offset += audioData.numberOfFrames * 2;
-				audioData.close();
-			}
-			decoder.audioDataQueue.length = 0;
-
-			const framesRead = currentBatchFrames;
-			const audioBuffer = audioState.audioContext.createBuffer(
-				2,
-				currentBatchFrames,
-				decoder.sampleRate
-			);
-
-			const leftChannelData = audioBuffer.getChannelData(0);
-			for (let i = 0; i < framesRead; i++) {
-				leftChannelData[i] = combinedBatchBuffer[i * 2];
-			}
-
-			const rightChannelData = audioBuffer.getChannelData(1);
-			for (let i = 0; i < framesRead; i++) {
-				rightChannelData[i] = combinedBatchBuffer[i * 2 + 1];
-			}
-
-			const sourceNode = audioState.audioContext.createBufferSource();
-			sourceNode.buffer = audioBuffer;
-
-			const gainNode = audioState.gainNodes.get(clipId);
-			if (gainNode) sourceNode.connect(gainNode);
-
-			const currentOffset = audioState.offsets.get(clipId);
-			let scheduledTime = audioState.audioContext.currentTime;
-
-			if (currentOffset) {
-				scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
-			}
-			sourceNode.start(scheduledTime);
-
-			audioState.offsets.set(clipId, scheduledTime + audioBuffer.duration);
-		}
-	}
+	scheduleDecoderBuffers();
 
 	for (const clip of currentClips) {
 		if (clip.source.type !== 'test') continue;
@@ -154,6 +93,40 @@ export const runAudio = (frame: number, elapsedTimeMs: number) => {
 	updateMeter();
 };
 
+export const runSourceAudio = (frame: number, elapsedTimeMs: number) => {
+	if (!programState.playing) return;
+	// run decoders
+
+	const source = appState.selectedSource;
+	if (!source) return;
+	if (audioState.playingClips.find((c) => c === source.id)) {
+		// already playing so run
+		audioState.decoderPool.runDecoder(source.id, elapsedTimeMs);
+	} else {
+		// not yet playing so play
+		setupNewDecoder(source);
+
+		let fps = 30;
+		if (source.info.type === 'video') fps = source.info.frameRate;
+		audioState.decoderPool.playDecoder(source.id, frame, fps);
+		audioState.playingClips.push(source.id);
+
+		const panNode = audioState.audioContext.createStereoPanner();
+		panNode.pan.value = 0;
+		panNode.connect(audioState.masterGainNode);
+		audioState.panNodes.set(source.id, panNode);
+
+		const gainNode = audioState.audioContext.createGain();
+		gainNode.gain.value = 1;
+		gainNode.connect(panNode);
+		audioState.gainNodes.set(source.id, gainNode);
+
+		audioState.offsets.set(source.id, audioState.audioContext.currentTime);
+	}
+
+	scheduleDecoderBuffers();
+};
+
 export const pauseAudio = () => {
 	audioState.decoderPool.pauseAll();
 	audioState.panNodes.forEach((node) => {
@@ -168,16 +141,61 @@ export const pauseAudio = () => {
 	audioState.testTones.clear();
 
 	audioState.playingClips.length = 0;
-	appState.audioLevel = [0, 0];
+	audioState.audioLevel = [0, 0];
 };
 
-const setupNewDecoder = (clip: Clip) => {
-	const source = appState.sources.find((s) => s.id === clip.source.id);
-	if (!source || !source.audioConfig) return;
-	const decoder = audioState.decoderPool.assignDecoder(clip.id);
+const setupNewDecoder = (source: Source, clipId?: string) => {
+	if (!source.audioConfig || !source.sink) return;
+	const decoder = audioState.decoderPool.assignDecoder(clipId ? clipId : source.id);
 	if (!decoder) return;
-	decoder.setup(source.audioConfig, source.audioChunks);
+	decoder.setup(source.audioConfig, source.sink);
 	return decoder;
+};
+
+const scheduleDecoderBuffers = () => {
+	for (const [clipId, decoder] of audioState.decoderPool.decoders) {
+		if (decoder.running && decoder.audioDataQueue.length > 4) {
+			let totalFrames = 0;
+			for (const audioData of decoder.audioDataQueue) {
+				totalFrames += audioData.numberOfFrames;
+			}
+
+			const audioBuffer = audioState.audioContext.createBuffer(2, totalFrames, decoder.sampleRate);
+			const leftChannel = audioBuffer.getChannelData(0);
+			const rightChannel = audioBuffer.getChannelData(1);
+
+			let frameOffset = 0;
+			for (const audioData of decoder.audioDataQueue) {
+				const count = audioData.numberOfFrames;
+				audioData.copyTo(leftChannel.subarray(frameOffset, frameOffset + count), {
+					format: 'f32-planar',
+					planeIndex: 0
+				});
+				audioData.copyTo(rightChannel.subarray(frameOffset, frameOffset + count), {
+					format: 'f32-planar',
+					planeIndex: 1
+				});
+				frameOffset += count;
+				audioData.close();
+			}
+
+			decoder.audioDataQueue.length = 0;
+
+			const sourceNode = audioState.audioContext.createBufferSource();
+			sourceNode.buffer = audioBuffer;
+			const gainNode = audioState.gainNodes.get(clipId);
+			if (gainNode) sourceNode.connect(gainNode);
+
+			const currentOffset = audioState.offsets.get(clipId);
+			let scheduledTime = audioState.audioContext.currentTime;
+			if (currentOffset) {
+				scheduledTime = Math.max(audioState.audioContext.currentTime, currentOffset);
+			}
+
+			sourceNode.start(scheduledTime);
+			audioState.offsets.set(clipId, scheduledTime + audioBuffer.duration);
+		}
+	}
 };
 
 const updateMeter = () => {
@@ -199,7 +217,7 @@ const updateMeter = () => {
 	let dbPeak = 20 * Math.log10(peakAmplitude + 0.00001);
 
 	// TODO: show clipping on meter
-	//if (dbPeak > 1) console.log('clip');
+	// if (dbPeak > 0.98) console.log('clip');
 
 	// Normalise between 0 and 1
 	let normalisedDbForVisual = (dbPeak - MIN_METER_DB) / (0 - MIN_METER_DB);
@@ -207,10 +225,10 @@ const updateMeter = () => {
 	// Apply non linear curve so -6 is about 0.8
 	const peakValueL = Math.pow(normalisedDbForVisual, 3);
 
-	if (peakValueL > appState.audioLevel[0]) {
-		appState.audioLevel[0] = peakValueL;
+	if (peakValueL > audioState.audioLevel[0]) {
+		audioState.audioLevel[0] = peakValueL;
 	} else {
-		appState.audioLevel[0] = appState.audioLevel[0] - 0.02;
+		audioState.audioLevel[0] = audioState.audioLevel[0] - 0.02;
 	}
 
 	// Right channel
@@ -230,127 +248,10 @@ const updateMeter = () => {
 	normalisedDbForVisual = Math.max(0, Math.min(1, normalisedDbForVisual));
 	const peakValueR = Math.pow(normalisedDbForVisual, 3);
 
-	if (peakValueR > appState.audioLevel[1]) {
-		appState.audioLevel[1] = peakValueR;
+	if (peakValueR > audioState.audioLevel[1]) {
+		audioState.audioLevel[1] = peakValueR;
 	} else {
-		appState.audioLevel[1] = appState.audioLevel[1] - 0.02;
-	}
-};
-
-export const generateWaveformData = async (source: Source) => {
-	let resolve: (value: boolean) => void;
-	const promise = new Promise((res) => {
-		resolve = res;
-	});
-
-	if (!source.audioConfig || !source.duration || !source.frameRate) return;
-	// We are going to store 300 values per second to draw waveform
-	// The step is how many samples we need per value
-	const step = source.audioConfig.sampleRate / 300;
-
-	const durationInSeconds = source.duration / source.frameRate;
-	// Array needs to be big enough to hold 300 samples per second
-	const data = new Float32Array(durationInSeconds * 300);
-
-	const decoder = audioState.decoderPool.assignDecoder(source.id);
-	if (!decoder) return;
-	decoder.setup(source.audioConfig, source.audioChunks);
-	decoder.play(0);
-
-	let count = 0;
-	let retries = 0;
-	const state = {
-		currentIndex: 0,
-		samplesRemaining: 0,
-		previousMax: 0,
-		tempSamples: []
-	};
-	const decodeLoop = async () => {
-		retries++;
-		decoder.run(0, true);
-
-		for (let i = 1; i < decoder.audioDataQueue.length; i++) {
-			const audioData = decoder.audioDataQueue.shift();
-			if (!audioData) continue;
-
-			const numberOfAudioDataSamples = audioData.numberOfFrames;
-			const rawData = new Float32Array(numberOfAudioDataSamples);
-
-			audioData.copyTo(rawData, {
-				format: 'f32-planar',
-				planeIndex: 0,
-				frameOffset: 0
-			});
-
-			processAudioChunk(rawData, step, state, data);
-			audioData.close();
-			count++;
-			retries = 0;
-		}
-
-		if (retries > 50) {
-			resolve(false);
-		} else if (count < source.audioChunks.length - 2) {
-			setTimeout(decodeLoop, 0);
-		} else {
-			source.audioWaveform = data;
-			timelineState.invalidateWaveform = true;
-			resolve(true);
-		}
-	};
-	decodeLoop();
-	return promise;
-};
-
-const processAudioChunk = (
-	rawData: Float32Array,
-	step: number,
-	state: {
-		currentIndex: number;
-		samplesRemaining: number;
-		previousMax: number;
-		tempSamples: number[];
-	},
-	data: Float32Array
-) => {
-	const currentData = [...state.tempSamples, ...rawData];
-	const totalSamples = currentData.length;
-
-	// Process all full steps in the current combined data
-	for (let i = 0; i <= totalSamples - step; i += step) {
-		let max = 0;
-		for (let j = 0; j < step; j++) {
-			const absValue = Math.abs(currentData[i + j]);
-			if (absValue > max) {
-				max = absValue;
-			}
-		}
-		data[state.currentIndex] = max;
-		state.currentIndex++;
-	}
-
-	// Determine how many samples are left over
-	const remainingStartIndex = Math.floor(totalSamples / step) * step;
-	const samplesRemaining = totalSamples - remainingStartIndex;
-
-	// Store the remaining samples and their max value for the next chunk
-	if (samplesRemaining > 0) {
-		let max = 0;
-		const remainingSamples = currentData.slice(remainingStartIndex);
-		for (const sample of remainingSamples) {
-			const absValue = Math.abs(sample);
-			if (absValue > max) {
-				max = absValue;
-			}
-		}
-		state.previousMax = max;
-		state.tempSamples = remainingSamples;
-		state.samplesRemaining = samplesRemaining;
-	} else {
-		// If there are no remaining samples, reset the state
-		state.previousMax = 0;
-		state.tempSamples = [];
-		state.samplesRemaining = 0;
+		audioState.audioLevel[1] = audioState.audioLevel[1] - 0.02;
 	}
 };
 
@@ -459,76 +360,32 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
  * clips use the same source it will be decoded mutltple times
  */
 const decodeSource = async (audioBuffer: AudioBuffer, clip: Clip, startFrame: number) => {
-	let resolver: (value: boolean | PromiseLike<boolean>) => void;
-	const promise = new Promise<boolean>((resolve) => {
-		resolver = resolve;
-	});
-
-	const decoder = setupNewDecoder(clip);
-	if (!decoder) return;
-	decoder.play(startFrame);
-
+	if (!clip.source.sampleSink) return;
 	let currentWriteOffset = 0;
-	let done = false;
-	let retries = 0;
-	const maxRetries = 20;
-	const decodeLoop = async () => {
-		decoder.run(0, true);
+	for await (const sample of clip.source.sampleSink.samples(startFrame / 30)) {
+		for (let c = 0; c < sample.numberOfChannels; c++) {
+			const finalBufferChannelData = audioBuffer.getChannelData(c);
 
-		for (let i = 1; i <= decoder.audioDataQueue.length; i++) {
-			retries = 0;
+			const destinationSlice = finalBufferChannelData.subarray(
+				currentWriteOffset,
+				currentWriteOffset + sample.numberOfFrames
+			);
 
-			const audioData = decoder.audioDataQueue.shift();
-			if (!audioData) continue;
-
-			for (let c = 0; c < audioData.numberOfChannels; c++) {
-				const finalBufferChannelData = audioBuffer.getChannelData(c);
-
-				const destinationSlice = finalBufferChannelData.subarray(
-					currentWriteOffset,
-					currentWriteOffset + audioData.numberOfFrames
-				);
-
-				audioData.copyTo(destinationSlice, {
-					format: 'f32-planar',
-					planeIndex: c,
-					frameCount: audioData.numberOfFrames
-				});
-			}
-			currentWriteOffset += audioData.numberOfFrames;
-			/* console.log(
-				`current write offset: ${currentWriteOffset}, trying to copy: ${audioData.numberOfFrames}, total length: ${audioBuffer.length}`
-			); */
-			const numberOfFrames = audioData.numberOfFrames;
-			audioData.close();
-
-			if (currentWriteOffset + numberOfFrames >= audioBuffer.length) {
-				// buffer full
-				done = true;
-				break;
-			}
+			sample.copyTo(destinationSlice, {
+				format: 'f32-planar',
+				planeIndex: c,
+				frameCount: sample.numberOfFrames
+			});
 		}
+		currentWriteOffset += sample.numberOfFrames;
+		const numberOfFrames = sample.numberOfFrames;
+		sample.close();
 
-		if (decoder.audioDataQueue.length < 1) {
-			console.log(`retries: ${retries}`);
-			retries++;
-			if (retries >= maxRetries) {
-				// we sent in a buffer that was too big
-				console.warn('audio decode loop hit max retries');
-				done = true;
-			}
+		if (currentWriteOffset + numberOfFrames >= audioBuffer.length) {
+			// buffer full
+			break;
 		}
-
-		if (done) {
-			decoder.pause();
-			resolver(true);
-		} else {
-			setTimeout(decodeLoop, 0);
-		}
-	};
-	decodeLoop();
-
-	return promise;
+	}
 };
 
 const generateTone = (high = false, sampleRate: number, frameCount: number) => {

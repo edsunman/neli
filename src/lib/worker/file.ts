@@ -1,31 +1,38 @@
-import type { WorkerSource } from '$lib/types';
+import type { WorkerVideoSource } from '$lib/types';
 import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input } from 'mediabunny';
 
-export const loadFile = async (file: File, sourceId: string): Promise<WorkerSource | undefined> => {
+export const loadFile = async (file: File, sourceId: string): Promise<WorkerVideoSource> => {
 	const input = new Input({
 		formats: ALL_FORMATS,
 		source: new BlobSource(file)
 	});
 
 	const videoTrack = await input.getPrimaryVideoTrack();
-	if (!videoTrack) return;
+	if (!videoTrack) {
+		throw new Error('No video track');
+	}
 
 	const videoConfig = await videoTrack.getDecoderConfig();
-	if (!videoConfig) return;
+	if (!videoConfig) {
+		throw new Error('No video config ');
+	}
 
 	const stats = await videoTrack.computePacketStats(100);
 	const frameRate = stats.averagePacketRate;
-	// 2 minute limit
-	const maxSampleCount = frameRate * 120;
+
+	const encodedPacketSink = new EncodedPacketSink(videoTrack);
 
 	const sink = new EncodedPacketSink(videoTrack);
-	const videoChunks: EncodedVideoChunk[] = [];
+	const startSample = await sink.getFirstPacket();
+	const endSample = await sink.getPacket(60);
+
+	if (!startSample || !endSample) throw new Error('Not enough samples');
 
 	let i = 0;
 	let largestKeyframeGap = 0;
 	let currentKeyframeGap = 0;
 	let previousKeyframeIndex = -1;
-	for await (const packet of sink.packets()) {
+	for await (const packet of sink.packets(startSample, endSample)) {
 		if (packet.type === 'key') {
 			if (previousKeyframeIndex !== -1) {
 				currentKeyframeGap = i - previousKeyframeIndex;
@@ -35,10 +42,17 @@ export const loadFile = async (file: File, sourceId: string): Promise<WorkerSour
 			}
 			previousKeyframeIndex = i;
 		}
-		videoChunks.push(packet.toEncodedVideoChunk());
 		i++;
-		if (i >= maxSampleCount) break;
 	}
 
-	return { videoChunks, videoConfig, id: sourceId, gap: largestKeyframeGap };
+	return {
+		videoTrack,
+		videoConfig,
+		encodedPacketSink,
+		id: sourceId,
+		gap: largestKeyframeGap,
+		height: videoTrack.codedHeight,
+		width: videoTrack.codedWidth,
+		frameRate
+	};
 };

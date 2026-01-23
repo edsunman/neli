@@ -4,16 +4,16 @@ const DEBUG = false;
 
 export class DecoderPool {
 	decoders = new Map<string, VDecoder>();
-	#maxDecoders = 3;
-	#decoderCount = 0;
+	private maxDecoders = 4;
+	private decoderCount = 0;
 
 	assignDecoder(clipId: string) {
 		let decoder;
-		if (this.decoders.size < this.#maxDecoders) {
+		if (this.decoders.size < this.maxDecoders) {
 			// No idle decoder, create a new one
 			decoder = new VDecoder();
-			this.#decoderCount++;
-			decoder.id = this.#decoderCount;
+			this.decoderCount++;
+			decoder.id = this.decoderCount;
 			if (DEBUG) console.log(`[Pool] Created new decoder`);
 		} else {
 			// Use the oldest active decoder
@@ -38,13 +38,14 @@ export class DecoderPool {
 		decoder.pause();
 		this.decoders.set(clipId, decoder);
 
-		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.#maxDecoders}`);
+		if (DEBUG) console.log(`[Pool] Active decoders: ${this.decoders.size}/${this.maxDecoders}`);
 		return decoder;
 	}
 
 	async pauseAll() {
 		for (const [, decoder] of this.decoders) {
 			if (decoder.running) {
+				if (DEBUG) console.log(`[Pool] Decoder ${decoder.id} paused `);
 				await decoder.pause();
 			}
 		}
@@ -58,7 +59,9 @@ export class DecoderPool {
 
 	pauseAllUnused() {
 		for (const [, decoder] of this.decoders) {
-			if (!decoder.usedThisFrame) decoder.pause();
+			if (!decoder.usedThisFrame) {
+				decoder.pause();
+			}
 		}
 	}
 }

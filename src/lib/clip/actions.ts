@@ -1,9 +1,9 @@
-import { historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
-import { getClipInitialScaleFactor } from './utils';
+import { getClipFitScaleFactor } from './utils';
 import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
 
 export const createClip = (
@@ -11,39 +11,56 @@ export const createClip = (
 	track = 0,
 	start = 0,
 	duration = 0,
-	sourceOffset = 0,
+	sourceOffset?: number,
 	temp = false
 ) => {
 	const source = getSourceFromId(sourceId);
 	if (!source) return;
 
-	if (start > timelineState.duration && !temp) {
-		// clip added after end of timeline
-		return;
-	}
+	// Clip added after timeline max length
+	if (start && start > 9000) return;
+
+	if (start < 0) return;
 
 	if (duration === 0) {
-		// no duration set so use defaults
+		// No duration set so use defaults
 		duration = 500;
-		if (source.duration) {
-			if (source.frameRate && source.frameRate !== 30) {
-				const ratio = 30 / source.frameRate;
-				duration = Math.floor(source.duration * ratio);
-			} else {
-				duration = source.duration;
-			}
+		if (source.info.type === 'audio') {
+			// assume audio and timeline is 30 fps
+			duration = source.selection.out - source.selection.in;
+		} else if (source.info.type === 'video') {
+			// Source may have different framerate to timeline so
+			// convert to seconds and back
+			const inSeconds = source.selection.in / source.info.frameRate;
+			// We add 1 because the out frame is inclusive
+			// so we need to account for the duration of that frame
+			const outSeconds = (source.selection.out + 1) / source.info.frameRate;
+			const durationSeconds = outSeconds - inSeconds;
+			duration = Math.round(durationSeconds * 30);
 		}
 	}
 
-	if (start + duration > timelineState.duration && !temp) {
-		// clip duration outside timeline bounds
-		duration = timelineState.duration - start;
+	if (!sourceOffset) {
+		if (source.info.type === 'video') {
+			const inSeconds = source.selection.in / source.info.frameRate;
+			const inFrames = Math.floor(inSeconds * 30);
+			sourceOffset = inFrames;
+		} else if (source.info.type === 'audio') {
+			sourceOffset = source.selection.in;
+		} else {
+			sourceOffset = 0;
+		}
+	}
+
+	if (start + duration > 9000) {
+		// Clip duration outside timeline bounds
+		duration = 9000 - start;
 	}
 
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
-	if (source.type === 'video' || source.type === 'image') {
-		const scaleFactor = getClipInitialScaleFactor(clip);
+	if (source.type === 'video' || source.type === 'image' || source.type === 'test') {
+		const scaleFactor = getClipFitScaleFactor(clip);
 		clip.params[0] = scaleFactor;
 		clip.params[1] = scaleFactor;
 	}
@@ -67,6 +84,7 @@ export const deleteClip = (clip: Clip) => {
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
+	appState.propertiesSection = 'outputAudio';
 };
 
 /** Unlike delete this will permanently remove clip and not write to history */
@@ -82,7 +100,8 @@ export const removeClip = (id: string) => {
 };
 
 export const moveSelectedClip = (mouseY: number) => {
-	const frame = canvasPixelToFrame(timelineState.dragOffset.x, false);
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const frame = canvasPixelToFrame(dragOffsetX, false);
 
 	// multi select
 	if (timelineState.selectedClips.size > 0) {
@@ -243,7 +262,8 @@ export const resizeSelctedClip = () => {
 	let minimumSize = canvasPixelToFrame(36, false);
 	minimumSize = minimumSize < 1 ? 1 : minimumSize;
 	clip.invalid = false;
-	const frameOffset = canvasPixelToFrame(timelineState.dragOffset.x, false);
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const frameOffset = canvasPixelToFrame(dragOffsetX, false);
 
 	if (clip.resizeHover === 'start') {
 		clip.start = clip.savedStart + frameOffset;
@@ -277,11 +297,11 @@ export const resizeSelctedClip = () => {
 		}
 
 		// source length checks
-		if (clip.source.duration && clip.sourceOffset < 0) {
+		if ((clip.source.type === 'video' || clip.source.type === 'audio') && clip.sourceOffset < 0) {
 			clip.start = clip.savedStart - clip.savedSourceOffset;
 			clip.duration = clip.savedDuration + clip.savedSourceOffset;
 			clip.sourceOffset = 0;
-			clip.invalid = true;
+			//clip.invalid = true;
 		}
 	} else if (clip.resizeHover === 'end') {
 		clip.duration = clip.savedDuration + frameOffset;
@@ -305,16 +325,13 @@ export const resizeSelctedClip = () => {
 		}
 
 		// source length checks
-		if (clip.source.duration) {
-			let maxLength = clip.source.duration - clip.sourceOffset;
-			if (clip.source.frameRate && clip.source.frameRate !== 30) {
-				const ratio = 30 / clip.source.frameRate;
-				maxLength = Math.floor(clip.source.duration * ratio - clip.sourceOffset);
-			}
+		if (clip.source.info.type === 'video' || clip.source.info.type === 'audio') {
+			const sourceDurationInFrames = clip.source.info.duration * 30;
+			const maxLength = sourceDurationInFrames - clip.sourceOffset;
 
 			if (clip.duration > maxLength) {
 				clip.duration = maxLength;
-				clip.invalid = true;
+				//clip.invalid = true;
 			}
 		}
 	}
@@ -451,9 +468,7 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	// NOTE: this runs every frame on mouse move so may be bad news
 	// with large numbers of clips. Hashmap may be better?
 	let foundClip;
-	//const minimumSize = canvasPixelToFrame(35, false);
 	for (const clip of timelineState.clips) {
-		//if (clip.deleted || clip.duration < minimumSize) continue;
 		if (clip.deleted) continue;
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.tracks.length; i++) {
@@ -465,13 +480,33 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 					foundClip = clip;
 					clip.hovered = true;
-					timelineState.hoverClipId = clip.id;
 				}
 				break;
 			}
 		}
 	}
 	return foundClip;
+};
+
+export const splitHoveredClip = (hoveredFrame: number, offsetY: number) => {
+	let foundClip;
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		clip.hovered = false;
+		for (let i = 0; i < timelineState.tracks.length; i++) {
+			if (
+				offsetY > timelineState.tracks[i].top &&
+				offsetY < timelineState.tracks[i].top + timelineState.tracks[i].height &&
+				clip.track === i + 1
+			) {
+				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
+					foundClip = clip;
+				}
+				break;
+			}
+		}
+	}
+	if (foundClip) splitClip(foundClip.id, hoveredFrame);
 };
 
 export const multiSelectClip = (clipId: string) => {
@@ -491,14 +526,15 @@ export const multiSelectClip = (clipId: string) => {
 
 export const multiSelectClipsInRange = () => {
 	timelineState.selectedClips.clear();
-
+	const dragOffsetY = timelineState.mousePosition.y - timelineState.mouseDownPosition.y;
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
 	const startTop = Math.min(
-		timelineState.dragStart.y,
-		timelineState.dragStart.y + timelineState.dragOffset.y
+		timelineState.mouseDownPosition.y,
+		timelineState.mouseDownPosition.y + dragOffsetY
 	);
 	const endTop = Math.max(
-		timelineState.dragStart.y,
-		timelineState.dragStart.y + timelineState.dragOffset.y
+		timelineState.mouseDownPosition.y,
+		timelineState.mouseDownPosition.y + dragOffsetY
 	);
 	const tracks = new Set<number>();
 	for (let i = 0; i < timelineState.tracks.length; i++) {
@@ -510,8 +546,8 @@ export const multiSelectClipsInRange = () => {
 		}
 	}
 
-	const startFrame = canvasPixelToFrame(timelineState.dragStart.x);
-	const endFrame = canvasPixelToFrame(timelineState.dragStart.x + timelineState.dragOffset.x);
+	const startFrame = canvasPixelToFrame(timelineState.mouseDownPosition.x);
+	const endFrame = canvasPixelToFrame(timelineState.mouseDownPosition.x + dragOffsetX);
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (

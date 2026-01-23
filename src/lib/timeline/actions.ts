@@ -1,32 +1,34 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
-import { historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-
-export const setCurrentFrame = (frame: number) => {
+import { removeHoverAllClips } from '$lib/clip/actions';
+export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
-	seekWorker(frame);
+	if (updateWorker) seekWorker(frame);
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
 };
 
-export const setCurrentFrameFromOffset = (canvasOffset: number) => {
+export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = true) => {
 	if (timelineState.playing) pause();
 	const frame = canvasPixelToFrame(canvasOffset);
-	setCurrentFrame(frame);
+	setCurrentFrame(frame, updateWorker);
 };
 
 export const play = () => {
 	playWorker(timelineState.currentFrame);
+	appState.propertiesSection = 'outputAudio';
 };
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
 	timelineState.selectedClip = null;
 
-	const MS_PER_FRAME = 1000 / 30; // For 30 FPS
+	const msPerFrame = 1000 / 30;
+	const epsilon = 1; // Tolerance for smoother playback
 	let accumulator = 0;
 	let lastTime = 0;
 	let firstTimestamp = 0;
@@ -34,38 +36,25 @@ export const startPlayLoop = () => {
 	const loop = (timestamp: number) => {
 		if (!timelineState.playing) return;
 
-		if (lastTime === 0) {
-			lastTime = timestamp;
-		}
-
-		if (firstTimestamp === 0) {
-			firstTimestamp = timestamp;
+		if (lastTime === 0) lastTime = timestamp;
+		if (firstTimestamp === 0) firstTimestamp = timestamp;
+		if (timelineState.currentFrame >= timelineState.duration - 1) {
+			timelineState.currentFrame = timelineState.duration - 1;
+			pause();
 		}
 
 		const deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
-
 		accumulator += deltaTime;
 
-		const oldFrame = timelineState.currentFrame;
-
-		if (oldFrame >= timelineState.duration - 1) {
-			// dont play past timeine end
-			pause();
-		}
-
-		// the - 1 here is an epsilon to make playback smoother
-		while (accumulator >= MS_PER_FRAME - 1) {
+		while (accumulator >= msPerFrame - epsilon) {
 			timelineState.currentFrame++;
-			accumulator -= MS_PER_FRAME;
+			accumulator -= msPerFrame;
+			timelineState.invalidate = true;
 		}
 
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		runAudio(timelineState.currentFrame, elapsedTimeMs);
-
-		if (timelineState.currentFrame !== oldFrame) {
-			timelineState.invalidate = true;
-		}
 
 		if (timelineState.playing) requestAnimationFrame(loop);
 	};
@@ -73,6 +62,7 @@ export const startPlayLoop = () => {
 };
 
 export const pause = () => {
+	if (!timelineState.playing) return;
 	timelineState.playing = false;
 	pauseWorker(timelineState.currentFrame);
 	pauseAudio();
@@ -114,7 +104,6 @@ export const zoomOut = () => {
 	timelineState.zoom = timelineState.zoom / 2;
 	timelineState.offset = center - 0.5 / timelineState.zoom;
 	if (timelineState.zoom < 0.9) timelineState.zoom = 0.9;
-
 	checkViewBounds();
 	timelineState.invalidate = true;
 	timelineState.invalidateWaveform = true;
@@ -150,10 +139,23 @@ export const zoomToFit = () => {
 	timelineState.invalidate = true;
 };
 
-export const updateScrollPosition = () => {
+export const updateGrabbedPosition = () => {
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const offsetPercent = dragOffsetX / timelineState.width;
+	timelineState.offset = timelineState.offsetStart - offsetPercent / timelineState.zoom;
+
 	const padding = 0.05 / timelineState.zoom;
-	const offsetPercent = timelineState.dragOffset.x / timelineState.width;
+	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
+	const barWidth = 1 / timelineState.zoom;
+	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
+};
+
+export const updateScrollPosition = () => {
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const offsetPercent = dragOffsetX / timelineState.width;
 	timelineState.offset = timelineState.offsetStart + offsetPercent;
+
+	const padding = 0.05 / timelineState.zoom;
 	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
 	const barWidth = 1 / timelineState.zoom;
 	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
@@ -411,4 +413,12 @@ export const getUsedTimelineDuration = () => {
 		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;
 	}
 	return lastFrame;
+};
+
+export const setTimelineTool = (tool: typeof timelineState.selectedTool) => {
+	if (appState.selectedSource) return;
+	if (timelineState.action === 'selecting') return;
+	removeHoverAllClips();
+	timelineState.invalidate = true;
+	timelineState.selectedTool = tool;
 };

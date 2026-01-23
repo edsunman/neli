@@ -1,20 +1,25 @@
-import type { SourceType, SrtEntry } from '$lib/types';
+import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
+import type { AudioSampleSink, EncodedPacketSink } from 'mediabunny';
 
 export class Source {
 	id: string = '';
-	type: SourceType = 'audio';
-	name?: string;
+	type: FileInfo['type'];
+	name = $state('');
 	folderId = 0;
 	preset = false;
-	duration?: number;
-	frameRate?: number;
+	info: FileInfo;
 	file?: File;
 	thumbnail = $state('');
-	audioChunks: EncodedAudioChunk[] = [];
+	sink: EncodedPacketSink | undefined;
+	sampleSink: AudioSampleSink | undefined;
 	audioConfig?: AudioEncoderConfig;
 	audioWaveform?: Float32Array;
 	srtEntries: SrtEntry[] = [];
+	// Frame numbers, out is the last frame of the selection
+	selection = { in: 0, out: 0, currentFrame: 0 };
 
-	width = 1920;
-	height = 1080;
+	constructor(type: SourceType, info: FileInfo) {
+		this.type = type;
+		this.info = info;
+	}
 }

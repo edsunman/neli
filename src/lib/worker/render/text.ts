@@ -440,7 +440,6 @@ export class MsdfTextRenderer {
 		for (let i = 0; i < text.length; ++i) {
 			const charCode = nextCharCode;
 			nextCharCode = i < text.length - 1 ? text.charCodeAt(i + 1) : -1;
-			//console.log(font.lineHeight);
 			switch (charCode) {
 				case 10: // Newline
 					lineWidths.push(textOffsetX);
