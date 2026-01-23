@@ -18,12 +18,14 @@
 		imageIcon,
 		importIcon,
 		infoIcon,
+		inPointIcon,
 		justifyLeftIcon,
 		justifyCenterIcon,
 		justifyRightIcon,
 		logoIcon,
 		mouseIcon,
 		moveIcon,
+		outPointIcon,
 		paletteIcon,
 		pauseIcon,
 		playIcon,
@@ -337,6 +339,25 @@
 	</svg>
 {/snippet}
 
+{#snippet inPointIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<polyline class="cls-1" points="15.43 21 5.73 21 5.73 3 15.43 3" /><polyline
+			class="cls-1"
+			points="13.45 7.65 17.8 12 13.45 16.35 13.45 16.35"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet justifyLeftIcon(className: string)}
 	<svg
 		class={className}
@@ -435,6 +456,25 @@
 		<path d="M5 12L19 12" />
 		<path d="M17 15L20 12L17 9" />
 		<path d="M7 9L4 12L7 15" />
+	</svg>
+{/snippet}
+
+{#snippet outPointIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<polyline class="cls-1" points="8.1 3 17.8 3 17.8 21 8.1 21" /><polyline
+			class="cls-1"
+			points="10.07 16.35 5.73 12 10.07 7.65 10.07 7.65"
+		/>
 	</svg>
 {/snippet}
 

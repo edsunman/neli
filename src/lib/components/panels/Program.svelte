@@ -14,6 +14,7 @@
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.selectedSource) return;
 		timelineState.selectedClip = null;
+		appState.propertiesSection = 'outputAudio';
 		if (!canvasContainer || !canvas) return;
 		const rect = canvas.getBoundingClientRect();
 		// Calculate where the click is relative to the 'actual' canvas size

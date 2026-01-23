@@ -155,6 +155,9 @@ export class VDecoder {
 			this.resumeFeedingChunks?.();
 		}
 
+		// If we are encoding make sure we have enought frames in queue
+		if (encoding && this.frameQueue.length < 5) return;
+
 		// Nothing in frame queue so return saved frame if we have it
 		if (this.frameQueue.length < 1 && !encoding) {
 			if (this.savedFrame) return this.savedFrame;

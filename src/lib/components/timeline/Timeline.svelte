@@ -212,6 +212,7 @@
 			return;
 		}
 		if (timelineState.selectedTool === 'scissors') {
+			pause();
 			splitHoveredClip(canvasPixelToFrame(e.offsetX), e.offsetY);
 			return;
 		}

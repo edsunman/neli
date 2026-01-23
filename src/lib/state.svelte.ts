@@ -63,7 +63,6 @@ class TimelineState {
 	action: 'none' | 'selecting' = 'none';
 	offset = -1 / 18; // (-0.055) percentage, 0...1
 	offsetStart = 0; // percentage, 0...1
-	dragOffset = { x: 0, y: 0 };
 	mousePosition = { x: 0, y: 0 }; // pixels
 	mouseDownPosition = { x: 0, y: 0 }; // pixels
 	focusedTrack = 0;

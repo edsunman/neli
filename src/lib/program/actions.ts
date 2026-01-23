@@ -115,6 +115,7 @@ export const showTimelineInProgram = () => {
 	if (programState.playing) pauseProgram();
 	appState.selectedSource.selection.currentFrame = programState.currentFrame;
 	appState.selectedSource = null;
+	appState.propertiesSection = 'outputAudio';
 	timelineState.showPlayhead = true;
 	timelineState.invalidate = true;
 	programState.canvasHeight = appState.project.resolution.height;
@@ -172,6 +173,17 @@ export const setOutPoint = () => {
 		selection.out = lastFrame;
 		if (selection.in > lastFrame - 5) selection.in = lastFrame - 5;
 	}
+	programState.invalidateTimeline = true;
+};
+
+export const resetInOutPoints = () => {
+	if (!appState.selectedSource) return;
+	const selection = appState.selectedSource.selection;
+	const info = appState.selectedSource.info;
+
+	selection.in = 0;
+	if (info.type === 'video') selection.out = Math.round(info.duration * info.frameRate);
+	if (info.type === 'audio') selection.out = Math.round(info.duration * 30);
 	programState.invalidateTimeline = true;
 };
 

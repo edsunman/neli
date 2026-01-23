@@ -47,7 +47,7 @@
 					text: 'import',
 					selected: true,
 					icon: importIcon,
-					shortcuts: ['I'],
+					shortcuts: ['N'],
 					action: () => {
 						appState.import.importStarted = false;
 						appState.palettePage = 'import';
@@ -58,7 +58,7 @@
 					text: 'export',
 					selected: false,
 					icon: exportIcon,
-					shortcuts: ['E'],
+					shortcuts: ['M'],
 					action: () => (appState.palettePage = 'export')
 				},
 				/* {

@@ -63,11 +63,6 @@
 <svelte:window
 	onkeydown={(e) => {
 		switch (e.code) {
-			/* 			case 'Escape':
-				if (appState.selectedSource && !appState.showPalette) {
-					showTimelineInProgram();
-				}
-				break; */
 			case 'KeyZ':
 				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;
@@ -84,21 +79,19 @@
 		}
 	}}
 	onkeyup={(e) => {
+		if (appState.disableKeyboardShortcuts) return;
 		switch (e.code) {
 			case 'KeyP':
-				if (appState.disableKeyboardShortcuts) break;
 				if (!appState.showPalette) appState.showPalette = true;
 				break;
-			case 'KeyI':
-				if (appState.disableKeyboardShortcuts) break;
+			case 'KeyN':
 				if (!appState.showPalette) {
 					appState.palettePage = 'import';
 					appState.import.importStarted = false;
 					appState.showPalette = true;
 				}
 				break;
-			case 'KeyE':
-				if (appState.disableKeyboardShortcuts) break;
+			case 'KeyM':
 				if (!appState.showPalette) {
 					appState.palettePage = 'export';
 					appState.showPalette = true;

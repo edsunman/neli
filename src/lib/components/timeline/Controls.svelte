@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { pauseProgram, playProgram } from '$lib/program/actions';
+	import {
+		pauseProgram,
+		playProgram,
+		resetInOutPoints,
+		setInPoint,
+		setOutPoint
+	} from '$lib/program/actions';
 	import { appState, programState, timelineState } from '$lib/state.svelte';
 	import { pause, play, setTimelineTool, zoomIn, zoomOut } from '$lib/timeline/actions';
 	import { calculateMaxZoomLevel, framesToTimecode } from '$lib/timeline/utils';
@@ -14,7 +20,10 @@
 		zoomOutIcon,
 		pointerIcon,
 		handIcon,
-		scissorsIcon
+		scissorsIcon,
+		inPointIcon,
+		outPointIcon,
+		undoIcon
 	} from '../icons/Icons.svelte';
 	import { Tooltip } from 'bits-ui';
 
@@ -75,7 +84,12 @@
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
 	<Tooltip.Provider delayDuration={500}>
 		<div class="h-full w-48 mr-12 flex justify-end">
-			{#if !appState.selectedSource}
+			{#if appState.selectedSource}
+				{#if appState.selectedSource.type === 'audio' || appState.selectedSource.type === 'video'}
+					{@render button('set in point', 'I', inPointIcon, () => setInPoint(), false, false)}
+					{@render button('set out point', 'O', outPointIcon, () => setOutPoint(), false, false)}
+				{/if}
+			{:else}
 				{@render button(
 					'pointer tool',
 					'1',
@@ -147,7 +161,18 @@
 			</span>
 		</button>
 		<div class="h-full ml-12 w-48 flex">
-			{#if !appState.selectedSource}
+			{#if appState.selectedSource}
+				{#if appState.selectedSource.type === 'audio' || appState.selectedSource.type === 'video'}
+					{@render button(
+						'reset in/out points',
+						'I',
+						undoIcon,
+						() => resetInOutPoints(),
+						false,
+						false
+					)}
+				{/if}
+			{:else}
 				{@render button('zoom out', '-', zoomOutIcon, zoomOut, timelineState.zoom <= 0.9)}
 				{@render button(
 					'zoom in',
@@ -204,6 +229,8 @@
 
 <svelte:window
 	onkeydown={(e: KeyboardEvent) => {
+		if (appState.disableKeyboardShortcuts) return;
+		if (appState.showPalette) return;
 		switch (e.code) {
 			case 'Digit1': {
 				setTimelineTool('pointer');

@@ -12,7 +12,8 @@
 		fileIcon,
 		aspectLandscape,
 		aspectSquare,
-		aspectPortrait
+		aspectPortrait,
+		imageIcon
 	} from '../icons/Icons.svelte';
 	import { changeProjectResolution } from '$lib/project/actions';
 	import { secondsToTimecode } from '$lib/timeline/utils';
@@ -38,7 +39,13 @@
 			</div>
 			{#if appState.selectedSource}
 				<div class="bg-zinc-950 rounded flex flex-col">
-					{@render sideButton('source', 'source details', filmIcon)}
+					{#if appState.selectedSource.type === 'video'}
+						{@render sideButton('source', 'source details', filmIcon)}
+					{:else if appState.selectedSource.type === 'audio'}
+						{@render sideButton('source', 'source details', audioIcon)}
+					{:else if appState.selectedSource.type === 'image'}
+						{@render sideButton('source', 'source details', imageIcon)}
+					{/if}
 				</div>
 			{/if}
 			{#if timelineState.selectedClip && !timelineState.selectedClip.temp}

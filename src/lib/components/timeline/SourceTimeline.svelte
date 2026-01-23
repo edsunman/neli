@@ -98,10 +98,10 @@
 		if (appState.disableKeyboardShortcuts) return;
 		if (appState.showPalette) return;
 		switch (event.code) {
-			case 'KeyG':
+			case 'KeyI':
 				setInPoint();
 				break;
-			case 'KeyH':
+			case 'KeyO':
 				setOutPoint();
 				break;
 			case 'ArrowLeft':
