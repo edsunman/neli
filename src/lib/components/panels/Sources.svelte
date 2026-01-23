@@ -85,7 +85,6 @@
 		<div class="absolute -left-13">
 			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
 				<MyTooltip
-					disabled={true}
 					contentProps={{ side: 'right' }}
 					triggerProps={{ onclick: () => (appState.showPalette = true) }}
 				>
@@ -202,9 +201,16 @@
 						appState.dragAndDrop.source = source;
 						timelineState.selectedClip = null;
 						timelineState.selectedClips.clear();
+						timelineState.selectedTool = 'pointer';
 						timelineState.invalidate = true;
 					}}
-					onclick={() => onClick(source)}
+					onclick={(e) => {
+						onClick(source);
+						e.currentTarget.blur();
+					}}
+					onmouseleave={(e) => {
+						e.currentTarget.blur();
+					}}
 				>
 					<span
 						style:background-image={`url(${source.thumbnail})`}

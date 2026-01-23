@@ -48,6 +48,7 @@ class AppState {
 }
 
 class TimelineState {
+	zoom = $state(0.9);
 	clips: Clip[] = [];
 	tracks: Track[] = [];
 	duration = $state(1800); // frames
@@ -57,14 +58,14 @@ class TimelineState {
 	height = 0; // pixels
 	selectedClip = $state<Clip | null>(null);
 	selectedClips = new Set<Clip>();
+	selectedTool = $state<'pointer' | 'hand' | 'scissors'>('pointer');
 
 	action: 'none' | 'selecting' = 'none';
-	zoom = 0.9;
 	offset = -1 / 18; // (-0.055) percentage, 0...1
 	offsetStart = 0; // percentage, 0...1
-	dragOffset = { x: 0, y: 0 }; // pixels
-	dragStart = { x: 0, y: 0 }; // pixels
-	hoverClipId = '';
+	dragOffset = { x: 0, y: 0 };
+	mousePosition = { x: 0, y: 0 }; // pixels
+	mouseDownPosition = { x: 0, y: 0 }; // pixels
 	focusedTrack = 0;
 	padding = 100;
 	trackDropZone = -1;

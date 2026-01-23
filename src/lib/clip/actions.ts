@@ -100,7 +100,8 @@ export const removeClip = (id: string) => {
 };
 
 export const moveSelectedClip = (mouseY: number) => {
-	const frame = canvasPixelToFrame(timelineState.dragOffset.x, false);
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const frame = canvasPixelToFrame(dragOffsetX, false);
 
 	// multi select
 	if (timelineState.selectedClips.size > 0) {
@@ -261,7 +262,8 @@ export const resizeSelctedClip = () => {
 	let minimumSize = canvasPixelToFrame(36, false);
 	minimumSize = minimumSize < 1 ? 1 : minimumSize;
 	clip.invalid = false;
-	const frameOffset = canvasPixelToFrame(timelineState.dragOffset.x, false);
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const frameOffset = canvasPixelToFrame(dragOffsetX, false);
 
 	if (clip.resizeHover === 'start') {
 		clip.start = clip.savedStart + frameOffset;
@@ -466,9 +468,7 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 	// NOTE: this runs every frame on mouse move so may be bad news
 	// with large numbers of clips. Hashmap may be better?
 	let foundClip;
-	//const minimumSize = canvasPixelToFrame(35, false);
 	for (const clip of timelineState.clips) {
-		//if (clip.deleted || clip.duration < minimumSize) continue;
 		if (clip.deleted) continue;
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.tracks.length; i++) {
@@ -480,13 +480,33 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
 					foundClip = clip;
 					clip.hovered = true;
-					timelineState.hoverClipId = clip.id;
 				}
 				break;
 			}
 		}
 	}
 	return foundClip;
+};
+
+export const splitHoveredClip = (hoveredFrame: number, offsetY: number) => {
+	let foundClip;
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		clip.hovered = false;
+		for (let i = 0; i < timelineState.tracks.length; i++) {
+			if (
+				offsetY > timelineState.tracks[i].top &&
+				offsetY < timelineState.tracks[i].top + timelineState.tracks[i].height &&
+				clip.track === i + 1
+			) {
+				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
+					foundClip = clip;
+				}
+				break;
+			}
+		}
+	}
+	if (foundClip) splitClip(foundClip.id, hoveredFrame);
 };
 
 export const multiSelectClip = (clipId: string) => {
@@ -506,14 +526,15 @@ export const multiSelectClip = (clipId: string) => {
 
 export const multiSelectClipsInRange = () => {
 	timelineState.selectedClips.clear();
-
+	const dragOffsetY = timelineState.mousePosition.y - timelineState.mouseDownPosition.y;
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
 	const startTop = Math.min(
-		timelineState.dragStart.y,
-		timelineState.dragStart.y + timelineState.dragOffset.y
+		timelineState.mouseDownPosition.y,
+		timelineState.mouseDownPosition.y + dragOffsetY
 	);
 	const endTop = Math.max(
-		timelineState.dragStart.y,
-		timelineState.dragStart.y + timelineState.dragOffset.y
+		timelineState.mouseDownPosition.y,
+		timelineState.mouseDownPosition.y + dragOffsetY
 	);
 	const tracks = new Set<number>();
 	for (let i = 0; i < timelineState.tracks.length; i++) {
@@ -525,8 +546,8 @@ export const multiSelectClipsInRange = () => {
 		}
 	}
 
-	const startFrame = canvasPixelToFrame(timelineState.dragStart.x);
-	const endFrame = canvasPixelToFrame(timelineState.dragStart.x + timelineState.dragOffset.x);
+	const startFrame = canvasPixelToFrame(timelineState.mouseDownPosition.x);
+	const endFrame = canvasPixelToFrame(timelineState.mouseDownPosition.x + dragOffsetX);
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (

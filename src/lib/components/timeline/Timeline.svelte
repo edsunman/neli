@@ -17,7 +17,8 @@
 		setTrackLocks,
 		zoomToFit,
 		centerViewOnPlayhead,
-		checkViewBounds
+		checkViewBounds,
+		updateGrabbedPosition
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -31,7 +32,8 @@
 		removeClip,
 		multiSelectClip,
 		multiSelectClipsInRange,
-		finaliseClip
+		finaliseClip,
+		splitHoveredClip
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
 	import {
@@ -59,6 +61,7 @@
 	let dragging = false;
 	let resizing = false;
 	let scrolling = false;
+	let grabbing = false;
 	let inDropZone = false;
 	let fontsLoaded = false;
 	let contextMenu: ContextMenu;
@@ -86,29 +89,44 @@
 		}
 	]);
 
+	let cursorStyle = $derived.by(() => {
+		if (timelineState.selectedTool === 'hand') {
+			if (appState.mouseIsDown) return 'grabbing';
+			return 'grab';
+		}
+		return 'default';
+	});
+
 	const mouseMove = (e: MouseEvent) => {
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
+		let cursor = 'default';
 
-		canvas.style.cursor = 'default';
 		const offsetY = e.clientY - canvasContainer.offsetTop;
+		timelineState.mousePosition.x = e.clientX;
+		timelineState.mousePosition.y = offsetY;
 
 		if (scrubbing) {
 			latestScrubPosition = e.clientX;
 			invalidateScrub = true;
 			return;
 		}
-		if (dragging || resizing || scrolling || timelineState.action === 'selecting') {
-			timelineState.dragOffset.x = e.clientX - timelineState.dragStart.x;
-			timelineState.dragOffset.y = offsetY - timelineState.dragStart.y;
+		if (timelineState.selectedTool === 'scissors') {
+			timelineState.invalidate = true;
+			return;
 		}
-
+		if (timelineState.selectedTool === 'hand') {
+			if (grabbing) {
+				updateGrabbedPosition();
+				timelineState.invalidateWaveform = true;
+			}
+			return;
+		}
 		if (timelineState.action === 'selecting') {
 			multiSelectClipsInRange();
 			timelineState.invalidateWaveform = true;
 			return;
 		}
-
 		if (scrolling) {
 			updateScrollPosition();
 			timelineState.invalidateWaveform = true;
@@ -121,7 +139,8 @@
 		}
 		if (resizing) {
 			resizeSelctedClip();
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
+			//canvas.style.cursor = 'col-resize';
 			timelineState.invalidateWaveform = true;
 			return;
 		}
@@ -142,7 +161,7 @@
 
 		if (dragging) return;
 
-		timelineState.hoverClipId = '';
+		if (cursorStyle !== cursor) cursorStyle = cursor;
 		const hoveredFrame = canvasPixelToFrame(e.offsetX);
 		const clip = setHoverOnHoveredClip(hoveredFrame, offsetY);
 		if (!clip || timelineState.selectedClips.size > 0) return;
@@ -154,12 +173,13 @@
 		const start = frameToCanvasPixel(clip.start);
 		const end = frameToCanvasPixel(clip.start + clip.duration);
 		if (e.offsetX < start + 15) {
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
 			clip.resizeHover = 'start';
 		} else if (e.offsetX > end - 15) {
 			clip.resizeHover = 'end';
-			canvas.style.cursor = 'col-resize';
+			cursor = 'col-resize';
 		}
+		if (cursorStyle !== cursor) cursorStyle = cursor;
 	};
 
 	const mouseDown = (e: MouseEvent) => {
@@ -169,12 +189,18 @@
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
-		timelineState.dragStart.x = e.offsetX;
-		timelineState.dragStart.y = e.offsetY;
+		timelineState.mouseDownPosition.x = e.offsetX;
+		timelineState.mouseDownPosition.y = e.offsetY;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
 		}
+		if (timelineState.selectedTool === 'hand') {
+			grabbing = true;
+			timelineState.offsetStart = timelineState.offset;
+			return;
+		}
+
 		if (e.offsetY < (timelineState.height - 32) * 0.2) {
 			scrubbing = true;
 			if (appState.selectedSource) {
@@ -183,6 +209,11 @@
 			} else {
 				setCurrentFrameFromOffset(e.offsetX);
 			}
+			return;
+		}
+		if (timelineState.selectedTool === 'scissors') {
+			splitHoveredClip(canvasPixelToFrame(e.offsetX), e.offsetY);
+			return;
 		}
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
@@ -196,16 +227,14 @@
 			return;
 		}
 
-		if (timelineState.hoverClipId) {
+		const clip = timelineState.clips.find((clip) => clip.hovered);
+		if (clip) {
 			// Clicked a clip
 			if (appState.selectedSource) {
 				showTimelineInProgram();
 				return;
 			}
 			if (timelineState.playing) pause();
-
-			const clip = getClip(timelineState.hoverClipId);
-			if (!clip) return;
 
 			if (timelineState.selectedClips.has(clip)) {
 				// Clicked a multi-selected clip
@@ -224,13 +253,7 @@
 			if (e.shiftKey) {
 				// If there is a clip selected check we have not clicked it
 				if (timelineState.selectedClip === clip) return;
-				multiSelectClip(timelineState.hoverClipId);
-				return;
-			}
-			if (e.ctrlKey || e.metaKey) {
-				splitClip(clip.id, canvasPixelToFrame(e.offsetX));
-				//historyManager.finishCommand();
-				timelineState.invalidateWaveform = true;
+				multiSelectClip(clip.id);
 				return;
 			}
 			timelineState.selectedClip = clip;
@@ -262,12 +285,10 @@
 	const mouseUp = () => {
 		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
-		if (scrubbing) {
-			scrubbing = false;
-		}
+		if (scrubbing) scrubbing = false;
+		if (grabbing) grabbing = false;
 		if (dragging) {
 			dragging = false;
-
 			if (clip) {
 				if (appState.dragAndDrop.active) {
 					// drag and dropped clip
@@ -313,8 +334,6 @@
 		}
 		timelineState.action = 'none';
 		timelineState.invalidate = true;
-		timelineState.dragOffset.x = 0;
-		timelineState.dragOffset.y = 0;
 		historyManager.finishCommand();
 	};
 
@@ -345,7 +364,7 @@
 		newClip.savedTrack = 0;
 		newClip.temp = true;
 		timelineState.selectedClip = newClip;
-		timelineState.dragStart.x = e.offsetX;
+		timelineState.mouseDownPosition.x = e.offsetX;
 		setTrackLocks();
 		moveSelectedClip(e.offsetY);
 		newClip.start = start;
@@ -446,13 +465,13 @@
 	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
+		style:cursor={cursorStyle}
 		class="flex-1"
 		role="navigation"
 		onmousedown={mouseDown}
 		onwheel={onWheel}
 		oncontextmenu={(e) => {
 			e.preventDefault();
-			timelineState.hoverClipId = '';
 			const hoveredFrame = canvasPixelToFrame(e.offsetX);
 			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 			if (!clip) return;

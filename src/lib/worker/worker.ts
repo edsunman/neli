@@ -103,7 +103,6 @@ self.addEventListener('message', async function (event) {
 			if (seeking) break;
 			renderer.resizeCanvas(event.data.width, event.data.height);
 			processSeekFrame();
-			//sendResizeComplete(event.data.height, event.data.width);
 			break;
 		}
 		case 'showSource': {
@@ -150,7 +149,7 @@ self.addEventListener('message', async function (event) {
 			programTimelineActive = true;
 			if (seeking) break;
 			seeking = true;
-			//renderer.resizeCanvas(1920, 1080);
+			renderer.resizeCanvas(1920, 1080);
 			renderer.startPaint();
 			renderer.audioSourcePass();
 			await renderer.endPaint(encoding);
@@ -159,16 +158,6 @@ self.addEventListener('message', async function (event) {
 		}
 	}
 });
-
-/* const sendResizeComplete = (height: number, width: number) => {
-	self.postMessage({
-		command: 'resize-complete',
-		origin: performance.timeOrigin,
-		timestamp: performance.now(),
-		height,
-		width
-	});
-}; */
 
 const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');

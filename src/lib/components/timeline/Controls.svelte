@@ -1,11 +1,25 @@
 <script lang="ts">
 	import { pauseProgram, playProgram } from '$lib/program/actions';
 	import { appState, programState, timelineState } from '$lib/state.svelte';
-	import { pause, play } from '$lib/timeline/actions';
-	import { framesToTimecode } from '$lib/timeline/utils';
-	import { pauseIcon, playIcon, seekIcon, copyIcon, mouseIcon } from '../icons/Icons.svelte';
+	import { pause, play, setTimelineTool, zoomIn, zoomOut } from '$lib/timeline/actions';
+	import { calculateMaxZoomLevel, framesToTimecode } from '$lib/timeline/utils';
+	import type { Snippet } from 'svelte';
+	import {
+		pauseIcon,
+		playIcon,
+		seekIcon,
+		copyIcon,
+		mouseIcon,
+		zoomInIcon,
+		zoomOutIcon,
+		pointerIcon,
+		handIcon,
+		scissorsIcon
+	} from '../icons/Icons.svelte';
+	import { Tooltip } from 'bits-ui';
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
+	import MyTooltip from '../ui/Tooltip.svelte';
 
 	let showFrames = $state(false);
 
@@ -59,48 +73,150 @@
 </script>
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
-	<button
-		class={[
-			!appState.mouseIsDown && !disablePlaybackButton && 'hover:bg-zinc-700 group',
-			'text-white pl-9 pr-3 py-1 mr-6 bg-hover rounded-lg relative',
-			'transition-colors duration-200 hover:duration-0 select-none'
-		]}
-		oncontextmenu={(e) => {
-			e.preventDefault();
-			contextMenu.openContextMenu(e);
-		}}
-		onclick={(e) => {
-			if (e.shiftKey) {
-				showFrames = !showFrames;
-				buttons[0].text = showFrames ? 'show timecode' : 'show frames';
-			} else {
-				if (timelineState.playing || programState.playing) {
-					appState.selectedSource ? pauseProgram() : pause();
-				} else {
-					appState.selectedSource ? playProgram() : play();
-				}
-			}
-			e.currentTarget.blur();
-		}}
-	>
-		{#if timelineState.playing}
-			{@render pauseIcon(
-				`absolute size-3.5 left-3 top-[13px] ${disablePlaybackButton && 'opacity-10'}`
-			)}
-		{:else}
-			{@render playIcon(
-				`absolute size-3.5 left-3 top-[13px] ${disablePlaybackButton && 'opacity-10'}`
-			)}
-		{/if}
-
-		<span>
-			{#if appState.selectedSource}
-				{showFrames ? programState.currentFrame : formattedProgramTime}
-			{:else}
-				{showFrames ? timelineState.currentFrame : formattedTime}
+	<Tooltip.Provider delayDuration={500}>
+		<div class="h-full w-48 mr-12 flex justify-end">
+			{#if !appState.selectedSource}
+				{@render button(
+					'pointer tool',
+					'1',
+					pointerIcon,
+					() => setTimelineTool('pointer'),
+					false,
+					timelineState.selectedTool === 'pointer'
+				)}
+				{@render button(
+					'hand tool',
+					'2',
+					handIcon,
+					() => setTimelineTool('hand'),
+					false,
+					timelineState.selectedTool === 'hand'
+				)}
+				{@render button(
+					'scissors tool',
+					'3',
+					scissorsIcon,
+					() => setTimelineTool('scissors'),
+					false,
+					timelineState.selectedTool === 'scissors'
+				)}
 			{/if}
-		</span>
-	</button>
+		</div>
+		<button
+			class={[
+				!appState.mouseIsDown && !disablePlaybackButton && 'hover:bg-zinc-700 group',
+				'text-white pl-9 pr-3 py-1 bg-hover rounded-lg relative',
+				'transition-colors duration-200 hover:duration-0 select-none'
+			]}
+			oncontextmenu={(e) => {
+				e.preventDefault();
+				contextMenu.openContextMenu(e);
+			}}
+			onclick={(e) => {
+				if (e.shiftKey) {
+					showFrames = !showFrames;
+					buttons[0].text = showFrames ? 'show timecode' : 'show frames';
+				} else {
+					if (timelineState.playing || programState.playing) {
+						appState.selectedSource ? pauseProgram() : pause();
+					} else {
+						appState.selectedSource ? playProgram() : play();
+					}
+				}
+			}}
+			onmouseup={(e) => {
+				e.currentTarget.blur();
+			}}
+		>
+			{#if timelineState.playing}
+				{@render pauseIcon(
+					`absolute size-3.5 left-3 top-[13px] ${disablePlaybackButton && 'opacity-10'}`
+				)}
+			{:else}
+				{@render playIcon(
+					`absolute size-3.5 left-3 top-[13px] ${disablePlaybackButton && 'opacity-10'}`
+				)}
+			{/if}
+
+			<span>
+				{#if appState.selectedSource}
+					{showFrames ? programState.currentFrame : formattedProgramTime}
+				{:else}
+					{showFrames ? timelineState.currentFrame : formattedTime}
+				{/if}
+			</span>
+		</button>
+		<div class="h-full ml-12 w-48 flex">
+			{#if !appState.selectedSource}
+				{@render button('zoom out', '-', zoomOutIcon, zoomOut, timelineState.zoom <= 0.9)}
+				{@render button(
+					'zoom in',
+					'P',
+					zoomInIcon,
+					zoomIn,
+					timelineState.zoom >= calculateMaxZoomLevel()
+				)}
+			{/if}
+		</div>
+	</Tooltip.Provider>
 </div>
 
 <ContextMenu bind:this={contextMenu} {buttons} />
+
+{#snippet button(
+	description: string,
+	shortcut: string,
+	icon: Snippet<[string]>,
+	onclick: () => void,
+	disabled = false,
+	selected = false
+)}
+	<MyTooltip
+		contentProps={{ side: 'bottom' }}
+		triggerProps={{
+			onclick,
+			onmouseup: (e) => e.currentTarget.blur(),
+			onmouseleave: (e) => e.currentTarget.blur()
+		}}
+	>
+		{#snippet trigger()}
+			<div
+				class={[
+					disabled
+						? 'text-zinc-700 opacity-50'
+						: selected
+							? 'text-zinc-50 bg-zinc-700'
+							: 'text-zinc-600 hover:text-zinc-400 active:text-zinc-50',
+					'mx-1 py-1.5 px-1.5 rounded-lg h-9'
+				]}
+			>
+				{@render icon('size-6')}
+			</div>
+		{/snippet}
+		{description}
+		{#if shortcut}
+			<span class="ml-1 px-1.5 py-0.5 rounded-sm border border-zinc-400 text-zinc-500"
+				>{shortcut}</span
+			>
+		{/if}
+	</MyTooltip>
+{/snippet}
+
+<svelte:window
+	onkeydown={(e: KeyboardEvent) => {
+		switch (e.code) {
+			case 'Digit1': {
+				setTimelineTool('pointer');
+				break;
+			}
+			case 'Digit2': {
+				setTimelineTool('hand');
+				break;
+			}
+			case 'Digit3': {
+				setTimelineTool('scissors');
+				break;
+			}
+		}
+	}}
+/>

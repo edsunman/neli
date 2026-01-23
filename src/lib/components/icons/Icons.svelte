@@ -13,6 +13,7 @@
 		filmIcon,
 		folderIcon,
 		forwardIcon,
+		handIcon,
 		helpIcon,
 		imageIcon,
 		importIcon,
@@ -26,8 +27,10 @@
 		paletteIcon,
 		pauseIcon,
 		playIcon,
+		pointerIcon,
 		presetsIcon,
 		redoIcon,
+		scissorsIcon,
 		seekIcon,
 		settingsIcon,
 		speakerIcon,
@@ -251,6 +254,24 @@
 	</svg>
 {/snippet}
 
+{#snippet handIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path
+			d="M20,14 L20,17 C20,19.209139 18.209139,21 16,21 L10.0216594,21 C8.75045497,21 7.55493392,20.3957659 6.80103128,19.3722467 L3.34541668,14.6808081 C2.81508416,13.9608139 2.94777982,12.950548 3.64605479,12.391928 C4.35756041,11.8227235 5.38335813,11.8798792 6.02722571,12.5246028 L8,14.5 L8,13 L8.00393081,13 L8,11 L8.0174523,6.5 C8.0174523,5.67157288 8.68902517,5 9.5174523,5 C10.3458794,5 11.0174523,5.67157288 11.0174523,6.5 L11.0174523,11 L11.0174523,4.5 C11.0174523,3.67157288 11.6890252,3 12.5174523,3 C13.3458794,3 14.0174523,3.67157288 14.0174523,4.5 L14.0174523,11 L14.0174523,5.5 C14.0174523,4.67157288 14.6890252,4 15.5174523,4 C16.3458794,4 17.0174523,4.67157288 17.0174523,5.5 L17.0174523,11 L17.0174523,7.5 C17.0174523,6.67157288 17.6890252,6 18.5174523,6 C19.3458794,6 20.0174523,6.67157288 20.0174523,7.5 L20.0058962,14 L20,14 Z"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet helpIcon(className: string)}
 	<svg
 		class={className}
@@ -466,6 +487,22 @@
 	</svg>
 {/snippet}
 
+{#snippet pointerIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<polygon points="7 20 7 4 19 16 12 16 7 21" />
+	</svg>
+{/snippet}
+
 {#snippet presetsIcon(className: string)}
 	<svg
 		class={className}
@@ -508,6 +545,23 @@
 	>
 		<path d="M19,17 L19,15 C19,10.0294373 15.1944204,6 10.5,6 C5.80557963,6 2,10.0294373 2,15" />
 		<polyline points="16 15 19 18 22 15" />
+	</svg>
+{/snippet}
+
+{#snippet scissorsIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M3 18L15 9M15 15L3 6" /> <circle cx="18" cy="7" r="3" />
+		<circle cx="18" cy="17" r="3" />
 	</svg>
 {/snippet}
 

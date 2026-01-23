@@ -1,6 +1,6 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import { appState, programState, timelineState } from '$lib/state.svelte';
-import { frameToCanvasPixel, secondsToTimecode } from './utils';
+import { canvasPixelToFrame, frameToCanvasPixel, secondsToTimecode } from './utils';
 import { programFrameToCanvasPixel } from '$lib/program/utils';
 
 const ZINC_900 = '#18181b';
@@ -102,16 +102,18 @@ export const drawCanvas = (
 
 	// select box
 	if (timelineState.action === 'selecting') {
+		const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+		const dragOffsetY = timelineState.mousePosition.y - timelineState.mouseDownPosition.y;
 		const x =
-			timelineState.dragOffset.x < 0
-				? timelineState.dragStart.x + timelineState.dragOffset.x
-				: timelineState.dragStart.x;
+			dragOffsetX < 0
+				? timelineState.mouseDownPosition.x + dragOffsetX
+				: timelineState.mouseDownPosition.x;
 		const y =
-			timelineState.dragOffset.y < 0
-				? timelineState.dragStart.y + timelineState.dragOffset.y
-				: timelineState.dragStart.y;
-		const boxWidth = Math.abs(timelineState.dragOffset.x);
-		const boxHeight = Math.abs(timelineState.dragOffset.y);
+			dragOffsetY < 0
+				? timelineState.mouseDownPosition.y + dragOffsetY
+				: timelineState.mouseDownPosition.y;
+		const boxWidth = Math.abs(dragOffsetX);
+		const boxHeight = Math.abs(dragOffsetY);
 		context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
 		context.lineWidth = 1;
 		context.strokeRect(x + 0.5, y + 0.5, boxWidth, boxHeight);
@@ -120,7 +122,22 @@ export const drawCanvas = (
 	// playhead
 	if (timelineState.showPlayhead) {
 		const playheadPosition = frameToCanvasPixel(timelineState.currentFrame);
-		drawPlayhead(context, rulerContainerHeight * 0.2, flexHeight - 20, playheadPosition);
+		const playheadTop = rulerContainerHeight * 0.2;
+		drawPlayhead(context, rulerContainerHeight * 0.2, flexHeight - playheadTop, playheadPosition);
+	}
+
+	if (
+		timelineState.selectedTool === 'scissors' &&
+		timelineState.mousePosition.y > rulerContainerHeight
+	) {
+		const cursorPosition = frameToCanvasPixel(canvasPixelToFrame(timelineState.mousePosition.x));
+		context.fillStyle = 'rgba(255, 255, 255, 0.6)';
+		context.fillRect(
+			cursorPosition,
+			flexHeight * 0.2 + flexHeight * 0.02,
+			1,
+			flexHeight * 0.8 - flexHeight * 0.04
+		);
 	}
 
 	// scrollbar
@@ -140,7 +157,7 @@ export const drawCanvas = (
 	}
 
 	// debug boxes
-	/* 	context.fillStyle = 'rgba(255,0,0,0.2)';
+	/* context.fillStyle = 'rgba(255,0,0,0.2)';
 	context.fillRect(0, height - 35, 200, 35);
 
 	context.fillStyle = 'rgba(0,255,0,0.2)';

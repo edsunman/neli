@@ -3,6 +3,7 @@ import { appState, historyManager, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
+import { removeHoverAllClips } from '$lib/clip/actions';
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
@@ -103,7 +104,6 @@ export const zoomOut = () => {
 	timelineState.zoom = timelineState.zoom / 2;
 	timelineState.offset = center - 0.5 / timelineState.zoom;
 	if (timelineState.zoom < 0.9) timelineState.zoom = 0.9;
-
 	checkViewBounds();
 	timelineState.invalidate = true;
 	timelineState.invalidateWaveform = true;
@@ -139,10 +139,23 @@ export const zoomToFit = () => {
 	timelineState.invalidate = true;
 };
 
-export const updateScrollPosition = () => {
+export const updateGrabbedPosition = () => {
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const offsetPercent = dragOffsetX / timelineState.width;
+	timelineState.offset = timelineState.offsetStart - offsetPercent / timelineState.zoom;
+
 	const padding = 0.05 / timelineState.zoom;
-	const offsetPercent = timelineState.dragOffset.x / timelineState.width;
+	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
+	const barWidth = 1 / timelineState.zoom;
+	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
+};
+
+export const updateScrollPosition = () => {
+	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
+	const offsetPercent = dragOffsetX / timelineState.width;
 	timelineState.offset = timelineState.offsetStart + offsetPercent;
+
+	const padding = 0.05 / timelineState.zoom;
 	if (timelineState.offset < 0 - padding) timelineState.offset = 0 - padding;
 	const barWidth = 1 / timelineState.zoom;
 	if (timelineState.offset + barWidth >= 1 + padding) timelineState.offset = 1 - barWidth + padding;
@@ -400,4 +413,12 @@ export const getUsedTimelineDuration = () => {
 		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;
 	}
 	return lastFrame;
+};
+
+export const setTimelineTool = (tool: typeof timelineState.selectedTool) => {
+	if (appState.selectedSource) return;
+	if (timelineState.action === 'selecting') return;
+	removeHoverAllClips();
+	timelineState.invalidate = true;
+	timelineState.selectedTool = tool;
 };
