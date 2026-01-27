@@ -176,7 +176,7 @@
 				{@render button('zoom out', '-', zoomOutIcon, zoomOut, timelineState.zoom <= 0.9)}
 				{@render button(
 					'zoom in',
-					'P',
+					'=',
 					zoomInIcon,
 					zoomIn,
 					timelineState.zoom >= calculateMaxZoomLevel()

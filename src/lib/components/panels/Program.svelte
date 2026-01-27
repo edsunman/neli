@@ -7,17 +7,19 @@
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
+	import { pause } from '$lib/timeline/actions';
+	import { pauseProgram } from '$lib/program/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.selectedSource) return;
+		pause();
 		timelineState.selectedClip = null;
 		appState.propertiesSection = 'outputAudio';
 		if (!canvasContainer || !canvas) return;
 		const rect = canvas.getBoundingClientRect();
-		// Calculate where the click is relative to the 'actual' canvas size
 		const x = (e.clientX - rect.left) * (canvas.width / rect.width);
 		const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
@@ -31,6 +33,7 @@
 
 	const canvasMouseDown = (e: MouseEvent) => {
 		if (!appState.selectedSource) return;
+		pauseProgram();
 		appState.mouseIsDown = true;
 		appState.dragAndDrop.currentCursor = { x: e.clientX, y: e.clientY };
 		appState.dragAndDrop.clicked = true;

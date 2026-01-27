@@ -87,6 +87,18 @@ export const deleteClip = (clip: Clip) => {
 	appState.propertiesSection = 'outputAudio';
 };
 
+export const deleteClips = (clips: Clip[]) => {
+	timelineState.selectedClip = null;
+	for (const clip of clips) {
+		clip.deleted = true;
+		setTrackClipJoins(clip.track);
+		historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
+	}
+	updateWorkerClip(clips);
+	setAllTrackTypes();
+	appState.propertiesSection = 'outputAudio';
+};
+
 /** Unlike delete this will permanently remove clip and not write to history */
 export const removeClip = (id: string) => {
 	if (timelineState.selectedClip && timelineState.selectedClip.id === id) {
@@ -260,7 +272,7 @@ export const resizeSelctedClip = () => {
 
 	const snapRange = canvasPixelToFrame(10, false);
 	let minimumSize = canvasPixelToFrame(36, false);
-	minimumSize = minimumSize < 1 ? 1 : minimumSize;
+	minimumSize = minimumSize < 5 ? 5 : minimumSize;
 	clip.invalid = false;
 	const dragOffsetX = timelineState.mousePosition.x - timelineState.mouseDownPosition.x;
 	const frameOffset = canvasPixelToFrame(dragOffsetX, false);
@@ -422,6 +434,8 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	const newClipDuration = clip.duration - ogClipDuration - gapSize;
 	const newClipOffset = clip.sourceOffset + ogClipDuration + gapSize;
 
+	if (ogClipDuration < 5 || newClipDuration < 5) return;
+
 	// trim clip
 	clip.duration = ogClipDuration;
 	historyManager.pushAction({
@@ -434,7 +448,6 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 			oldDuration: oldDuration
 		}
 	});
-	updateWorkerClip(clip);
 
 	// create new clip
 	const newClip = new Clip(
@@ -447,7 +460,7 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	newClip.params = [...clip.params];
 	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
-	updateWorkerClip(newClip);
+	updateWorkerClip([clip, newClip]);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
 	setTrackClipJoins(newClip.track);
 };

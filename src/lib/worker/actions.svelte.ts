@@ -108,7 +108,7 @@ export const sendFileToWorker = (source: Source) => {
 
 // TODO: updates should be batched together so multiple clip updates are sent in one message
 // Also do we really need to send everything or can we decide what to send?
-export const updateWorkerClip = (clip: Clip | null) => {
+/* export const updateWorkerClip = (clip: Clip | null) => {
 	if (!clip) return;
 	let height = 0;
 	let width = 0;
@@ -134,6 +134,50 @@ export const updateWorkerClip = (clip: Clip | null) => {
 		command: 'clip',
 		frame: timelineState.currentFrame,
 		clip: workerClip
+	});
+}; */
+
+export const updateWorkerClip = (input: Clip | Clip[] | null) => {
+	// 1. Safety check: return if input is null/undefined
+	if (!input) return;
+
+	// 2. Normalize input: Ensure we are always working with an array
+	const clips = Array.isArray(input) ? input : [input];
+
+	// Quick exit if array is empty
+	if (clips.length === 0) return;
+
+	// 3. Batch process: Map all clips to the WorkerClip format
+	const workerClips: WorkerClip[] = clips.map((clip) => {
+		let height = 0;
+		let width = 0;
+
+		if (clip.source.info.type === 'video' || clip.source.info.type === 'image') {
+			height = clip.source.info.resolution.height;
+			width = clip.source.info.resolution.width;
+		}
+
+		return {
+			id: clip.id,
+			sourceId: clip.source.id,
+			sourceHeight: height,
+			sourceWidth: width,
+			start: clip.start,
+			duration: clip.duration,
+			sourceOffset: clip.sourceOffset,
+			track: clip.track,
+			params: $state.snapshot(clip.params),
+			text: clip.text,
+			type: clip.source.type,
+			deleted: clip.deleted
+		};
+	});
+
+	// 4. Send batch: Post a single message containing the array
+	appState.mediaWorker?.postMessage({
+		command: 'clip',
+		frame: timelineState.currentFrame,
+		clips: workerClips // Changed property from 'clip' to 'clips'
 	});
 };
 

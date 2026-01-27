@@ -86,12 +86,15 @@ self.addEventListener('message', async function (event) {
 			break;
 		}
 		case 'clip': {
-			const foundClipIndex = clips.findIndex((clip) => event.data.clip.id === clip.id);
-			if (foundClipIndex > -1) {
-				clips[foundClipIndex] = event.data.clip;
-			} else {
-				clips.push(event.data.clip);
+			for (const clip of event.data.clips) {
+				const foundClipIndex = clips.findIndex((c) => clip.id === c.id);
+				if (foundClipIndex > -1) {
+					clips[foundClipIndex] = clip;
+				} else {
+					clips.push(clip);
+				}
 			}
+
 			if (!programTimelineActive) {
 				latestSeekFrame = event.data.frame;
 				if (seeking) break;

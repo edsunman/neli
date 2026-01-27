@@ -33,7 +33,8 @@
 		multiSelectClip,
 		multiSelectClipsInRange,
 		finaliseClip,
-		splitHoveredClip
+		splitHoveredClip,
+		deleteClips
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
 	import {
@@ -72,7 +73,7 @@
 
 	const buttons = $state([
 		{
-			text: 'split clip',
+			text: 'cut clip',
 			onclick: () => {
 				if (timelineState.selectedClip) {
 					splitClip(timelineState.selectedClip.id, clickedFrame);
@@ -80,7 +81,7 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
-			shortcuts: ['ctrl', mouseIcon]
+			shortcuts: []
 		},
 		{
 			text: 'focus clip',
@@ -140,7 +141,6 @@
 		if (resizing) {
 			resizeSelctedClip();
 			cursor = 'col-resize';
-			//canvas.style.cursor = 'col-resize';
 			timelineState.invalidateWaveform = true;
 			return;
 		}
@@ -228,7 +228,7 @@
 			return;
 		}
 
-		const clip = timelineState.clips.find((clip) => clip.hovered);
+		const clip = timelineState.clips.find((clip) => clip.hovered && !clip.deleted);
 		if (clip) {
 			// Clicked a clip
 			if (appState.selectedSource) {
@@ -548,11 +548,7 @@
 				break;
 			case 'Backspace':
 				if (timelineState.selectedClip) deleteClip(timelineState.selectedClip);
-				if (timelineState.selectedClips) {
-					for (const clip of timelineState.selectedClips) {
-						deleteClip(clip);
-					}
-				}
+				if (timelineState.selectedClips) deleteClips(Array.from(timelineState.selectedClips));
 				historyManager.finishCommand();
 				timelineState.invalidateWaveform = true;
 				break;
