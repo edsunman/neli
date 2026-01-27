@@ -7,17 +7,19 @@
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
+	import { pause } from '$lib/timeline/actions';
+	import { pauseProgram } from '$lib/program/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.selectedSource) return;
+		pause();
 		timelineState.selectedClip = null;
 		appState.propertiesSection = 'outputAudio';
 		if (!canvasContainer || !canvas) return;
 		const rect = canvas.getBoundingClientRect();
-		// Calculate where the click is relative to the 'actual' canvas size
 		const x = (e.clientX - rect.left) * (canvas.width / rect.width);
 		const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
@@ -31,6 +33,7 @@
 
 	const canvasMouseDown = (e: MouseEvent) => {
 		if (!appState.selectedSource) return;
+		pauseProgram();
 		appState.mouseIsDown = true;
 		appState.dragAndDrop.currentCursor = { x: e.clientX, y: e.clientY };
 		appState.dragAndDrop.clicked = true;
@@ -44,7 +47,7 @@
 	});
 </script>
 
-<div class="flex flex-col h-full" style="container-type: size">
+<div class="h-full" style="container-type: size">
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
@@ -64,11 +67,11 @@
 		{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 			<ClipBox clip={timelineState.selectedClip} {canvasContainer} />
 		{/if}
-	</div>
-	{#if appState.selectedSource}
-		{@const sourceType = appState.selectedSource.type}
-		{#if sourceType === 'video' || sourceType === 'audio'}
-			<SourceTimeline />
+		{#if appState.selectedSource}
+			{@const sourceType = appState.selectedSource.type}
+			{#if sourceType === 'video' || sourceType === 'audio'}
+				<SourceTimeline />
+			{/if}
 		{/if}
-	{/if}
+	</div>
 </div>

@@ -106,34 +106,41 @@ export const sendFileToWorker = (source: Source) => {
 	});
 };
 
-// TODO: updates should be batched together so multiple clip updates are sent in one message
-// Also do we really need to send everything or can we decide what to send?
-export const updateWorkerClip = (clip: Clip | null) => {
-	if (!clip) return;
-	let height = 0;
-	let width = 0;
-	if (clip.source.info.type === 'video' || clip.source.info.type === 'image') {
-		height = clip.source.info.resolution.height;
-		width = clip.source.info.resolution.width;
-	}
-	const workerClip: WorkerClip = {
-		id: clip.id,
-		sourceId: clip.source.id,
-		sourceHeight: height,
-		sourceWidth: width,
-		start: clip.start,
-		duration: clip.duration,
-		sourceOffset: clip.sourceOffset,
-		track: clip.track,
-		params: $state.snapshot(clip.params),
-		text: clip.text,
-		type: clip.source.type,
-		deleted: clip.deleted
-	};
+export const updateWorkerClip = (input: Clip | Clip[] | null) => {
+	if (!input) return;
+
+	const clips = Array.isArray(input) ? input : [input];
+	if (clips.length === 0) return;
+
+	const workerClips: WorkerClip[] = clips.map((clip) => {
+		let height = 0;
+		let width = 0;
+
+		if (clip.source.info.type === 'video' || clip.source.info.type === 'image') {
+			height = clip.source.info.resolution.height;
+			width = clip.source.info.resolution.width;
+		}
+
+		return {
+			id: clip.id,
+			sourceId: clip.source.id,
+			sourceHeight: height,
+			sourceWidth: width,
+			start: clip.start,
+			duration: clip.duration,
+			sourceOffset: clip.sourceOffset,
+			track: clip.track,
+			params: $state.snapshot(clip.params),
+			text: clip.text,
+			type: clip.source.type,
+			deleted: clip.deleted
+		};
+	});
+
 	appState.mediaWorker?.postMessage({
 		command: 'clip',
 		frame: timelineState.currentFrame,
-		clip: workerClip
+		clips: workerClips
 	});
 };
 

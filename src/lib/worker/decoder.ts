@@ -146,6 +146,7 @@ export class VDecoder {
 			this.currentChunk = packetResult.value.toEncodedVideoChunk();
 		}
 
+		this.decoder.flush();
 		await packets.return();
 	}
 

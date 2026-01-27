@@ -72,6 +72,8 @@ export const pauseProgram = () => {
 
 export const showSourceInProgram = (source: Source) => {
 	if (timelineState.playing) pause();
+	if (programState.playing) pauseProgram();
+	if (appState.selectedSource && source.id === appState.selectedSource.id) return;
 	if (source.info.type !== 'video' && source.info.type !== 'image' && source.info.type !== 'audio')
 		return;
 
@@ -124,6 +126,7 @@ export const showTimelineInProgram = () => {
 };
 
 export const setCurrentFrame = (frame: number) => {
+	if (programState.playing) pauseProgram();
 	if (frame < 0) frame = 0;
 	if (frame > programState.duration) frame = programState.duration;
 	if (appState.selectedSource?.type === 'video') seekWorker(frame);
@@ -132,7 +135,6 @@ export const setCurrentFrame = (frame: number) => {
 };
 
 export const setCurrentFrameFromOffset = (canvasOffset: number) => {
-	if (programState.playing) pauseProgram();
 	const frame = programTimelinePixelToFrame(canvasOffset);
 	setCurrentFrame(frame);
 };

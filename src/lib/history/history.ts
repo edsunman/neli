@@ -139,9 +139,9 @@ export class HistoryManager {
 			}
 		}
 
-		for (const clip of updatedClips) {
-			updateWorkerClip(clip);
-		}
+		//for (const clip of updatedClips) {
+		updateWorkerClip(Array.from(updatedClips));
+		//}
 		setAllJoins();
 		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
@@ -223,9 +223,7 @@ export class HistoryManager {
 			}
 		}
 
-		for (const clip of updatedClips) {
-			updateWorkerClip(clip);
-		}
+		updateWorkerClip(Array.from(updatedClips));
 		setAllJoins();
 		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;

@@ -22,7 +22,6 @@
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
-		getClip,
 		moveSelectedClip,
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
@@ -33,7 +32,8 @@
 		multiSelectClip,
 		multiSelectClipsInRange,
 		finaliseClip,
-		splitHoveredClip
+		splitHoveredClip,
+		deleteClips
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
 	import {
@@ -45,10 +45,10 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import { mouseIcon } from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -72,7 +72,7 @@
 
 	const buttons = $state([
 		{
-			text: 'split clip',
+			text: 'cut clip',
 			onclick: () => {
 				if (timelineState.selectedClip) {
 					splitClip(timelineState.selectedClip.id, clickedFrame);
@@ -80,7 +80,7 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
-			shortcuts: ['ctrl', mouseIcon]
+			shortcuts: []
 		},
 		{
 			text: 'focus clip',
@@ -140,7 +140,6 @@
 		if (resizing) {
 			resizeSelctedClip();
 			cursor = 'col-resize';
-			//canvas.style.cursor = 'col-resize';
 			timelineState.invalidateWaveform = true;
 			return;
 		}
@@ -228,7 +227,7 @@
 			return;
 		}
 
-		const clip = timelineState.clips.find((clip) => clip.hovered);
+		const clip = timelineState.clips.find((clip) => clip.hovered && !clip.deleted);
 		if (clip) {
 			// Clicked a clip
 			if (appState.selectedSource) {
@@ -310,8 +309,9 @@
 				for (const multiSelectClip of timelineState.selectedClips) {
 					const end = multiSelectClip.start + multiSelectClip.duration;
 					if (end > endPoint) endPoint = end;
-					finaliseClip(multiSelectClip, 'moveClip');
+					finaliseClip(multiSelectClip, 'moveClip', false);
 				}
+				updateWorkerClip(Array.from(timelineState.selectedClips));
 				extendTimeline(endPoint);
 			}
 		}
@@ -548,11 +548,7 @@
 				break;
 			case 'Backspace':
 				if (timelineState.selectedClip) deleteClip(timelineState.selectedClip);
-				if (timelineState.selectedClips) {
-					for (const clip of timelineState.selectedClips) {
-						deleteClip(clip);
-					}
-				}
+				if (timelineState.selectedClips) deleteClips(Array.from(timelineState.selectedClips));
 				historyManager.finishCommand();
 				timelineState.invalidateWaveform = true;
 				break;

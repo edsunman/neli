@@ -49,8 +49,8 @@
 	{:else}
 		<div class="text-zinc-300 mt-10 text-center px-10">
 			<p>
-				Press <span class="text-sm px-1.5 py-0.5 rounded-sm bg-zinc-700">P</span> at any time to open
-				the command pallete, where you can view menu options and learn shortcuts.
+				Press <span class="text-sm mx-1 px-1.5 py-0.5 rounded-sm border border-zinc-500">P</span> at
+				any time to open the command pallete, where you can view menu options and learn shortcuts.
 			</p>
 		</div>
 	{/if}

@@ -83,7 +83,7 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
-			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+			<div class="bg-zinc-950 rounded flex flex-col mb-5">
 				<MyTooltip
 					contentProps={{ side: 'right' }}
 					triggerProps={{ onclick: () => (appState.showPalette = true) }}
@@ -246,15 +246,23 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<button
 				class={[
-					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-800 text-zinc-800',
+					dragHover
+						? 'border-zinc-300 text-zinc-200'
+						: appState.sources.length <= 2
+							? 'border-zinc-600 text-zinc-500'
+							: 'border-zinc-800 text-zinc-800',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
 					'focus:border-zinc-300 focus:text-zinc-200 focus:outline-none',
 					'[&:nth-child(n+8)]:hidden height-xl:[&:nth-child(n+8)]:flex rounded-lg border-2 select-none ',
 					'border-dashed items-center justify-center flex h-14 mt-2 ml-2'
 				]}
 				ondrop={onDrop}
-				ondragenter={() => (dragHover = true)}
-				ondragleave={() => (dragHover = false)}
+				ondragenter={() => {
+					dragHover = true;
+				}}
+				ondragleave={() => {
+					dragHover = false;
+				}}
 				ondragover={(e) => e.preventDefault()}
 				onclick={() => {
 					appState.import.importStarted = false;
