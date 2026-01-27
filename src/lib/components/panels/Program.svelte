@@ -47,7 +47,7 @@
 	});
 </script>
 
-<div class="flex flex-col h-full" style="container-type: size">
+<div class="h-full" style="container-type: size">
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
@@ -67,11 +67,11 @@
 		{#if timelineState.selectedClip && !timelineState.selectedClip.temp && timelineState.currentFrame >= timelineState.selectedClip.start && timelineState.currentFrame < timelineState.selectedClip.start + timelineState.selectedClip.duration}
 			<ClipBox clip={timelineState.selectedClip} {canvasContainer} />
 		{/if}
-	</div>
-	{#if appState.selectedSource}
-		{@const sourceType = appState.selectedSource.type}
-		{#if sourceType === 'video' || sourceType === 'audio'}
-			<SourceTimeline />
+		{#if appState.selectedSource}
+			{@const sourceType = appState.selectedSource.type}
+			{#if sourceType === 'video' || sourceType === 'audio'}
+				<SourceTimeline />
+			{/if}
 		{/if}
-	{/if}
+	</div>
 </div>

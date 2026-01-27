@@ -23,13 +23,15 @@
 	const mouseDown = (e: MouseEvent) => {
 		appState.mouseIsDown = true;
 		scrubbing = true;
-		latestScrubPosition = e.clientX - canvasContainer.offsetLeft;
+		const rect = canvasContainer.getBoundingClientRect();
+		latestScrubPosition = e.clientX - rect.left;
 		invalidateScrub = true;
 	};
 
 	const mouseMove = (e: MouseEvent) => {
 		if (scrubbing) {
-			latestScrubPosition = e.clientX - canvasContainer.offsetLeft;
+			const rect = canvasContainer.getBoundingClientRect();
+			latestScrubPosition = e.clientX - rect.left;
 			invalidateScrub = true;
 		}
 	};
@@ -79,8 +81,10 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="h-14 flex-none" bind:this={canvasContainer} onmousedown={mouseDown}>
-	<canvas class="absolute" bind:this={canvas}></canvas>
+<div class="absolute w-full max-w-200 bottom-10 px-5 bg-[#09090a] rounded-4xl">
+	<div class="h-12" bind:this={canvasContainer} onmousedown={mouseDown}>
+		<canvas class="absolute" bind:this={canvas}></canvas>
+	</div>
 </div>
 
 <svelte:window

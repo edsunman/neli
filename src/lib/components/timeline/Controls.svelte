@@ -211,7 +211,8 @@
 						? 'text-zinc-700 opacity-50'
 						: selected
 							? 'text-zinc-50 bg-zinc-700'
-							: 'text-zinc-600 hover:text-zinc-400 active:text-zinc-50',
+							: 'text-zinc-600  active:text-zinc-50',
+					!selected && !disabled && !appState.mouseIsDown && 'hover:text-zinc-400',
 					'mx-1 py-1.5 px-1.5 rounded-lg h-9'
 				]}
 			>

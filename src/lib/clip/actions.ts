@@ -574,7 +574,11 @@ export const multiSelectClipsInRange = () => {
 };
 
 /** Call when clip is "dropped" to persist clip state to worker and history */
-export const finaliseClip = (clip: Clip, action: 'trimClip' | 'moveClip' | 'addClip') => {
+export const finaliseClip = (
+	clip: Clip,
+	action: 'trimClip' | 'moveClip' | 'addClip',
+	updateWorker = true
+) => {
 	// revert state for invalid clips
 	if (action === 'moveClip' && clip.invalid) {
 		clip.track = clip.savedTrack;
@@ -598,7 +602,7 @@ export const finaliseClip = (clip: Clip, action: 'trimClip' | 'moveClip' | 'addC
 		timelineState.trackDropZone = -1;
 	}
 
-	updateWorkerClip(clip);
+	if (updateWorker) updateWorkerClip(clip);
 
 	if (action === 'moveClip' && (clip.start !== clip.savedStart || clip.track !== clip.savedTrack)) {
 		historyManager.pushAction({

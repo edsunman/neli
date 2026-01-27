@@ -22,7 +22,6 @@
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
-		getClip,
 		moveSelectedClip,
 		resizeSelctedClip,
 		setHoverOnHoveredClip,
@@ -46,10 +45,10 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import { mouseIcon } from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
+	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -310,8 +309,9 @@
 				for (const multiSelectClip of timelineState.selectedClips) {
 					const end = multiSelectClip.start + multiSelectClip.duration;
 					if (end > endPoint) endPoint = end;
-					finaliseClip(multiSelectClip, 'moveClip');
+					finaliseClip(multiSelectClip, 'moveClip', false);
 				}
+				updateWorkerClip(Array.from(timelineState.selectedClips));
 				extendTimeline(endPoint);
 			}
 		}

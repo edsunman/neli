@@ -174,36 +174,36 @@ export const drawSourceCanvas = (
 ) => {
 	if (!appState.selectedSource) return;
 
-	context.fillStyle = ZINC_900;
+	context.fillStyle = '#09090b';
 	context.fillRect(0, 0, width, height);
 
 	context.fillStyle = '#34343c';
 	context.beginPath();
-	context.roundRect(10, 35, width - 20, 8, 4);
+	context.roundRect(10, 25, width - 20, 8, 4);
 	context.fill();
 
 	const inPosition = programFrameToCanvasPixel(appState.selectedSource.selection.in);
-	drawMarker(context, 12, inPosition - 1);
+	drawMarker(context, 8, inPosition - 1);
 
 	const outPosition = programFrameToCanvasPixel(appState.selectedSource.selection.out);
-	drawMarker(context, 12, outPosition);
+	drawMarker(context, 8, outPosition);
 
 	context.fillStyle = '#696971';
 	context.save();
 	context.beginPath();
-	context.rect(inPosition, 35, outPosition - inPosition, 8);
+	context.rect(inPosition, 25, outPosition - inPosition, 8);
 	context.clip();
 	context.beginPath();
-	context.roundRect(10, 35, width - 20, 8, 4);
+	context.roundRect(10, 25, width - 20, 8, 4);
 	context.fill();
 	context.restore();
 
-	context.fillStyle = ZINC_900;
-	context.fillRect(inPosition - 3, 35, 3, 8);
-	context.fillRect(outPosition, 35, 3, 8);
+	context.fillStyle = '#09090b';
+	context.fillRect(inPosition - 3, 25, 3, 8);
+	context.fillRect(outPosition, 25, 3, 8);
 
 	const playheadPosition = programFrameToCanvasPixel(programState.currentFrame);
-	drawPlayhead(context, 12, height - 20, playheadPosition);
+	drawPlayhead(context, 8, 32, playheadPosition);
 };
 
 const drawMarker = (context: CanvasRenderingContext2D, top: number, position: number) => {
