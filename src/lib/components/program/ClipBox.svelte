@@ -11,26 +11,18 @@
 	type Props = {
 		clip: Clip;
 		canvasContainer: HTMLDivElement;
+		scale: number;
 	};
-	let { clip, canvasContainer }: Props = $props();
+	let { clip, canvasContainer, scale }: Props = $props();
 
 	let contextMenu: ContextMenu;
-	let dragging = false;
 	let resizing = false;
 	let cornerHover = false;
 	let cornerHoverStyle = 'nwse-resize';
-	let draggedOffset = { x: 0, y: 0 };
-	let mouseDownPosition = { x: 0, y: 0 };
-	let savedClipPosition = { x: 0, y: 0 };
 	let initialDistance = 0;
 	let savedClipScale = { x: 0, y: 0 };
 	let savedClipCenter = { x: 0, y: 0 };
 
-	let scale = $derived.by(() => {
-		const widthScale = (canvasContainer.clientWidth / programState.canvasWidth) * 90;
-		const heightScale = (canvasContainer.clientHeight / programState.canvasHeight) * 90;
-		return heightScale < widthScale ? heightScale : widthScale;
-	});
 	let boxSizeX = $derived.by(() => {
 		if (clip.source.info.type === 'test') return clip.params[0] * 1920 * (scale / 100);
 		if (clip.source.info.type !== 'video' && clip.source.info.type !== 'image') return 0;
@@ -59,22 +51,9 @@
 			if (canvasContainer) canvasContainer.style.cursor = 'default';
 		}
 
-		if (appState.mouseMoveOwner !== 'program' || (!dragging && !resizing)) return;
+		if (appState.mouseMoveOwner !== 'program' || !resizing) return;
 		if (e.buttons < 1 || !timelineState.selectedClip) return;
-		e.preventDefault();
 
-		if (dragging) {
-			draggedOffset.x = e.clientX - mouseDownPosition.x;
-			draggedOffset.y = e.clientY - mouseDownPosition.y;
-			const newX =
-				savedClipPosition.x + (draggedOffset.x / (scale / 100) / programState.canvasWidth) * 2;
-			timelineState.selectedClip.params[2] = Math.round(newX * 100) / 100;
-			const newY =
-				savedClipPosition.y - (draggedOffset.y / (scale / 100) / programState.canvasHeight) * 2;
-			timelineState.selectedClip.params[3] = Math.round(newY * 100) / 100;
-
-			updateWorkerClip(timelineState.selectedClip);
-		}
 		if (resizing) {
 			if (!canvasContainer) return;
 			const offsetX = e.clientX - canvasContainer.offsetLeft;
@@ -90,24 +69,6 @@
 	};
 
 	const mouseUp = () => {
-		if (appState.mouseMoveOwner !== 'program') return;
-		appState.mouseMoveOwner = 'timeline';
-
-		if (dragging) {
-			dragging = false;
-			const clip = timelineState.selectedClip;
-			if (!clip) return;
-			historyManager.pushAction({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: [2, 3],
-					oldValue: [savedClipPosition.x, savedClipPosition.y],
-					newValue: [clip.params[2], clip.params[3]]
-				}
-			});
-			historyManager.finishCommand();
-		}
 		if (resizing) {
 			resizing = false;
 			const clip = timelineState.selectedClip;
@@ -188,16 +149,6 @@
 		style:width={`${boxSizeX}px`}
 		style:height={`${boxSizeY}px`}
 		class="border-2 border-white absolute top-0 left-0"
-		onmousedown={(e) => {
-			if (e.button > 0) return;
-			e.preventDefault();
-			e.stopPropagation();
-			dragging = true;
-			savedClipPosition = { x: clip.params[2], y: clip.params[3] };
-			mouseDownPosition = { x: e.clientX, y: e.clientY };
-			appState.mouseMoveOwner = 'program';
-			appState.mouseIsDown = true;
-		}}
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			contextMenu.openContextMenu(e);
@@ -239,15 +190,6 @@
 		style:width={`${x}px`}
 		style:height={`${y}px`}
 		class="border-2 border-white absolute top-0 left-0"
-		onmousedown={(e) => {
-			if (e.button > 0) return;
-			e.preventDefault();
-			dragging = true;
-			savedClipPosition = { x: clip.params[2], y: clip.params[3] };
-			mouseDownPosition = { x: e.clientX, y: e.clientY };
-			appState.mouseMoveOwner = 'program';
-			appState.mouseIsDown = true;
-		}}
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			contextMenu.openContextMenu(e);

@@ -188,6 +188,7 @@
 		selection?.removeAllRanges();
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
+		programState.selectedClip = null;
 		timelineState.mouseDownPosition.x = e.offsetX;
 		timelineState.mouseDownPosition.y = e.offsetY;
 		if (e.button > 0) {
@@ -230,10 +231,7 @@
 		const clip = timelineState.clips.find((clip) => clip.hovered && !clip.deleted);
 		if (clip) {
 			// Clicked a clip
-			if (appState.selectedSource) {
-				showTimelineInProgram();
-				return;
-			}
+			if (appState.selectedSource) showTimelineInProgram();
 			if (timelineState.playing) pause();
 
 			if (timelineState.selectedClips.has(clip)) {
@@ -271,7 +269,7 @@
 				dragging = true;
 			}
 		} else {
-			if (appState.selectedSource) return;
+			//if (appState.selectedSource) return;
 			pause();
 			timelineState.selectedClip = null;
 			timelineState.selectedClips.clear();
@@ -320,6 +318,9 @@
 			if (clip) finaliseClip(clip, 'trimClip');
 		}
 		if (timelineState.action === 'selecting') {
+			if (timelineState.selectedClips.size > 0 && appState.selectedSource) {
+				showTimelineInProgram();
+			}
 			if (timelineState.selectedClips.size === 1) {
 				// if there is only one clip, select it
 				const foundClip = timelineState.selectedClips.values().next().value;

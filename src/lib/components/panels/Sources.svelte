@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
+	import { appState, programState, timelineState } from '$lib/state.svelte';
 	import { Tooltip } from 'bits-ui';
 	import {
 		addIcon,
@@ -199,6 +199,7 @@
 						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.dragFrom = 'sources';
 						appState.dragAndDrop.source = source;
+						programState.selectedClip = null;
 						timelineState.selectedClip = null;
 						timelineState.selectedClips.clear();
 						timelineState.selectedTool = 'pointer';
