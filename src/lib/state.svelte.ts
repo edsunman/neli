@@ -79,6 +79,7 @@ class ProgramState {
 	timelineWidth = $state(0); // pixels
 	duration = $state(1000); // frames
 	currentFrame = $state(0);
+	selectedClip = $state<Clip | null>(null);
 	invalidateTimeline = false;
 	playing = false;
 }
