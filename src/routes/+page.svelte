@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
 	import { assignSourcesToFolders, createSource } from '$lib/source/actions';
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
@@ -13,6 +13,8 @@
 	import Properties from '$lib/components/panels/Properties.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
+	import { createNewProject, setupProjectDatabase } from '$lib/project/actions';
+	import { redirect } from '@sveltejs/kit';
 
 	onMount(async () => {
 		if (
@@ -25,18 +27,24 @@
 			localStorage.setItem('alreadyVisited', 'true');
 		}
 
-		const textSource = createSource('text', { type: 'text' });
-		textSource.preset = true;
-		const testSource = createSource('test', { type: 'test' });
-		testSource.preset = true;
-		assignSourcesToFolders();
-
 		const font = await loadFont('/text.json');
 		appState.fonts.push(font);
 
 		setupTests();
+
+		await setupProjectDatabase();
 	});
 </script>
+
+<svelte:head>
+	{#if appState.project.name}
+		<title>
+			neli &#8226; {appState.project.name}
+		</title>
+	{:else}
+		<title>neli</title>
+	{/if}
+</svelte:head>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div

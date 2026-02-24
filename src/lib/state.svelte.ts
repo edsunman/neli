@@ -2,6 +2,7 @@ import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
+import { ProjectDatabase } from './project/database';
 import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } from './types';
 
 class AppState {
@@ -13,7 +14,7 @@ class AppState {
 	sourceFolders: { id: number }[] = $state([]);
 	propertiesSection = $state<PropertiesSection>('project');
 	showPalette = $state(false);
-	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
+	palettePage = $state<'search' | 'export' | 'import' | 'about' | 'projects'>('search');
 	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 
@@ -34,7 +35,8 @@ class AppState {
 	});
 
 	project = $state({
-		name: 'untitled project',
+		id: 0,
+		name: '',
 		resolution: { height: 1080, width: 1920 },
 		aspect: 0
 	});
@@ -89,3 +91,4 @@ export const timelineState = new TimelineState();
 export const programState = new ProgramState();
 export const audioState = new AudioState();
 export const historyManager = new HistoryManager();
+export const projectDatabase = new ProjectDatabase();

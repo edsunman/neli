@@ -30,6 +30,12 @@ self.addEventListener('message', async function (event) {
 				renderer = new WebGPURenderer(canvas);
 			}
 			break;
+		case 'reset':
+			{
+				clips.length = 0;
+				sources.length = 0;
+			}
+			break;
 		case 'load-file':
 			{
 				if (event.data.type === 'video') {

@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		projectDatabase,
+		timelineState
+	} from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setCurrentFrameFromOffset,
@@ -310,6 +316,7 @@
 					finaliseClip(multiSelectClip, 'moveClip', false);
 				}
 				updateWorkerClip(Array.from(timelineState.selectedClips));
+				projectDatabase.updateClip(Array.from(timelineState.selectedClips));
 				extendTimeline(endPoint);
 			}
 		}
@@ -437,22 +444,7 @@
 			setPattern(pattern);
 		};
 
-		timelineState.tracks.push({
-			height: 35,
-			top: 0,
-			lock: true,
-			lockBottom: true,
-			lockTop: true,
-			type: 'none'
-		});
-		timelineState.tracks.push({
-			height: 35,
-			top: 0,
-			lock: true,
-			lockBottom: true,
-			lockTop: true,
-			type: 'none'
-		});
+		// TODO: do we need this if we set on project mount?
 		setCanvasSize();
 
 		document.fonts.ready.then(() => {

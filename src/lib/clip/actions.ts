@@ -1,4 +1,4 @@
-import { appState, historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
@@ -67,6 +67,7 @@ export const createClip = (
 
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
+	projectDatabase.createClip(clip);
 
 	if (!temp) {
 		trimSiblingClips(clip);
@@ -84,6 +85,7 @@ export const deleteClip = (clip: Clip) => {
 	setTrackClipJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	updateWorkerClip(clip);
+	projectDatabase.updateClip(clip);
 	appState.propertiesSection = 'outputAudio';
 };
 
@@ -461,6 +463,8 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
 	updateWorkerClip([clip, newClip]);
+	projectDatabase.createClip(newClip);
+	projectDatabase.updateClip(clip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
 	setTrackClipJoins(newClip.track);
 };
@@ -573,7 +577,7 @@ export const multiSelectClipsInRange = () => {
 	}
 };
 
-/** Call when clip is "dropped" to persist clip state to worker and history */
+/** Call when clip is "dropped" to persist clip state to worker, history and project DB */
 export const finaliseClip = (
 	clip: Clip,
 	action: 'trimClip' | 'moveClip' | 'addClip',
@@ -602,7 +606,10 @@ export const finaliseClip = (
 		timelineState.trackDropZone = -1;
 	}
 
-	if (updateWorker) updateWorkerClip(clip);
+	if (updateWorker) {
+		updateWorkerClip(clip);
+		projectDatabase.updateClip(clip);
+	}
 
 	if (action === 'moveClip' && (clip.start !== clip.savedStart || clip.track !== clip.savedTrack)) {
 		historyManager.pushAction({

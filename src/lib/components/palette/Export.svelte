@@ -7,7 +7,7 @@
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
 	import { tick } from 'svelte';
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
-	import { backArrowIcon } from '../icons/Icons.svelte';
+	import TitleBar from './TitleBar.svelte';
 
 	let { shrinkBox } = $props();
 
@@ -52,22 +52,14 @@
 </script>
 
 <!-- <button onclick={() => (page = 'search')}>Back</button> -->
-<div class="mx-8 flex-none flex py-5 items-center text-zinc-50">
-	<button
-		onclick={() => {
-			if (encodingStarted) return;
-			appState.palettePage = 'search';
-		}}
-		class={[
-			encodingStarted ? 'opacity-0' : 'opacity-100',
-			'mr-2 pt-[2px] starting:opacity-0 transition-opacity delay-100 text-zinc-500 hover:text-zinc-50'
-		]}
-	>
-		{@render backArrowIcon('size-4')}
-	</button>
-
-	<h1 class="text-xl starting:transform-[translateX(-24px)] transition-transform">export</h1>
-</div>
+<TitleBar
+	title="export"
+	onclick={() => {
+		if (encodingStarted) return;
+		appState.palettePage = 'search';
+	}}
+	disabled={encodingStarted}
+/>
 
 <div class="px-8 flex-1 flex flex-col bg-zinc-900 rounded-2xl content-center flex-wrap">
 	<div class="flex-1 content-center flex-wrap w-full">

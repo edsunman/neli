@@ -9,6 +9,8 @@ import type { WorkerClip } from '$lib/types';
 import MediaWorker from './worker?worker';
 import WaveformWorker from './waveformWorker?worker';
 
+// TODO: break this file up into worker actions and a worker manager class like projectdatabase
+
 export const setupWorker = (canvas: HTMLCanvasElement) => {
 	appState.mediaWorker = new MediaWorker();
 	appState.waveformWorker = new WaveformWorker();
@@ -94,6 +96,12 @@ export const setupWorker = (canvas: HTMLCanvasElement) => {
 				timelineState.invalidateWaveform = true;
 			}
 		}
+	});
+};
+
+export const resetWorker = () => {
+	appState.mediaWorker?.postMessage({
+		command: 'reset'
 	});
 };
 

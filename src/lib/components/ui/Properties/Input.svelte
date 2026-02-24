@@ -7,8 +7,15 @@
 		fallback?: number | string;
 		type?: 'text' | 'number';
 		fullWidth?: boolean;
+		onBlur?: () => void;
 	};
-	let { value = $bindable(), fallback = 0, type = 'number', fullWidth = false }: Props = $props();
+	let {
+		value = $bindable(),
+		fallback = 0,
+		type = 'number',
+		fullWidth = false,
+		onBlur = () => {}
+	}: Props = $props();
 </script>
 
 <div
@@ -39,6 +46,7 @@
 				value = fallback;
 				updateWorkerClip(timelineState.selectedClip);
 			}
+			onBlur();
 		}}
 		oninput={() => {
 			updateWorkerClip(timelineState.selectedClip);

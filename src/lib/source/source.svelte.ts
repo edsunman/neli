@@ -6,7 +6,6 @@ export class Source {
 	type: FileInfo['type'];
 	name = $state('');
 	folderId = 0;
-	preset = false;
 	info: FileInfo;
 	file?: File;
 	thumbnail = $state('');

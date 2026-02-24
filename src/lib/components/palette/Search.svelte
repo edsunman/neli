@@ -28,6 +28,7 @@
 		forwardIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
+	import { createNewProject } from '$lib/project/actions';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -116,10 +117,37 @@
 		},
 		{
 			id: 2,
-			name: 'Timeline',
+			name: 'Project',
 			commands: [
 				{
 					id: 201,
+					text: 'new project',
+					selected: false,
+					icon: playIcon,
+					shortcuts: [],
+					action: () => {
+						createNewProject();
+						appState.showPalette = false;
+					}
+				},
+				{
+					id: 202,
+					text: 'load project',
+					selected: false,
+					icon: playIcon,
+					shortcuts: [],
+					action: () => {
+						appState.palettePage = 'projects';
+					}
+				}
+			]
+		},
+		{
+			id: 3,
+			name: 'Timeline',
+			commands: [
+				{
+					id: 301,
 					text: 'play / pause',
 					selected: false,
 					icon: playIcon,
@@ -134,7 +162,7 @@
 					}
 				},
 				{
-					id: 202,
+					id: 302,
 					text: 'zoom in',
 					selected: false,
 					icon: zoomInIcon,
@@ -145,7 +173,7 @@
 					}
 				},
 				{
-					id: 203,
+					id: 303,
 					text: 'zoom out',
 					selected: false,
 					icon: zoomOutIcon,
@@ -156,7 +184,7 @@
 					}
 				},
 				{
-					id: 204,
+					id: 304,
 					text: 'one frame forward',
 					selected: false,
 					icon: forwardIcon,
@@ -167,7 +195,7 @@
 					}
 				},
 				{
-					id: 205,
+					id: 305,
 					text: 'one frame back',
 					selected: false,
 					icon: backIcon,

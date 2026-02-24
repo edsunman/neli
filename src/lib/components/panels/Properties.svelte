@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { appState, audioState, timelineState } from '$lib/state.svelte';
+	import {
+		appState,
+		audioState,
+		programState,
+		projectDatabase,
+		timelineState
+	} from '$lib/state.svelte';
 	import {
 		speakerIcon,
 		audioIcon,
@@ -73,6 +79,9 @@
 					type="text"
 					fullWidth
 					fallback="untitled project"
+					onBlur={() => {
+						projectDatabase.updateProject({ name: appState.project.name });
+					}}
 				/>
 			</Properties.Group>
 			<Properties.Group label={'aspect ratio'}>
@@ -83,17 +92,26 @@
 						{
 							value: 0,
 							icon: aspectLandscape,
-							onClick: () => changeProjectResolution(1920, 1080)
+							onClick: () => {
+								changeProjectResolution(1920, 1080);
+								projectDatabase.updateProject({ aspect: 0 });
+							}
 						},
 						{
 							value: 1,
 							icon: aspectSquare,
-							onClick: () => changeProjectResolution(1080, 1080)
+							onClick: () => {
+								changeProjectResolution(1080, 1080);
+								projectDatabase.updateProject({ aspect: 1 });
+							}
 						},
 						{
 							value: 2,
 							icon: aspectPortrait,
-							onClick: () => changeProjectResolution(1080, 1920)
+							onClick: () => {
+								changeProjectResolution(1080, 1920);
+								projectDatabase.updateProject({ aspect: 2 });
+							}
 						}
 					]}
 				/>
@@ -111,11 +129,7 @@
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
 			<Properties.Group label={'name'}>
-				{#if source.preset}
-					{source.name}
-				{:else}
-					<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
-				{/if}
+				<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
 			</Properties.Group>
 			{#if source.info.type === 'video'}
 				<Properties.Group label={'duration'}>

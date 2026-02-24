@@ -1,9 +1,10 @@
 import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
-import { appState, historyManager, timelineState } from '$lib/state.svelte';
+import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
 import { removeHoverAllClips } from '$lib/clip/actions';
+import type { Clip } from '$lib/clip/clip.svelte';
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
@@ -209,6 +210,8 @@ export const setTrackPositions = () => {
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		timelineState.tracks[i].top += Math.floor(topOfAllTracks + rulerContainerHeight);
 	}
+
+	projectDatabase.updateProject({ tracks: timelineState.tracks });
 };
 
 export const setTrackLocks = () => {
@@ -280,9 +283,12 @@ export const addTrack = (trackNumber: number) => {
 		type: 'none'
 	});
 	historyManager.pushAction({ action: 'addTrack', data: { number: trackNumber, type: 'none' } });
+	// TODO: do we need to update worker here?
+	const movedClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
 			clip.track++;
+			movedClips.push(clip);
 			historyManager.pushAction({
 				action: 'moveClip',
 				data: {
@@ -295,6 +301,7 @@ export const addTrack = (trackNumber: number) => {
 			});
 		}
 	}
+	projectDatabase.updateClip(movedClips);
 
 	setTrackPositions();
 };
@@ -347,12 +354,14 @@ export const setAllTrackTypes = () => {
 	}
 
 	// loop backwards and remove unused tracks
-	if (timelineState.tracks.length <= 2) return;
-	for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
-		if (!usedTracks.has(i + 1)) {
-			removeTrack(i + 1);
+	if (timelineState.tracks.length > 2) {
+		for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
+			if (!usedTracks.has(i + 1)) {
+				removeTrack(i + 1);
+			}
 		}
 	}
+
 	setTrackPositions();
 };
 

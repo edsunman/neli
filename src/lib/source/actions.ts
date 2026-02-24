@@ -29,7 +29,9 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 export const assignSourcesToFolders = () => {
 	appState.sourceFolders.length = 0;
 
-	const sourceCount = appState.sources.filter((source) => !source.preset).length;
+	const sourceCount = appState.sources.filter(
+		(source) => source.type !== 'text' && source.type !== 'test'
+	).length;
 
 	let folderId = 0;
 	for (let i = 0; i < sourceCount / 7; i++) {
@@ -39,7 +41,7 @@ export const assignSourcesToFolders = () => {
 
 	let i = 0;
 	for (const source of appState.sources) {
-		if (source.preset) {
+		if (source.type === 'text' || source.type === 'test') {
 			source.folderId = 0;
 			continue;
 		}

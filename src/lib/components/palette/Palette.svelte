@@ -10,6 +10,7 @@
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
 	import About from './About.svelte';
+	import Projects from './Projects.svelte';
 
 	const closePalette = () => {
 		if (appState.lockPalette) return;
@@ -40,6 +41,8 @@
 			<Export {shrinkBox} />
 		{:else if appState.palettePage === 'import'}
 			<Import />
+		{:else if appState.palettePage === 'projects'}
+			<Projects />
 		{:else if appState.palettePage === 'about'}
 			<About />
 		{/if}

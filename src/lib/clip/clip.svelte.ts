@@ -6,11 +6,11 @@ export class Clip {
 
 	track = 0;
 	savedTrack = 0;
-	start = $state(0);
+	start = 0;
 	savedStart = 0;
 	sourceOffset = 0;
 	savedSourceOffset = 0;
-	duration = $state(0);
+	duration = 0;
 	savedDuration = 0;
 	joinLeft = false;
 	joinRight = false;
@@ -23,7 +23,7 @@ export class Clip {
 	deleted = false;
 	invalid = false;
 	hovered = false;
-	temp = $state(false);
+	temp = false;
 	resizeHover: 'none' | 'start' | 'end' = 'none';
 
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {

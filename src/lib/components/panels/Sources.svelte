@@ -31,8 +31,8 @@
 	});
 
 	const onClick = (source: Source) => {
-		//if (cursorMovedEnough) return;
-		if (source.preset) return;
+		if (source.type === 'test' || source.type === 'text') return;
+		//if (source.preset) return;
 		hoverSelected = true;
 		showSourceInProgram(source);
 		appState.propertiesSection = 'source';

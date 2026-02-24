@@ -4,6 +4,7 @@
 	import { infoIcon, audioIcon, helpIcon, backArrowIcon } from '../icons/Icons.svelte';
 
 	import Button from '../ui/Button.svelte';
+	import TitleBar from './TitleBar.svelte';
 
 	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
@@ -40,19 +41,13 @@
 	};
 </script>
 
-<div class="mx-8 flex-none flex py-5 items-center text-zinc-50">
-	<button
-		onclick={() => {
-			appState.palettePage = 'search';
-			appState.import.importStarted = false;
-		}}
-		class="mr-2 opacity-100 pt-[2px] starting:opacity-0 transition-opacity delay-100 text-zinc-500 hover:text-zinc-50"
-	>
-		{@render backArrowIcon('size-4')}
-	</button>
-
-	<h1 class="text-xl starting:transform-[translateX(-24px)] transition-transform">import</h1>
-</div>
+<TitleBar
+	title="import"
+	onclick={() => {
+		appState.palettePage = 'search';
+		appState.import.importStarted = false;
+	}}
+/>
 
 <div class="flex-1 px-8 bg-zinc-900 rounded-2xl grow flex flex-col">
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

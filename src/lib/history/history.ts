@@ -1,6 +1,6 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
-import { timelineState } from '$lib/state.svelte';
+import { projectDatabase, timelineState } from '$lib/state.svelte';
 import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { TrackType } from '$lib/types';
 import { updateWorkerClip } from '$lib/worker/actions.svelte';
@@ -50,6 +50,12 @@ export class HistoryManager {
 	pushAction(command: Command) {
 		this.tempCommand.push(command);
 		if (this.debug) console.debug('new action ', command);
+	}
+
+	reset() {
+		this.undoStack.length = 0;
+		this.redoStack.length = 0;
+		this.tempCommand.length = 0;
 	}
 
 	finishCommand() {
@@ -139,9 +145,8 @@ export class HistoryManager {
 			}
 		}
 
-		//for (const clip of updatedClips) {
 		updateWorkerClip(Array.from(updatedClips));
-		//}
+		projectDatabase.updateClip(Array.from(updatedClips));
 		setAllJoins();
 		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;
@@ -224,6 +229,7 @@ export class HistoryManager {
 		}
 
 		updateWorkerClip(Array.from(updatedClips));
+		projectDatabase.updateClip(Array.from(updatedClips));
 		setAllJoins();
 		setAllTrackTypes();
 		timelineState.invalidateWaveform = true;

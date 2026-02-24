@@ -62,7 +62,6 @@ export type ImportState = {
 	fileDetails: { name: string; type: string; info: FileInfo | null } | null;
 };
 
-// A helper for all possible keys
 export type SourceType = 'video' | 'audio' | 'srt' | 'image' | 'text' | 'test';
 
 export type FileInfo =
