@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
-	import { assignSourcesToFolders, createSource } from '$lib/source/actions';
+	import { appState, historyManager, timelineState } from '$lib/state.svelte';
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
-	import { showTimelineInProgram } from '$lib/program/actions';
+	import { setupProjectManager } from '$lib/project/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -13,8 +12,6 @@
 	import Properties from '$lib/components/panels/Properties.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
-	import { createNewProject, setupProjectDatabase } from '$lib/project/actions';
-	import { redirect } from '@sveltejs/kit';
 
 	onMount(async () => {
 		if (
@@ -32,7 +29,7 @@
 
 		setupTests();
 
-		await setupProjectDatabase();
+		await setupProjectManager();
 	});
 </script>
 

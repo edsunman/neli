@@ -2,24 +2,29 @@ import { setAllJoins } from '$lib/clip/actions';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
 import { assignSourcesToFolders, createSource, getSourceFromId } from '$lib/source/actions';
-import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
+import {
+	appState,
+	historyManager,
+	projectManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import { pause, setAllTrackTypes, setTrackLocks, setTrackPositions } from '$lib/timeline/actions';
-import { resetWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
 
 export const changeProjectResolution = (width: number, height: number) => {
 	pause();
 	showTimelineInProgram();
 	appState.project.resolution.height = height;
 	appState.project.resolution.width = width;
-	projectDatabase.updateProject({ height, width });
+	projectManager.updateProject({ height, width });
 	resizeCanvas(width, height);
 };
 
 //** Called on page load */
-export const setupProjectDatabase = async () => {
-	await projectDatabase.init();
+export const setupProjectManager = async () => {
+	await projectManager.init();
 
-	const lastProject = await projectDatabase.getLastModifiedProject();
+	const lastProject = await projectManager.getLastModifiedProject();
 	if (lastProject) {
 		loadProject(lastProject.id);
 		return;
@@ -30,7 +35,7 @@ export const setupProjectDatabase = async () => {
 
 export const createNewProject = async () => {
 	const name = 'untitled project';
-	const id = await projectDatabase.createProject(name);
+	const id = await projectManager.createProject(name);
 	if (!id) return;
 
 	appState.project.id = id;
@@ -42,9 +47,9 @@ export const createNewProject = async () => {
 
 	appState.sources.length = 0;
 	const textSource = createSource('text', { type: 'text' });
-	await projectDatabase.createSource(textSource);
+	await projectManager.createSource(textSource);
 	const testSource = createSource('test', { type: 'test' });
-	await projectDatabase.createSource(testSource);
+	await projectManager.createSource(testSource);
 	assignSourcesToFolders();
 
 	timelineState.tracks.length = 0;
@@ -59,7 +64,7 @@ export const createNewProject = async () => {
 		});
 	}
 	setTrackPositions();
-	await projectDatabase.updateProject({ tracks: timelineState.tracks });
+	await projectManager.updateProject({ tracks: timelineState.tracks });
 
 	timelineState.clips.length = 0;
 	timelineState.selectedClip = null;
@@ -67,7 +72,7 @@ export const createNewProject = async () => {
 };
 
 export const loadProject = async (id: number) => {
-	const project = await projectDatabase.getProject(id);
+	const project = await projectManager.getProject(id);
 	if (!project) return;
 
 	appState.project.id = project.id;
@@ -77,10 +82,10 @@ export const loadProject = async (id: number) => {
 	appState.project.aspect = project.aspect;
 	resizeCanvas(project.width, project.height);
 
-	resetWorker();
+	workerManager.reset();
 	appState.selectedSource = null;
 	appState.sources.length = 0;
-	const projectSources = await projectDatabase.getSources(id);
+	const projectSources = await projectManager.getSources(id);
 	for (const source of projectSources) {
 		if (source.type === 'test' || source.type === 'text') {
 			const newSource = createSource(source.type, source.info);
@@ -96,16 +101,16 @@ export const loadProject = async (id: number) => {
 
 	timelineState.clips.length = 0;
 	timelineState.selectedClip = null;
-	await projectDatabase.purgeDeletedClips();
-	const projectClips = await projectDatabase.getClips(id);
+	await projectManager.purgeDeletedClips();
+	const projectClips = await projectManager.getClips(id);
 	for (const clip of projectClips) {
 		const source = getSourceFromId(clip.sourceId);
-		if (!source) return;
+		if (!source) continue;
 		const newClip = new Clip(source, clip.track, clip.start, clip.duration, 0);
 		newClip.id = clip.id;
 		timelineState.clips.push(newClip);
 	}
-	updateWorkerClip(timelineState.clips);
+	workerManager.sendClip(timelineState.clips);
 	setAllJoins();
 	setAllTrackTypes();
 	setTrackLocks();

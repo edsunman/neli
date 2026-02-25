@@ -1,8 +1,13 @@
-import { appState, historyManager, projectDatabase, timelineState } from '$lib/state.svelte';
+import {
+	appState,
+	historyManager,
+	projectManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
-import { updateWorkerClip } from '$lib/worker/actions.svelte';
 import { getClipFitScaleFactor } from './utils';
 import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
 
@@ -67,11 +72,11 @@ export const createClip = (
 
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
-	projectDatabase.createClip(clip);
+	projectManager.createClip(clip);
 
 	if (!temp) {
 		trimSiblingClips(clip);
-		updateWorkerClip(clip);
+		workerManager.sendClip(clip);
 		historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
 	}
 
@@ -82,10 +87,10 @@ export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
 	timelineState.selectedClip = null;
 	setAllTrackTypes();
-	setTrackClipJoins(clip.track);
+	setTrackJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
-	updateWorkerClip(clip);
-	projectDatabase.updateClip(clip);
+	workerManager.sendClip(clip);
+	projectManager.updateClip(clip);
 	appState.propertiesSection = 'outputAudio';
 };
 
@@ -93,10 +98,11 @@ export const deleteClips = (clips: Clip[]) => {
 	timelineState.selectedClip = null;
 	for (const clip of clips) {
 		clip.deleted = true;
-		setTrackClipJoins(clip.track);
+		setTrackJoins(clip.track);
 		historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
 	}
-	updateWorkerClip(clips);
+	workerManager.sendClip(clips);
+	projectManager.updateClip(clips);
 	setAllTrackTypes();
 	appState.propertiesSection = 'outputAudio';
 };
@@ -154,7 +160,7 @@ export const moveSelectedClip = (mouseY: number) => {
 		}
 
 		for (const track of tracks) {
-			setTrackClipJoins(track);
+			setTrackJoins(track);
 		}
 
 		return;
@@ -254,7 +260,7 @@ export const moveSelectedClip = (mouseY: number) => {
 
 	if (clip.track !== currentTrack) {
 		// moved between tracks this frame
-		setTrackClipJoins(currentTrack);
+		setTrackJoins(currentTrack);
 		if (clip.track > 0) {
 			if (timelineState.tracks[clip.track - 1].lock) {
 				clip.invalid = true;
@@ -265,7 +271,7 @@ export const moveSelectedClip = (mouseY: number) => {
 			clip.invalid = false;
 		}
 	}
-	setTrackClipJoins(clip.track);
+	setTrackJoins(clip.track);
 };
 
 export const resizeSelctedClip = () => {
@@ -350,7 +356,7 @@ export const resizeSelctedClip = () => {
 		}
 	}
 
-	setTrackClipJoins(clip.track);
+	setTrackJoins(clip.track);
 };
 
 export const trimSiblingClips = (clip: Clip) => {
@@ -370,17 +376,17 @@ export const trimSiblingClips = (clip: Clip) => {
 		if (clip.start > siblingClip.start && clipEnd < siblingEnd) {
 			// clip fits inside sibling so split it
 			splitClip(siblingClip.id, clip.start, clip.duration);
-			setTrackClipJoins(clip.track);
+			setTrackJoins(clip.track);
 			continue;
 		}
 
 		if (clip.start > siblingClip.start && clip.start < siblingEnd) {
-			// need to trim end
+			// need to trim endprojectDatabase
 			const trimAmount = siblingEnd - clip.start;
 			const oldDuration = siblingClip.duration;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			setTrackClipJoins(clip.track);
-			updateWorkerClip(siblingClip);
+			setTrackJoins(clip.track);
+			workerManager.sendClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
 				data: {
@@ -400,8 +406,8 @@ export const trimSiblingClips = (clip: Clip) => {
 			siblingClip.start = siblingClip.start + trimAmount;
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
-			setTrackClipJoins(clip.track);
-			updateWorkerClip(siblingClip);
+			setTrackJoins(clip.track);
+			workerManager.sendClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
 				data: {
@@ -423,7 +429,7 @@ export const trimSiblingClips = (clip: Clip) => {
 				clipId: clip.id
 			}
 		});
-		updateWorkerClip(clip);
+		workerManager.sendClip(clip);
 	}
 };
 
@@ -462,11 +468,11 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	newClip.params = [...clip.params];
 	newClip.text = clip.text;
 	timelineState.clips.push(newClip);
-	updateWorkerClip([clip, newClip]);
-	projectDatabase.createClip(newClip);
-	projectDatabase.updateClip(clip);
+	workerManager.sendClip([clip, newClip]);
+	projectManager.createClip(newClip);
+	projectManager.updateClip(clip);
 	historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
-	setTrackClipJoins(newClip.track);
+	setTrackJoins(newClip.track);
 };
 
 export const removeHoverAllClips = () => {
@@ -588,11 +594,11 @@ export const finaliseClip = (
 		clip.track = clip.savedTrack;
 		clip.start = clip.savedStart;
 		clip.invalid = false;
-		setTrackClipJoins(clip.track);
+		setTrackJoins(clip.track);
 		return;
 	}
 	if (action === 'addClip' && clip.invalid) {
-		setTrackClipJoins(clip.track);
+		setTrackJoins(clip.track);
 		removeClip(clip.id);
 		return;
 	}
@@ -607,8 +613,8 @@ export const finaliseClip = (
 	}
 
 	if (updateWorker) {
-		updateWorkerClip(clip);
-		projectDatabase.updateClip(clip);
+		workerManager.sendClip(clip);
+		projectManager.updateClip(clip);
 	}
 
 	if (action === 'moveClip' && (clip.start !== clip.savedStart || clip.track !== clip.savedTrack)) {
@@ -671,7 +677,7 @@ const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: numbe
 };
 
 // TODO: rename to seTrackJoins
-export const setTrackClipJoins = (track: number) => {
+export const setTrackJoins = (track: number) => {
 	const startPoints = new Set();
 	const endPoints = new Set();
 	for (const clip of timelineState.clips) {
@@ -689,8 +695,8 @@ export const setTrackClipJoins = (track: number) => {
 };
 
 export const setAllJoins = () => {
-	for (let i = 1; i <= 4; i++) {
-		setTrackClipJoins(i);
+	for (let i = 1; i <= timelineState.tracks.length; i++) {
+		setTrackJoins(i);
 	}
 };
 

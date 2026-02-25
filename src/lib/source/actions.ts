@@ -1,5 +1,4 @@
-import { sendFileToWavefromWorker, sendFileToWorker } from '$lib/worker/actions.svelte';
-import { appState } from '$lib/state.svelte';
+import { appState, workerManager } from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
@@ -70,15 +69,15 @@ export const createVideoSource = async (file: File, info: FileInfo) => {
 		newSource.audioConfig = audioConfig;
 	}
 
-	sendFileToWorker(newSource);
-	sendFileToWavefromWorker(newSource);
+	workerManager.sendFile(newSource);
+	workerManager.sendFileToWavefromWorker(newSource);
 	return newSource.id;
 };
 
 export const createImageSource = async (file: File, info: FileInfo) => {
 	const newSource = createSource('image', info, file);
 	newSource.info = info;
-	sendFileToWorker(newSource);
+	workerManager.sendFile(newSource);
 };
 
 export const createAudioSource = async (file: File, info: FileInfo) => {
@@ -100,7 +99,7 @@ export const createAudioSource = async (file: File, info: FileInfo) => {
 	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
 
-	sendFileToWavefromWorker(newSource);
+	workerManager.sendFileToWavefromWorker(newSource);
 	return newSource.id;
 };
 
@@ -144,14 +143,6 @@ export const processFile = async (file: File) => {
 		return;
 	}
 
-	/* if (file.size > 1e9) {
-		appState.import.fileDetails.type = 'unknown';
-		appState.import.warningMessage = 'file exceeds 1GB size limit';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
-		return;
-	} */
-
 	const info = await checkDroppedSource(file, appState.import.fileDetails.type);
 	if (!info) return;
 
@@ -164,13 +155,6 @@ export const processFile = async (file: File) => {
 	}
 
 	appState.import.fileDetails.info = info;
-
-	/* 	if (info.type === 'video' && info.duration > 120) {
-		appState.import.warningMessage = 'File duration is currently limited to 2 minutes';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
-	} */
-
 	appState.importSuccessCallback = (source: Source, gap: number) => {
 		appState.import.thumbnail = source.thumbnail;
 		if (gap > 70 && appState.import.warningMessage === '') {
@@ -190,8 +174,6 @@ export const checkDroppedSource = async (
 	file: File,
 	fileType: string
 ): Promise<FileInfo | { error: string }> => {
-	//console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-
 	if (fileType === 'video/mp4') {
 		const input = new Input({
 			formats: ALL_FORMATS,

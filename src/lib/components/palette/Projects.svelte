@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, projectDatabase } from '$lib/state.svelte';
+	import { appState, projectManager } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
 	import TitleBar from './TitleBar.svelte';
 	import { loadProject } from '$lib/project/actions';
@@ -9,7 +9,7 @@
 	let projects = $state<Project[]>([]);
 
 	onMount(async () => {
-		projects = (await projectDatabase.getAllProjects()) ?? [];
+		projects = (await projectManager.getAllProjects()) ?? [];
 	});
 </script>
 

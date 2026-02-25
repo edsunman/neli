@@ -2,12 +2,11 @@ import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import { ProjectDatabase } from './project/database';
+import { ProjectManager } from './project/manager';
 import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } from './types';
+import { WorkerManager } from './worker/manager.svelte';
 
 class AppState {
-	mediaWorker?: Worker;
-	waveformWorker?: Worker;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
 	selectedSourceFolder = $state(0);
@@ -90,5 +89,7 @@ export const appState = new AppState();
 export const timelineState = new TimelineState();
 export const programState = new ProgramState();
 export const audioState = new AudioState();
+
 export const historyManager = new HistoryManager();
-export const projectDatabase = new ProjectDatabase();
+export const projectManager = new ProjectManager();
+export const workerManager = new WorkerManager();

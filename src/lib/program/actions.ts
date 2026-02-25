@@ -1,23 +1,19 @@
 import { pauseAudio, runSourceAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
-import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
-import { pause } from '$lib/timeline/actions';
 import {
-	pauseWorker,
-	playWorker,
-	resizeWorkerCanvas,
-	seekWorker,
-	showAudioSource,
-	showSource,
-	showTimeline,
-	updateWorkerClip
-} from '$lib/worker/actions.svelte';
+	appState,
+	historyManager,
+	programState,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
+import { pause } from '$lib/timeline/actions';
 import { programTimelinePixelToFrame, scaleToFit } from './utils';
 
 export const playProgram = () => {
 	if (appState.selectedSource?.type === 'audio') startProgramPlayLoop();
-	if (appState.selectedSource?.type == 'video') playWorker(programState.currentFrame);
+	if (appState.selectedSource?.type == 'video') workerManager.play(programState.currentFrame);
 };
 
 export const startProgramPlayLoop = () => {
@@ -66,7 +62,7 @@ export const startProgramPlayLoop = () => {
 export const pauseProgram = () => {
 	if (!programState.playing) return;
 	programState.playing = false;
-	if (appState.selectedSource?.type == 'video') pauseWorker(programState.currentFrame);
+	if (appState.selectedSource?.type == 'video') workerManager.pause(programState.currentFrame);
 	pauseAudio();
 };
 
@@ -90,7 +86,7 @@ export const showSourceInProgram = (source: Source) => {
 		const { width, height } = scaleToFit(1920, 1080, info.resolution.width, info.resolution.height);
 		programState.canvasHeight = height;
 		programState.canvasWidth = width;
-		showSource(appState.selectedSource.id, 0, true, height, width);
+		workerManager.showSource(appState.selectedSource.id, 0, true, height, width);
 		return;
 	}
 
@@ -99,7 +95,7 @@ export const showSourceInProgram = (source: Source) => {
 
 	if (info.type === 'audio') {
 		programState.duration = Math.round(info.duration * 30);
-		showAudioSource();
+		workerManager.showAudioSource();
 		return;
 	}
 
@@ -109,7 +105,7 @@ export const showSourceInProgram = (source: Source) => {
 		programState.canvasWidth = info.resolution.width;
 	}
 
-	showSource(appState.selectedSource.id, programState.currentFrame);
+	workerManager.showSource(appState.selectedSource.id, programState.currentFrame);
 };
 
 export const showTimelineInProgram = () => {
@@ -122,14 +118,14 @@ export const showTimelineInProgram = () => {
 	timelineState.invalidate = true;
 	programState.canvasHeight = appState.project.resolution.height;
 	programState.canvasWidth = appState.project.resolution.width;
-	showTimeline();
+	workerManager.showTimeline();
 };
 
 export const setCurrentFrame = (frame: number) => {
 	if (programState.playing) pauseProgram();
 	if (frame < 0) frame = 0;
 	if (frame > programState.duration) frame = programState.duration;
-	if (appState.selectedSource?.type === 'video') seekWorker(frame);
+	if (appState.selectedSource?.type === 'video') workerManager.seek(frame);
 	programState.currentFrame = frame;
 	programState.invalidateTimeline = true;
 };
@@ -142,8 +138,7 @@ export const setCurrentFrameFromOffset = (canvasOffset: number) => {
 export const resizeCanvas = (width: number, height: number) => {
 	programState.canvasHeight = height;
 	programState.canvasWidth = width;
-	// update workerresizeCanvas(width, height);
-	resizeWorkerCanvas(width, height);
+	workerManager.resizeCanvas(width, height);
 };
 
 export const setInPoint = () => {
@@ -209,5 +204,5 @@ export const transformClip = (
 	clip.params[1] = scaleY;
 	clip.params[2] = positionX;
 	clip.params[3] = positionY;
-	updateWorkerClip(timelineState.selectedClip);
+	if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 };

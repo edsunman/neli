@@ -3,8 +3,9 @@
 		appState,
 		historyManager,
 		programState,
-		projectDatabase,
-		timelineState
+		projectManager,
+		timelineState,
+		workerManager
 	} from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
@@ -54,7 +55,6 @@
 	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -315,8 +315,8 @@
 					if (end > endPoint) endPoint = end;
 					finaliseClip(multiSelectClip, 'moveClip', false);
 				}
-				updateWorkerClip(Array.from(timelineState.selectedClips));
-				projectDatabase.updateClip(Array.from(timelineState.selectedClips));
+				workerManager.sendClip(Array.from(timelineState.selectedClips));
+				projectManager.updateClip(Array.from(timelineState.selectedClips));
 				extendTimeline(endPoint);
 			}
 		}

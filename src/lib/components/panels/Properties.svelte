@@ -1,11 +1,5 @@
 <script lang="ts">
-	import {
-		appState,
-		audioState,
-		programState,
-		projectDatabase,
-		timelineState
-	} from '$lib/state.svelte';
+	import { appState, audioState, projectManager, timelineState } from '$lib/state.svelte';
 	import {
 		speakerIcon,
 		audioIcon,
@@ -80,7 +74,7 @@
 					fullWidth
 					fallback="untitled project"
 					onBlur={() => {
-						projectDatabase.updateProject({ name: appState.project.name });
+						projectManager.updateProject({ name: appState.project.name });
 					}}
 				/>
 			</Properties.Group>
@@ -94,7 +88,7 @@
 							icon: aspectLandscape,
 							onClick: () => {
 								changeProjectResolution(1920, 1080);
-								projectDatabase.updateProject({ aspect: 0 });
+								projectManager.updateProject({ aspect: 0 });
 							}
 						},
 						{
@@ -102,7 +96,7 @@
 							icon: aspectSquare,
 							onClick: () => {
 								changeProjectResolution(1080, 1080);
-								projectDatabase.updateProject({ aspect: 1 });
+								projectManager.updateProject({ aspect: 1 });
 							}
 						},
 						{
@@ -110,7 +104,7 @@
 							icon: aspectPortrait,
 							onClick: () => {
 								changeProjectResolution(1080, 1920);
-								projectDatabase.updateProject({ aspect: 2 });
+								projectManager.updateProject({ aspect: 2 });
 							}
 						}
 					]}

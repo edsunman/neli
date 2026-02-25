@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
-	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 
 	import ClipBox from '../program/ClipBox.svelte';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
@@ -67,7 +72,7 @@
 			savedClipPosition.y - (draggedOffset.y / (scale / 100) / programState.canvasHeight) * 2;
 		programState.selectedClip.params[3] = Math.round(newY * 100) / 100;
 
-		updateWorkerClip(timelineState.selectedClip);
+		if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 	};
 
 	const mouseUp = () => {
@@ -101,7 +106,7 @@
 
 	onMount(async () => {
 		if (!canvas) return;
-		setupWorker(canvas);
+		workerManager.setup(canvas);
 	});
 </script>
 

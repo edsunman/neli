@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { appState, timelineState, workerManager } from '$lib/state.svelte';
 
 	type Props = {
 		value: any;
@@ -34,11 +33,11 @@
 			appState.disableKeyboardShortcuts = false;
 			if (value === '') {
 				value = '_';
-				updateWorkerClip(timelineState.selectedClip);
+				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 			}
 		}}
 		oninput={() => {
-			updateWorkerClip(timelineState.selectedClip);
+			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
 		bind:value
 	></textarea>

@@ -54,7 +54,7 @@ interface VideoEditorDB extends DBSchema {
 	};
 }
 
-export class ProjectDatabase {
+export class ProjectManager {
 	private dbName = 'VideoEditorDB';
 	private dbVersion = 1;
 	private db: IDBPDatabase<VideoEditorDB> | null = null;
@@ -125,7 +125,6 @@ export class ProjectDatabase {
 		const store = tx.objectStore('projects');
 		const project = await store.get(appState.project.id);
 		if (!project) throw new Error(`Project not found`);
-		console.log(updates);
 		const updatedProject = {
 			...project,
 			...updates,
@@ -181,7 +180,7 @@ export class ProjectDatabase {
 	}
 
 	async updateClip(input: Clip | Clip[]) {
-		console.log('update', input);
+		console.log(input);
 		if (!this.db) return;
 		const updates = Array.isArray(input) ? input : [input];
 

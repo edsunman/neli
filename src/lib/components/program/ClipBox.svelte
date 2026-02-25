@@ -4,9 +4,14 @@
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { transformClip } from '$lib/program/actions';
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 	import { measureText } from '$lib/text/utils';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
 
 	type Props = {
 		clip: Clip;
@@ -63,7 +68,7 @@
 			const newScale = currentDistance / initialDistance;
 			timelineState.selectedClip.params[0] = Math.round(savedClipScale.x * newScale * 100) / 100;
 			timelineState.selectedClip.params[1] = Math.round(savedClipScale.y * newScale * 100) / 100;
-			updateWorkerClip(timelineState.selectedClip);
+			workerManager.sendClip(timelineState.selectedClip);
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		}
 	};

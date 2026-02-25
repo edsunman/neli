@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { Progress, useId } from 'bits-ui';
-	import { appState } from '$lib/state.svelte';
-	import { encode, cancelEncode } from '$lib/worker/actions.svelte';
+	import { appState, workerManager } from '$lib/state.svelte';
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
 	import { tick } from 'svelte';
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
 	import TitleBar from './TitleBar.svelte';
+	import { renderAudioForExport } from '$lib/audio/actions';
 
 	let { shrinkBox } = $props();
 
@@ -30,8 +30,11 @@
 		appState.encoderProgress.percentage = 0;
 		appState.exportSuccessCallback = exportCallback;
 
+		const audioBuffer = await renderAudioForExport(startFrame, endFrame);
+		appState.encoderProgress.message = 'encoding video...';
+
 		const fileName = inputValue ? inputValue : 'video';
-		encode(fileName, startFrame, endFrame);
+		workerManager.encode(fileName, startFrame, endFrame, audioBuffer);
 	};
 
 	const exportCallback = async (success: boolean) => {
@@ -44,7 +47,8 @@
 	};
 
 	const cancel = () => {
-		cancelEncode();
+		appState.encoderProgress.message = 'cancelling...';
+		workerManager.cancelEncode();
 		appState.lockPalette = false;
 		appState.showPalette = false;
 		appState.disableKeyboardShortcuts = false;
