@@ -25,7 +25,9 @@
 		backIcon,
 		undoIcon,
 		redoIcon,
-		forwardIcon
+		forwardIcon,
+		fileOpenIcon,
+		fileNewIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
 	import { createNewProject } from '$lib/project/actions';
@@ -123,7 +125,7 @@
 					id: 201,
 					text: 'new project',
 					selected: false,
-					icon: playIcon,
+					icon: fileNewIcon,
 					shortcuts: [],
 					action: () => {
 						createNewProject();
@@ -134,7 +136,7 @@
 					id: 202,
 					text: 'load project',
 					selected: false,
-					icon: playIcon,
+					icon: fileOpenIcon,
 					shortcuts: [],
 					action: () => {
 						appState.palettePage = 'projects';
@@ -218,6 +220,7 @@
 			};
 		});
 	});
+	let allCategoriesEmpty = $derived(filtered.every((category) => category.commands.length === 0));
 
 	const parseInputNumbers = (inputString: string) => {
 		const { frames, synopsis } = stringToFramesAndSynopsis(inputString);
@@ -238,11 +241,11 @@
 			filteredCount += category.commands.length;
 		});
 		if (inputValue.length < 1) {
-			selectDataByIndex(0);
-		} else if (filteredCount > 0) selectDataByIndex(0);
+			selectByIndex(0);
+		} else if (filteredCount > 0) selectByIndex(0);
 	};
 
-	const selectDataByIndex = (index: number) => {
+	const selectByIndex = (index: number) => {
 		let filteredCount = 0;
 		filtered.forEach((category) => {
 			filteredCount += category.commands.length;
@@ -280,7 +283,7 @@
 		}
 	};
 
-	const selectDataById = (id: number) => {
+	const selectById = (id: number) => {
 		let i = -1;
 		filtered.forEach((category) => {
 			category.commands.forEach((command) => {
@@ -349,7 +352,9 @@
 		{#each filtered as category}
 			{#if category.commands.length > 0}
 				<div class="mb-4">
-					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">{category.name}</div>
+					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">
+						{category.name}
+					</div>
 
 					{#each category.commands as command}
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -357,7 +362,7 @@
 						<div
 							id={`command-${command.id}`}
 							onmousemove={() => {
-								if (!command.selected) selectDataById(command.id);
+								if (!command.selected) selectById(command.id);
 							}}
 							onclick={() => {
 								command.action();
@@ -400,6 +405,9 @@
 				<p>{targetFrameFormatted}</p>
 			</button>
 		{/if}
+		{#if allCategoriesEmpty}
+			<div class="text-zinc-200 select-none text-sm mt-6 mb-2">No results</div>
+		{/if}
 	</div>
 </div>
 <svelte:window
@@ -407,11 +415,11 @@
 		switch (event.code) {
 			case 'ArrowDown':
 				event.preventDefault();
-				selectDataByIndex(selectedIndex + 1);
+				selectByIndex(selectedIndex + 1);
 				break;
 			case 'ArrowUp':
 				event.preventDefault();
-				selectDataByIndex(selectedIndex - 1);
+				selectByIndex(selectedIndex - 1);
 				break;
 		}
 	}}

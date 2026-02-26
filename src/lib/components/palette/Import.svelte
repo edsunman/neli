@@ -174,7 +174,6 @@
 			<Button
 				onclick={() => {
 					appState.showPalette = false;
-					appState.palettePage = 'search';
 					appState.import.importStarted = false;
 				}}
 				text={'Done'}

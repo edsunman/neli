@@ -87,7 +87,10 @@
 		if (appState.disableKeyboardShortcuts) return;
 		switch (e.code) {
 			case 'KeyP':
-				if (!appState.showPalette) appState.showPalette = true;
+				if (!appState.showPalette) {
+					appState.palettePage = 'search';
+					appState.showPalette = true;
+				}
 				break;
 			case 'KeyN':
 				if (!appState.showPalette) {

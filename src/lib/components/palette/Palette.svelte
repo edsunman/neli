@@ -15,7 +15,6 @@
 	const closePalette = () => {
 		if (appState.lockPalette) return;
 		appState.showPalette = false;
-		appState.palettePage = 'search';
 		appState.disableKeyboardShortcuts = false;
 	};
 </script>

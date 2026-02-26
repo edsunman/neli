@@ -10,6 +10,7 @@ import {
 	workerManager
 } from '$lib/state.svelte';
 import { pause, setAllTrackTypes, setTrackLocks, setTrackPositions } from '$lib/timeline/actions';
+import { getNextProjectName } from './utils';
 
 export const changeProjectResolution = (width: number, height: number) => {
 	pause();
@@ -34,7 +35,11 @@ export const setupProjectManager = async () => {
 };
 
 export const createNewProject = async () => {
-	const name = 'untitled project';
+	const projects = await projectManager.getAllProjects();
+	const projectNames = projects.map((project) => {
+		return project.name;
+	});
+	const name = getNextProjectName(projectNames);
 	const id = await projectManager.createProject(name);
 	if (!id) return;
 
@@ -43,6 +48,7 @@ export const createNewProject = async () => {
 	appState.project.aspect = 0;
 	appState.project.resolution.height = 1920;
 	appState.project.resolution.width = 1080;
+	appState.propertiesSection = 'project';
 	resizeCanvas(1920, 1080);
 
 	appState.sources.length = 0;
@@ -80,6 +86,7 @@ export const loadProject = async (id: number) => {
 	appState.project.resolution.width = project.width;
 	appState.project.resolution.height = project.height;
 	appState.project.aspect = project.aspect;
+	appState.propertiesSection = 'project';
 	resizeCanvas(project.width, project.height);
 
 	workerManager.reset();

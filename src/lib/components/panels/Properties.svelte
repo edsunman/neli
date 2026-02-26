@@ -72,7 +72,7 @@
 					bind:value={appState.project.name}
 					type="text"
 					fullWidth
-					fallback="untitled project"
+					fallback="untitled"
 					onBlur={() => {
 						projectManager.updateProject({ name: appState.project.name });
 					}}

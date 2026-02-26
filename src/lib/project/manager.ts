@@ -92,7 +92,7 @@ export class ProjectManager {
 	}
 
 	async getAllProjects() {
-		if (!this.db) return;
+		if (!this.db) return [];
 		return await this.db.getAll('projects');
 	}
 
@@ -180,7 +180,6 @@ export class ProjectManager {
 	}
 
 	async updateClip(input: Clip | Clip[]) {
-		console.log(input);
 		if (!this.db) return;
 		const updates = Array.isArray(input) ? input : [input];
 

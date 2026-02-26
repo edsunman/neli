@@ -86,7 +86,12 @@
 			<div class="bg-zinc-950 rounded flex flex-col mb-5">
 				<MyTooltip
 					contentProps={{ side: 'right' }}
-					triggerProps={{ onclick: () => (appState.showPalette = true) }}
+					triggerProps={{
+						onclick: () => {
+							appState.palettePage = 'search';
+							appState.showPalette = true;
+						}
+					}}
 				>
 					{#snippet trigger()}
 						<div class="p-2 text-zinc-600 hover:text-zinc-400">
