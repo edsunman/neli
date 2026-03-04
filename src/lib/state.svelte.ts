@@ -43,7 +43,7 @@ class AppState {
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	lockPalette = false;
-	importSuccessCallback: (source: Source, gap: number) => void = () => {};
+	//importSuccessCallback: (sourceId: string, gap: number) => void = () => {};
 	exportSuccessCallback: (success: boolean) => void = () => {};
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }

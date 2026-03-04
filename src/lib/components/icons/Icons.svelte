@@ -24,6 +24,7 @@
 		justifyLeftIcon,
 		justifyCenterIcon,
 		justifyRightIcon,
+		linkIcon,
 		logoIcon,
 		mouseIcon,
 		moveIcon,
@@ -42,6 +43,7 @@
 		testIcon,
 		textIcon,
 		undoIcon,
+		warningIcon,
 		zoomInIcon,
 		zoomOutIcon
 	};
@@ -436,6 +438,29 @@
 	</svg>
 {/snippet}
 
+{#snippet linkIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path
+			d="M10.5,15.5 C10.5,14.1666667 10.5,13.5 10.5,13.5 C10.5,10.7385763 8.26142375,8.5 5.5,8.5 C2.73857625,8.5 0.5,10.7385763 0.5,13.5 C0.5,13.5 0.5,14.1666667 0.5,15.5"
+			transform="rotate(-90 5.5 12)"
+		/> <path d="M8,12 L16,12" />
+		<path
+			d="M23.5,15.5 C23.5,14.1666667 23.5,13.5 23.5,13.5 C23.5,10.7385763 21.2614237,8.5 18.5,8.5 C15.7385763,8.5 13.5,10.7385763 13.5,13.5 C13.5,13.5 13.5,14.1666667 13.5,15.5"
+			transform="rotate(90 18.5 12)"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet logoIcon(className: string)}
 	<svg
 		class={className}
@@ -767,6 +792,23 @@
 	>
 		<path d="M5,17 L5,15 C5,10.0294373 8.80557963,6 13.5,6 C18.1944204,6 22,10.0294373 22,15" />
 		<polyline points="8 15 5 18 2 15" />
+	</svg>
+{/snippet}
+
+{#snippet warningIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M12 8L12 13" /> <line x1="12" y1="16" x2="12" y2="16" />
+		<circle cx="12" cy="12" r="10" />
 	</svg>
 {/snippet}
 

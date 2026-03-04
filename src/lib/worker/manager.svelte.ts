@@ -1,10 +1,6 @@
 import MediaWorker from './worker?worker';
 import WaveformWorker from './waveformWorker?worker';
 import { appState, timelineState } from '$lib/state.svelte';
-import { setSourceThumbnail } from '$lib/source/actions';
-import { startProgramPlayLoop } from '$lib/program/actions';
-import { startPlayLoop } from '$lib/timeline/actions';
-import { createThumbnail } from './actions';
 
 import type { Source } from '$lib/source/source.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
@@ -13,6 +9,7 @@ import type { WorkerClip } from '$lib/types';
 export class WorkerManager {
 	private mediaWorker: Worker | undefined;
 	private waveformWorker: Worker | undefined;
+	private pendingRequests = new Map<string, (data: unknown) => void>();
 
 	setup(canvas: HTMLCanvasElement) {
 		this.mediaWorker = new MediaWorker();
@@ -27,16 +24,26 @@ export class WorkerManager {
 			{ transfer: [offscreenCanvas] }
 		);
 
-		this.mediaWorker.addEventListener('message', this.mediaWorkerListner);
-		this.waveformWorker.addEventListener('message', this.waveformWorkerListner);
+		this.mediaWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
+		this.waveformWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
 	}
 
 	reset() {
 		this.send('reset');
 	}
 
-	sendFile(source: Source) {
-		this.send('load-file', { id: source.id, file: source.file, type: source.type });
+	async sendFile(source: Source) {
+		if (!this.mediaWorker) throw new Error('Worker not available');
+		type ReturnData = {
+			videoFrame?: VideoFrame;
+			bitmap?: ImageBitmap;
+			sourceId: string;
+		};
+		return this.request<ReturnData>(this.mediaWorker, 'load-file', {
+			id: source.id,
+			file: source.file,
+			type: source.type
+		});
 	}
 
 	sendClip(input: Clip | Clip[]) {
@@ -69,8 +76,12 @@ export class WorkerManager {
 		this.send('seek', { frame });
 	}
 
-	play(frame: number) {
-		this.send('play', { frame });
+	async play(frame: number) {
+		if (!this.mediaWorker) throw new Error('Worker not available');
+		type ReturnData = {
+			workerStarted: boolean;
+		};
+		return this.request<ReturnData>(this.mediaWorker, 'play', { frame });
 	}
 
 	pause(frame: number) {
@@ -111,65 +122,49 @@ export class WorkerManager {
 		});
 	}
 
-	sendFileToWavefromWorker = (source: Source) => {
-		if (!this.waveformWorker) return;
-		this.waveformWorker.postMessage({
-			command: 'load-file',
-			sourceId: source.id,
+	sendFileToWaveformWorker = async (source: Source) => {
+		if (!this.waveformWorker) throw new Error('Worker not available');
+		type ReturnData = {
+			requestId: string;
+			waveform: Float32Array;
+		};
+		return this.request<ReturnData>(this.waveformWorker, 'load-file', {
 			file: source.file
 		});
 	};
 
+	private async request<T>(
+		worker: Worker,
+		command: string,
+		payload: object = {},
+		transfer: Transferable[] = []
+	) {
+		const requestId = crypto.randomUUID();
+		return new Promise<T>((resolve) => {
+			this.pendingRequests.set(requestId, ((response: T) => resolve(response)) as (
+				data: unknown
+			) => void);
+			worker.postMessage({ command, requestId, ...payload }, transfer);
+		});
+	}
+
 	private send(command: string, payload: object = {}, transfer: Transferable[] = []) {
-		if (!this.mediaWorker) {
-			console.error('Worker not initialized');
-			return;
-		}
+		if (!this.mediaWorker) throw new Error('Worker not available');
 		this.mediaWorker.postMessage({ command, ...payload }, transfer);
 	}
 
-	private async waveformWorkerListner(event: MessageEvent) {
-		switch (event.data.command) {
-			case 'waveform-complete': {
-				const waveform = event.data.data;
-				if (!waveform) return;
-				const source = appState.sources.find((source) => source.id === event.data.sourceId);
-				if (!source) return;
-				source.audioWaveform = waveform;
-				timelineState.invalidateWaveform = true;
-			}
-		}
-	}
-
 	private async mediaWorkerListner(event: MessageEvent) {
-		switch (event.data.command) {
-			case 'ready-to-play': {
-				if (appState.selectedSource) {
-					startProgramPlayLoop();
-				} else {
-					startPlayLoop();
-				}
-				break;
-			}
-			case 'thumbnail': {
-				if (event.data.videoFrame) {
-					const videoFrame = event.data.videoFrame as VideoFrame;
-					const imageData = await createThumbnail(
-						videoFrame,
-						videoFrame.codedWidth,
-						videoFrame.codedHeight
-					);
-					setSourceThumbnail(event.data.sourceId, imageData, event.data.gap);
-				}
+		const { command, requestId } = event.data;
 
-				if (event.data.bitmap) {
-					const bitmap = event.data.bitmap as ImageBitmap;
-					const imageData = await createThumbnail(bitmap, bitmap.width, bitmap.height);
-					setSourceThumbnail(event.data.sourceId, imageData, 0);
-				}
+		// Is this a response to a pending async request
+		if (requestId && this.pendingRequests.has(requestId)) {
+			const resolve = this.pendingRequests.get(requestId);
+			resolve?.(event.data);
+			this.pendingRequests.delete(requestId);
+			return;
+		}
 
-				break;
-			}
+		switch (command) {
 			case 'encode-progress': {
 				if (event.data.percentComplete > -1) {
 					appState.encoderProgress.percentage = event.data.percentComplete;
@@ -188,13 +183,13 @@ export class WorkerManager {
 				const a = document.createElement('a');
 				a.href = url;
 				a.download = event.data.fileName;
-				a.style.display = 'none'; // Keep it hidden
+				a.style.display = 'none';
 
 				document.body.appendChild(a);
 				a.click();
 
 				document.body.removeChild(a);
-				URL.revokeObjectURL(event.data.link); // Clean up the URL
+				URL.revokeObjectURL(event.data.link);
 
 				appState.encoderProgress.message = 'done';
 				appState.encoderProgress.percentage = 100;

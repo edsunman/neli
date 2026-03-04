@@ -31,14 +31,14 @@
 >
 	<div class="absolute -right-13 z-10">
 		<BitsTooltip.Provider delayDuration={500}>
-			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
 				{@render sideButton('project', 'project settings', fileIcon)}
 			</div>
-			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
 				{@render sideButton('outputAudio', 'output audio', speakerIcon)}
 			</div>
 			{#if appState.selectedSource}
-				<div class="bg-zinc-950 rounded flex flex-col">
+				<div class="bg-zinc-950 rounded-lg flex flex-col">
 					{#if appState.selectedSource.type === 'video'}
 						{@render sideButton('source', 'source details', filmIcon)}
 					{:else if appState.selectedSource.type === 'audio'}
@@ -50,7 +50,7 @@
 			{/if}
 			{#if timelineState.selectedClip && !timelineState.selectedClip.temp}
 				{@const source = timelineState.selectedClip.source}
-				<div class="bg-zinc-950 rounded flex flex-col">
+				<div class="bg-zinc-950 rounded-lg flex flex-col">
 					{#if source.type !== 'audio'}
 						{@render sideButton('layout', 'layout settings', moveIcon)}
 					{/if}

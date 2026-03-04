@@ -10,6 +10,7 @@ import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
 import { removeHoverAllClips } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
+import { startProgramPlayLoop } from '$lib/program/actions';
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
@@ -24,9 +25,16 @@ export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = t
 	setCurrentFrame(frame, updateWorker);
 };
 
-export const play = () => {
-	workerManager.play(timelineState.currentFrame);
-	appState.propertiesSection = 'outputAudio';
+export const play = async () => {
+	const data = await workerManager.play(timelineState.currentFrame);
+	if (data.workerStarted) {
+		if (appState.selectedSource) {
+			startProgramPlayLoop();
+		} else {
+			startPlayLoop();
+		}
+		appState.propertiesSection = 'outputAudio';
+	}
 };
 
 export const startPlayLoop = () => {

@@ -42,13 +42,20 @@ self.addEventListener('message', async function (event) {
 				const newSource = await loadFile(event.data.file, event.data.id);
 				if (!newSource) return;
 				sources.push(newSource);
-				sendFrameForThumbnail(newSource);
+				sendFrameForThumbnail(newSource, event.data.requestId);
 			} else if (event.data.type === 'image') {
 				const bitmap = await createImageBitmap(event.data.file);
 				renderer.loadTexture(bitmap, event.data.id);
-				self.postMessage({ command: 'thumbnail', sourceId: event.data.id, gap: 0, bitmap }, [
-					bitmap
-				]);
+				self.postMessage(
+					{
+						command: 'thumbnail',
+						requestId: event.data.requestId,
+						sourceId: event.data.id,
+						gap: 0,
+						bitmap
+					},
+					[bitmap]
+				);
 			}
 			break;
 		}
@@ -66,8 +73,19 @@ self.addEventListener('message', async function (event) {
 			break;
 		}
 		case 'play': {
-			if (seeking) break;
-			self.postMessage({ command: 'ready-to-play' });
+			if (seeking) {
+				self.postMessage({
+					command: 'ready-to-play',
+					requestId: event.data.requestId,
+					workerStarted: false
+				});
+				break;
+			}
+			self.postMessage({
+				command: 'ready-to-play',
+				requestId: event.data.requestId,
+				workerStarted: true
+			});
 			playing = true;
 			startPlayLoop(event.data.frame);
 			break;
@@ -152,15 +170,17 @@ self.addEventListener('message', async function (event) {
 	}
 });
 
-const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
+const sendFrameForThumbnail = async (source: WorkerVideoSource, requestId: string) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
 	decoder.setup(source.videoConfig, source.encodedPacketSink);
+
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
-	self.postMessage({ command: 'thumbnail', sourceId: source.id, gap: source.gap, videoFrame }, [
-		videoFrame
-	]);
+	self.postMessage(
+		{ command: 'import-done', requestId, sourceId: source.id, gap: source.gap, videoFrame },
+		[videoFrame]
+	);
 };
 
 const requestSeek = (frame: number = latestSeekFrame) => {

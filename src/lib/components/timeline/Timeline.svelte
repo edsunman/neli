@@ -76,25 +76,6 @@
 	let invalidateScrub = false;
 	let latestScrubPosition = 0;
 
-	const buttons = $state([
-		{
-			text: 'cut clip',
-			onclick: () => {
-				if (timelineState.selectedClip) {
-					splitClip(timelineState.selectedClip.id, clickedFrame);
-					historyManager.finishCommand();
-					timelineState.invalidateWaveform = true;
-				}
-			},
-			shortcuts: []
-		},
-		{
-			text: 'focus clip',
-			onclick: () => focusClip(),
-			shortcuts: ['shift', 'F']
-		}
-	]);
-
 	let cursorStyle = $derived.by(() => {
 		if (timelineState.selectedTool === 'hand') {
 			if (appState.mouseIsDown) return 'grabbing';
@@ -482,7 +463,27 @@
 	</div>
 </div>
 
-<ContextMenu bind:this={contextMenu} {buttons} />
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: 'cut clip',
+			onClick: () => {
+				if (timelineState.selectedClip) {
+					splitClip(timelineState.selectedClip.id, clickedFrame);
+					historyManager.finishCommand();
+					timelineState.invalidateWaveform = true;
+				}
+			},
+			shortcuts: []
+		},
+		{
+			text: 'focus clip',
+			onClick: () => focusClip(),
+			shortcuts: ['shift', 'F']
+		}
+	]}
+/>
 
 <svelte:window
 	onmousemove={mouseMove}

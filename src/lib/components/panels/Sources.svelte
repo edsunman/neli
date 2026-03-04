@@ -8,20 +8,28 @@
 		paletteIcon,
 		filmIcon,
 		folderIcon,
-		presetsIcon
+		presetsIcon,
+		warningIcon,
+		seekIcon,
+		linkIcon
 	} from '../icons/Icons.svelte';
-
-	import MyTooltip from '../ui/Tooltip.svelte';
 	import { pause } from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
-	import { processFile } from '$lib/source/actions';
+	import { getSourceFromId, processFile, relinkFile } from '$lib/source/actions';
 	import { showSourceInProgram, showTimelineInProgram } from '$lib/program/actions';
+
+	import ContextMenu from '../ui/ContextMenu.svelte';
+	import MyTooltip from '../ui/Tooltip.svelte';
 
 	let dragHover = $state(false);
 	let hoverName = $state('');
 	let hoverNameIndex = $state(0);
 	let showHoverName = $state(false);
 	let hoverSelected = $state(false);
+	let forceHoverId = $state('');
+	let fileInput = $state<HTMLInputElement>();
+
+	let clickedSourceId = '';
 
 	let filteredSources = $derived.by(() => {
 		appState.sourceFolders;
@@ -31,59 +39,37 @@
 	});
 
 	const onClick = (source: Source) => {
-		if (source.type === 'test' || source.type === 'text') return;
+		if (source.type === 'test' || source.type === 'text' || source.unlinked) return;
 		//if (source.preset) return;
 		hoverSelected = true;
 		showSourceInProgram(source);
 		appState.propertiesSection = 'source';
-
-		/* timelineState.selectedClips.clear();
-		if (source.type === 'srt') {
-			// TODO: tidy this up
-			for (const entry of source.srtEntries) {
-				const clip = createClip(
-					appState.sources[0].id,
-					1,
-					entry.inPoint,
-					entry.outPoint - entry.inPoint
-				);
-				if (!clip) continue;
-				clip.text = entry.text;
-				clip.params[3] = -0.75;
-				clip.params[6] = 12;
-				clip.params[7] = 1.5;
-				updateWorkerClip(clip);
-			}
-			setTrackClipJoins(1);
-		} else {
-			const trackType = getTrackTypeFromSourceType(source.type);
-			const track = getTopTrackOfType(trackType);
-			if (track < 1) return;
-			const clip = createClip(source.id, track, timelineState.currentFrame);
-			if (!clip) return;
-			if (clip) timelineState.selectedClip = clip;
-			finaliseClip(clip, 'addClip');
-			setAllTrackTypes();
-		}
-		historyManager.finishCommand(); */
 	};
 
-	const onDrop = (e: DragEvent) => {
+	const onDrop = async (e: DragEvent) => {
 		e.preventDefault();
 		dragHover = false;
 
 		const files = e.dataTransfer?.files;
-		if (!files) return;
+		const items = e.dataTransfer?.items;
+		if (!files || !items) return;
 
-		processFile(files[0]);
+		if (items[0] && typeof items[0].getAsFileSystemHandle === 'function') {
+			const fileHandle = await items[0].getAsFileSystemHandle();
+			if (fileHandle) processFile(files[0], fileHandle);
+		} else {
+			processFile(files[0]);
+		}
 	};
+
+	let contextMenu: ContextMenu;
 </script>
 
 <Tooltip.Provider delayDuration={500}>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
-			<div class="bg-zinc-950 rounded flex flex-col mb-5">
+			<div class="bg-zinc-950 rounded-lg flex flex-col mb-5">
 				<MyTooltip
 					contentProps={{ side: 'right' }}
 					triggerProps={{
@@ -105,7 +91,7 @@
 				</MyTooltip>
 			</div>
 
-			<div class=" bg-zinc-950 rounded flex flex-col mb-5">
+			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
 				<MyTooltip
 					contentProps={{ side: 'right' }}
 					triggerProps={{
@@ -169,6 +155,12 @@
 			{#each filteredSources as source, i}
 				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
+					oncontextmenu={(e) => {
+						if (!source.unlinked) return;
+						forceHoverId = source.id;
+						clickedSourceId = source.id;
+						contextMenu.openContextMenu(e);
+					}}
 					onmouseover={() => {
 						if (appState.mouseIsDown) return;
 						if (source.id === appState.selectedSource?.id) hoverSelected = true;
@@ -185,9 +177,10 @@
 						// selected
 						source.id === appState.selectedSource?.id && 'bg-zinc-700 text-zinc-100',
 						// hover
-						!appState.mouseIsDown &&
+						!appState.dragAndDrop.clicked &&
 							source.id !== appState.selectedSource?.id &&
 							'hover:text-zinc-300 hover:bg-hover',
+						forceHoverId === source.id && 'text-zinc-300 bg-hover',
 						// dragged
 						appState.dragAndDrop.clicked &&
 							appState.dragAndDrop.dragFrom === 'sources' &&
@@ -200,6 +193,8 @@
 					onmousedown={(e) => {
 						pause();
 						appState.mouseIsDown = true;
+
+						if (source.unlinked) return;
 						appState.dragAndDrop.currentCursor = { x: e.clientX, y: e.clientY };
 						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.dragFrom = 'sources';
@@ -219,7 +214,7 @@
 					}}
 				>
 					<span
-						style:background-image={`url(${source.thumbnail})`}
+						style:background-image={!source.unlinked ? `url(${source.thumbnail})` : ''}
 						class={[
 							(source.type === 'video' || source.type === 'image') && !source.thumbnail
 								? 'opacity-0'
@@ -230,12 +225,15 @@
 									: 'opacity-80',
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
-							source.type === 'audio' ? 'bg-clip-blue-500' : '',
+							source.type === 'audio' && !source.unlinked ? 'bg-clip-blue-500' : '',
+							source.unlinked ? 'bg-red-950' : '',
 							'h-10 w-14 flex flex-wrap justify-center content-center top-2 left-2 absolute',
 							'rounded-lg transition-opacity duration-200 bg-cover bg-center'
 						]}
 					>
-						{#if source.type === 'text'}
+						{#if source.unlinked}
+							{@render warningIcon('text-red-500 w-6 h-6 text-clip-purple-600')}
+						{:else if source.type === 'text'}
 							{@render textIcon('w-6 h-6 text-clip-purple-600')}
 						{:else if source.type === 'srt'}
 							<span class="text-clip-purple-600 text-xl font-extrabold">.srt</span>
@@ -282,6 +280,51 @@
 		</div>
 	</div>
 </Tooltip.Provider>
+
+<input
+	onchange={(e) => {
+		if (!e.currentTarget.files) return;
+		const file = e.currentTarget.files[0];
+		relinkFile(file, clickedSourceId);
+	}}
+	bind:this={fileInput}
+	type="file"
+	class="hidden"
+/>
+
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: 'relink file',
+			icon: linkIcon,
+			onClick: async () => {
+				const source = getSourceFromId(clickedSourceId);
+				console.log(source);
+				if (!source) return;
+				if (source.handle && source.handle.kind === 'file') {
+					const fileHandle = source.handle as FileSystemFileHandle;
+					let permission = await fileHandle.queryPermission({ mode: 'read' });
+					// 2. If it's not 'granted', we MUST ask the user
+					if (permission !== 'granted') {
+						permission = await fileHandle.requestPermission({ mode: 'read' });
+					}
+
+					const file = await fileHandle.getFile();
+					relinkFile(file, clickedSourceId);
+					console.log(file);
+				} else {
+					fileInput?.click();
+				}
+			},
+			shortcuts: []
+		}
+	]}
+	onClose={() => {
+		forceHoverId = '';
+	}}
+/>
+
 <svelte:window
 	onkeydown={(e) => {
 		switch (e.code) {

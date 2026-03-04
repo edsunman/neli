@@ -30,12 +30,13 @@
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
 
+	let contextMenu: ContextMenu;
 	let showFrames = $state(false);
+	let contextButtonText = $state('show frames');
 
 	let formattedTime = $derived.by(() => {
 		return framesToTimecode(timelineState.currentFrame);
 	});
-
 	let formattedProgramTime = $derived.by(() => {
 		let fps = 30;
 		if (appState.selectedSource && appState.selectedSource.info.type === 'video')
@@ -51,34 +52,6 @@
 		)
 			return true;
 	});
-
-	let contextMenu: ContextMenu;
-	const buttons = $state([
-		{
-			text: 'show frames',
-			icon: seekIcon,
-			onclick: () => {
-				showFrames = !showFrames;
-				buttons[0].text = showFrames ? 'show timecode' : 'show frames';
-			},
-			shortcuts: ['shift', mouseIcon]
-		},
-		{
-			text: 'copy timecode',
-			icon: copyIcon,
-			onclick: async () => {
-				const type = 'text/plain';
-				const clipboardItemData = {
-					[type]: framesToTimecode(
-						appState.selectedSource ? programState.currentFrame : timelineState.currentFrame
-					)
-				};
-				const clipboardItem = new ClipboardItem(clipboardItemData);
-				await navigator.clipboard.write([clipboardItem]);
-			},
-			shortcuts: []
-		}
-	]);
 </script>
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
@@ -129,7 +102,7 @@
 			onclick={(e) => {
 				if (e.shiftKey) {
 					showFrames = !showFrames;
-					buttons[0].text = showFrames ? 'show timecode' : 'show frames';
+					contextButtonText = showFrames ? 'show timecode' : 'show frames';
 				} else {
 					if (timelineState.playing || programState.playing) {
 						appState.selectedSource ? pauseProgram() : pause();
@@ -186,7 +159,35 @@
 	</Tooltip.Provider>
 </div>
 
-<ContextMenu bind:this={contextMenu} {buttons} />
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: contextButtonText,
+			icon: seekIcon,
+			onClick: () => {
+				showFrames = !showFrames;
+				contextButtonText = showFrames ? 'show timecode' : 'show frames';
+			},
+			shortcuts: ['shift', mouseIcon]
+		},
+		{
+			text: 'copy timecode',
+			icon: copyIcon,
+			onClick: async () => {
+				const type = 'text/plain';
+				const clipboardItemData = {
+					[type]: framesToTimecode(
+						appState.selectedSource ? programState.currentFrame : timelineState.currentFrame
+					)
+				};
+				const clipboardItem = new ClipboardItem(clipboardItemData);
+				await navigator.clipboard.write([clipboardItem]);
+			},
+			shortcuts: []
+		}
+	]}
+/>
 
 {#snippet button(
 	description: string,

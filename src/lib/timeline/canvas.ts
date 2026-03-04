@@ -338,6 +338,10 @@ const drawClip = (
 		clipColor = '#2b2d30';
 		clipBaseColor = '#222223';
 	}
+	if (clip.source.unlinked) {
+		clipColor = '#dc2626';
+		clipBaseColor = '#7f1d1d';
+	}
 
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;

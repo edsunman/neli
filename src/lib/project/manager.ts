@@ -21,6 +21,7 @@ type SourceTable = {
 	type: SourceType;
 	info: FileInfo;
 	name: string;
+	handle: FileSystemHandle | null;
 	createdAt: number;
 	lastModified: number;
 };
@@ -52,6 +53,10 @@ interface VideoEditorDB extends DBSchema {
 		value: ClipTable;
 		indexes: { 'by-project': number };
 	};
+	thumbnails: {
+		key: string;
+		value: Blob;
+	};
 }
 
 export class ProjectManager {
@@ -69,6 +74,8 @@ export class ProjectManager {
 
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
+
+				db.createObjectStore('thumbnails');
 			}
 		});
 	}
@@ -144,6 +151,7 @@ export class ProjectManager {
 			name: source.name,
 			type: source.type,
 			info: source.info,
+			handle: source.handle ?? null,
 			createdAt: Date.now(),
 			lastModified: Date.now()
 		};
@@ -223,5 +231,16 @@ export class ProjectManager {
 		}
 
 		await tx.done;
+	}
+
+	async createThumbnail(thumbnail: Blob, projectId: string) {
+		if (!this.db) return;
+		const id = await this.db.put('thumbnails', thumbnail, projectId);
+		return id;
+	}
+
+	async getThumbnail(sourceId: string) {
+		if (!this.db) return;
+		return await this.db.get('thumbnails', sourceId);
 	}
 }

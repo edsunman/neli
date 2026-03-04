@@ -8,7 +8,7 @@ export const setupTests = () => {
 	if (!window) return;
 
 	// @ts-expect-error append function to window
-	window.tests = { lotsOfClips /*  addSource */ };
+	window.tests = { lotsOfClips, unlinkSources /*  addSource */ };
 };
 
 const lotsOfClips = () => {
@@ -19,6 +19,12 @@ const lotsOfClips = () => {
 	for (let i = 0; i < 150; i++) {
 		createClip(textSource.id, 1, i * 50, 50);
 		createClip(testSource.id, 2, i * 50, 50);
+	}
+};
+
+const unlinkSources = () => {
+	for (const source of appState.sources) {
+		source.unlinked = true;
 	}
 };
 

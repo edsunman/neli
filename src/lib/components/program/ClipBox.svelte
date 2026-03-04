@@ -120,29 +120,6 @@
 		const y = measurements.height * scaleFactor + 10;
 		return { x, y };
 	};
-
-	const buttons = $state([
-		{
-			text: 'scale to fit',
-			onclick: () => {
-				const clip = timelineState.selectedClip;
-				if (!clip) return;
-				const scaleFactor = getClipFitScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
-			},
-			shortcuts: []
-		},
-		{
-			text: 'scale to fill',
-			onclick: () => {
-				const clip = timelineState.selectedClip;
-				if (!clip) return;
-				const scaleFactor = getClipFillScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
-			},
-			shortcuts: []
-		}
-	]);
 </script>
 
 {#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
@@ -202,5 +179,29 @@
 	></div>
 {/if}
 
-<ContextMenu bind:this={contextMenu} {buttons} />
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: 'scale to fit',
+			onClick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				const scaleFactor = getClipFitScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+			},
+			shortcuts: []
+		},
+		{
+			text: 'scale to fill',
+			onClick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				const scaleFactor = getClipFillScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+			},
+			shortcuts: []
+		}
+	]}
+/>
 <svelte:window onmousemove={mouseMove} onmouseup={mouseUp} />

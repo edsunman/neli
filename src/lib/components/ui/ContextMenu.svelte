@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { Portal } from 'bits-ui';
-	import { onMount, tick, type Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 
 	type Props = {
 		buttons: {
 			text: string;
 			icon?: Snippet<[string]>;
-			onclick: () => void;
+			onClick: () => void;
 			shortcuts: (string | Snippet<[string]>)[];
 		}[];
+		onClose?: () => void;
 	};
 
-	let { buttons }: Props = $props();
+	let { buttons, onClose }: Props = $props();
 
 	let container = $state<HTMLDivElement>();
 	let contextMenu = $state<HTMLDivElement>();
@@ -19,6 +20,7 @@
 	const contextMenuPosition = $state({ x: 0, y: 0 });
 
 	export const openContextMenu = async (e: MouseEvent) => {
+		e.preventDefault();
 		showContextMenu = true;
 		contextMenuPosition.x = e.clientX;
 		contextMenuPosition.y = e.clientY;
@@ -41,6 +43,7 @@
 			bind:this={container}
 			class="h-dvh w-dvw absolute top-0 left-0 z-10"
 			onmousedown={() => {
+				if (onClose) onClose();
 				showContextMenu = false;
 			}}
 		>
@@ -57,7 +60,8 @@
 					<button
 						class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center justify-between whitespace-nowrap"
 						onclick={() => {
-							button.onclick();
+							button.onClick();
+							if (onClose) onClose();
 							showContextMenu = false;
 						}}
 					>

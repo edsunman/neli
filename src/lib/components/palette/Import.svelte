@@ -28,6 +28,7 @@
 		appState.lockPalette = false;
 		disableButton = false;
 	};
+
 	const truncateString = (str: string, maxLength: number) => {
 		if (!str || str.length <= maxLength) {
 			return str;

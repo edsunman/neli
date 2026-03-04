@@ -1,7 +1,13 @@
 import { setAllJoins } from '$lib/clip/actions';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
-import { assignSourcesToFolders, createSource, getSourceFromId } from '$lib/source/actions';
+import {
+	assignSourcesToFolders,
+	createSource,
+	getSourceFromId,
+	relinkFile,
+	setSourceThumbnail
+} from '$lib/source/actions';
 import {
 	appState,
 	historyManager,
@@ -94,16 +100,33 @@ export const loadProject = async (id: number) => {
 	appState.sources.length = 0;
 	const projectSources = await projectManager.getSources(id);
 	for (const source of projectSources) {
-		if (source.type === 'test' || source.type === 'text') {
-			const newSource = createSource(source.type, source.info);
-			newSource.id = source.id;
+		const newSource = createSource(source.type, source.info);
+		newSource.id = source.id;
+		newSource.name = source.name;
+
+		if (source.type === 'video' || source.type === 'image') {
+			const blob = await projectManager.getThumbnail(source.id);
+			if (blob) setSourceThumbnail(source.id, blob);
+		}
+
+		if (source.type === 'video' || source.type === 'audio') {
+			newSource.unlinked = true;
+			if (source.handle && source.handle.kind === 'file') {
+				const permission = await source.handle.queryPermission({ mode: 'read' });
+				if (permission == 'granted') {
+					const fileHandle = source.handle as FileSystemFileHandle;
+					const file = await fileHandle.getFile();
+					await relinkFile(file, source.id);
+				}
+			}
+			if (source.handle) newSource.handle = source.handle;
 		}
 	}
 	assignSourcesToFolders();
 
 	timelineState.tracks.length = 0;
 	timelineState.tracks = Array.from(project.tracks);
-
+	console.log(project.tracks);
 	//setTrackPositions();
 
 	timelineState.clips.length = 0;
