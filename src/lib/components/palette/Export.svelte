@@ -8,30 +8,27 @@
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
 	import TitleBar from './TitleBar.svelte';
 	import { renderAudioForExport } from '$lib/audio/actions';
-
-	let { shrinkBox } = $props();
+	import ProgressBar from './ProgressBar.svelte';
+	import { closePalette } from '$lib/app/actions';
 
 	let inputValue = $state('');
-	let encodingStarted = $state(false);
 	let encodingFinished = $state(false);
 	let startFrame = $state(0);
 	let endFrame = $state(getUsedTimelineDuration());
 	let closeButton = $state<HTMLButtonElement>();
 
-	const labelId = useId();
-
 	const exportFile = async () => {
 		if (startFrame >= endFrame) return;
-		encodingStarted = true;
-		shrinkBox();
 
-		appState.lockPalette = true;
-		appState.encoderProgress.message = 'preparing audio...';
-		appState.encoderProgress.percentage = 0;
+		appState.palette.shrink = 'h-70';
+		appState.palette.lock = true;
+		appState.progress.started = true;
+		appState.progress.message = 'preparing audio...';
+		appState.progress.percentage = 0;
 		appState.exportSuccessCallback = exportCallback;
 
 		const audioBuffer = await renderAudioForExport(startFrame, endFrame);
-		appState.encoderProgress.message = 'encoding video...';
+		appState.progress.message = 'encoding video...';
 
 		const fileName = inputValue ? inputValue : 'video';
 		workerManager.encode(fileName, startFrame, endFrame, audioBuffer);
@@ -39,7 +36,7 @@
 
 	const exportCallback = async (success: boolean) => {
 		encodingFinished = true;
-		appState.lockPalette = false;
+		appState.palette.lock = false;
 		await tick();
 		if (closeButton) {
 			closeButton.focus();
@@ -47,11 +44,10 @@
 	};
 
 	const cancel = () => {
-		appState.encoderProgress.message = 'cancelling...';
+		appState.progress.message = 'cancelling...';
 		workerManager.cancelEncode();
-		appState.lockPalette = false;
-		appState.showPalette = false;
-		appState.disableKeyboardShortcuts = false;
+		appState.palette.lock = false;
+		closePalette();
 	};
 </script>
 
@@ -59,15 +55,16 @@
 <TitleBar
 	title="export"
 	onclick={() => {
-		if (encodingStarted) return;
-		appState.palettePage = 'search';
+		appState.palette.page = 'search';
 	}}
-	disabled={encodingStarted}
+	disabled={appState.progress.started}
 />
 
 <div class="px-8 flex-1 flex flex-col bg-zinc-900 rounded-2xl content-center flex-wrap">
 	<div class="flex-1 content-center flex-wrap w-full">
-		{#if !encodingStarted}
+		{#if appState.progress.started}
+			<ProgressBar />
+		{:else}
 			<div class="flex w-full flex-col gap-2">
 				<div class="flex items-center justify-between text-sm font-medium text-white">
 					<span class="text-zinc-400">file name</span>
@@ -113,41 +110,23 @@
 					/>
 				</div>
 			</div>
-		{:else}
-			<div class="flex w-full flex-col gap-4 my-8">
-				<div class="flex items-center justify-between text-sm font-medium text-white">
-					<span id={labelId}>{appState.encoderProgress.message}</span>
-					<span>{appState.encoderProgress.percentage}%</span>
-				</div>
-				<Progress.Root
-					aria-labelledby={labelId}
-					value={appState.encoderProgress.percentage}
-					max={100}
-					class="bg-zinc-800 shadow-mini-inset relative h-[10px] w-full overflow-hidden rounded-full"
-				>
-					<div
-						class="bg-white shadow-mini-inset h-full w-full flex-1 rounded-full"
-						style={`transform: translateX(-${100 - (100 * (appState.encoderProgress.percentage ?? 0)) / 100}%)`}
-					></div>
-				</Progress.Root>
-			</div>
 		{/if}
 	</div>
 
 	<div class="flex-none pt-5 pb-7 text-right">
-		{#if !encodingStarted}
+		{#if !appState.progress.started}
 			<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text={'Export'} />
-		{:else if encodingStarted && !encodingFinished}
+		{:else if appState.progress.started && !encodingFinished}
 			<Button onclick={() => cancel()} text={'cancel'} />
 		{:else}
 			<Button
 				bind:ref={closeButton}
 				onclick={() => {
-					appState.showPalette = false;
+					closePalette();
 					appState.disableKeyboardShortcuts = false;
 				}}
 				text={'close'}
-				disabled={!(appState.encoderProgress.fail || appState.encoderProgress.percentage === 100)}
+				disabled={!(appState.progress.fail || appState.progress.percentage === 100)}
 			/>
 		{/if}
 	</div>
@@ -157,11 +136,11 @@
 	onkeydown={(event) => {
 		switch (event.code) {
 			case 'Backspace':
-				if (appState.disableKeyboardShortcuts || encodingStarted) break;
-				appState.palettePage = 'search';
+				if (appState.disableKeyboardShortcuts || appState.progress.started) break;
+				appState.palette.page = 'search';
 				break;
 			case 'Enter':
-				if (encodingStarted) break;
+				if (appState.progress.started) break;
 				exportFile();
 				break;
 		}

@@ -100,7 +100,7 @@
 	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.showPalette) return;
+		if (appState.palette.open) return;
 		switch (event.code) {
 			case 'KeyI':
 				setInPoint();

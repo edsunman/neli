@@ -4,6 +4,7 @@
 		appState,
 		historyManager,
 		programState,
+		projectManager,
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
@@ -14,6 +15,7 @@
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
 	import { pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
+	import { createThumbnail } from '$lib/source/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -75,13 +77,13 @@
 		if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 	};
 
-	const mouseUp = () => {
+	const mouseUp = async () => {
 		appState.mouseMoveOwner = 'timeline';
 		if (dragging) {
 			dragging = false;
 			const clip = timelineState.selectedClip;
 			if (!clip) return;
-			historyManager.pushAction({
+			historyManager.newCommand({
 				action: 'clipParam',
 				data: {
 					clipId: clip.id,
@@ -90,7 +92,7 @@
 					newValue: [clip.params[2], clip.params[3]]
 				}
 			});
-			historyManager.finishCommand();
+			projectManager.updateClip(clip);
 		}
 	};
 

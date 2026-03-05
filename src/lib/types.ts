@@ -9,11 +9,19 @@ export type DragAndDropState = {
 	showIcon: boolean;
 	source: Source | null;
 };
+
 export type ImportState = {
 	importStarted: boolean;
 	warningMessage: string;
 	thumbnail: string;
 	fileDetails: { name: string; type: string; info: FileInfo | null } | null;
+};
+
+export type PaletteState = {
+	open: boolean;
+	page: 'search' | 'export' | 'import' | 'about' | 'projects';
+	shrink: string;
+	lock: boolean;
 };
 
 export type PropertiesSection = 'outputAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';

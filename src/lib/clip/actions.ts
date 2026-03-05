@@ -92,6 +92,7 @@ export const deleteClip = (clip: Clip) => {
 	workerManager.sendClip(clip);
 	projectManager.updateClip(clip);
 	appState.propertiesSection = 'outputAudio';
+	console.log(timelineState.clips);
 };
 
 export const deleteClips = (clips: Clip[]) => {
@@ -676,7 +677,6 @@ const isFrameInSnapRange = (frame: number, targetFrame: number, snapRange: numbe
 	return false;
 };
 
-// TODO: rename to seTrackJoins
 export const setTrackJoins = (track: number) => {
 	const startPoints = new Set();
 	const endPoints = new Set();

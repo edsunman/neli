@@ -325,9 +325,11 @@ export const removeTrack = (trackNumber: number) => {
 		action: 'removeTrack',
 		data: { number: trackNumber, type: trackType }
 	});
+	const modifiedClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
 			clip.track--;
+			modifiedClips.push(clip);
 			historyManager.pushAction({
 				action: 'moveClip',
 				data: {
@@ -339,6 +341,8 @@ export const removeTrack = (trackNumber: number) => {
 				}
 			});
 		}
+		workerManager.sendClip(modifiedClips);
+		projectManager.updateClip(modifiedClips);
 	}
 
 	setTrackPositions();
@@ -423,6 +427,7 @@ export const extendTimeline = (endPoint: number) => {
 	if (roundedFrameNumber <= timelineState.duration) return;
 
 	timelineState.duration = roundedFrameNumber;
+	projectManager.updateProject({ duration: roundedFrameNumber });
 
 	const ratio = timelineState.duration / oldTimlineDuration;
 	timelineState.zoom = timelineState.zoom * ratio;

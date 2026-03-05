@@ -5,7 +5,9 @@
 
 <div class="mx-8 flex-none flex py-5 items-center text-zinc-50">
 	<button
-		{onclick}
+		onclick={(e) => {
+			if (!disabled) onclick(e);
+		}}
 		class={[
 			disabled ? 'opacity-0' : 'opacity-100',
 			'mr-2 pt-[2px] starting:opacity-0 transition-opacity delay-100 text-zinc-500 hover:text-zinc-50'

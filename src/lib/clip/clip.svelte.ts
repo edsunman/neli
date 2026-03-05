@@ -27,7 +27,7 @@ export class Clip {
 	resizeHover: 'none' | 'start' | 'end' = 'none';
 
 	constructor(source: Source, track: number, start = 0, duration = 0, sourceOffset = 0) {
-		this.id = Math.random().toString(16).slice(2);
+		this.id = crypto.randomUUID();
 		this.track = track;
 		this.savedTrack = track;
 		this.source = source;

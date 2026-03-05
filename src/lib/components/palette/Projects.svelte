@@ -2,14 +2,40 @@
 	import { appState, projectManager } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
 	import TitleBar from './TitleBar.svelte';
-	import { loadProject } from '$lib/project/actions';
+	import { createProjectThumbnail, loadProject } from '$lib/project/actions';
+	import ProgressBar from './ProgressBar.svelte';
+	import { closePalette } from '$lib/app/actions';
+	import { getRelativeTime } from '$lib/project/utils';
 
-	type Project = { id: number; name: string; createdAt: number; lastModified: number };
+	type Project = {
+		id: number;
+		name: string;
+		createdAt: number;
+		lastModified: number;
+		selected: boolean;
+		thumbnail: string;
+	};
 
 	let scrollDiv = $state<HTMLDivElement>();
-	let projects = $state<(Project & { selected: boolean })[]>([]);
+	let projects = $state<Project[]>([]);
+	let currentProject = $state<Project>();
 
 	let selectedIndex = 0;
+
+	const selectProject = async (id: number) => {
+		if (appState.project.id === id) {
+			closePalette();
+			return;
+		}
+		appState.progress.started = true;
+		appState.progress.percentage = 0;
+		appState.progress.message = 'loading project...';
+		appState.palette.shrink = 'h-50';
+		appState.palette.lock = true;
+		await loadProject(id);
+		appState.palette.lock = false;
+		closePalette();
+	};
 
 	const selectById = (id: number) => {
 		let i = -1;
@@ -55,51 +81,114 @@
 	};
 
 	onMount(async () => {
+		const dbProject = await projectManager.getProject(appState.project.id);
+		if (!dbProject) return;
+		currentProject = { ...dbProject, selected: false, thumbnail: '' };
 		const dbProjects = (await projectManager.getAllProjects()) ?? [];
-		projects = dbProjects.map((project, i): Project & { selected: boolean } => ({
-			...project,
-			selected: i === 0 ? true : false
-		}));
+		projects = dbProjects
+			.filter((project) => project.id !== appState.project.id)
+			.sort((a, b) => b.lastModified - a.lastModified)
+			.map(
+				(project, i): Project => ({
+					...project,
+					selected: i === 0 ? true : false,
+					thumbnail: ''
+				})
+			);
+		const thumbnail = await projectManager.getThumbnail(appState.project.id.toString());
+		if (thumbnail) currentProject.thumbnail = URL.createObjectURL(thumbnail);
+		for (let i = 0; i < projects.length; i++) {
+			const thumbnail = await projectManager.getThumbnail(projects[i].id.toString());
+			if (!thumbnail) continue;
+			projects[i].thumbnail = URL.createObjectURL(thumbnail);
+		}
+
+		const blob = await createProjectThumbnail();
+		currentProject.thumbnail = URL.createObjectURL(blob);
 	});
 </script>
 
 <TitleBar
 	title="load project"
 	onclick={() => {
-		appState.palettePage = 'search';
+		appState.palette.page = 'search';
 	}}
+	disabled={appState.progress.started}
 />
 <div class="flex-1 bg-zinc-900 rounded-2xl overflow-y-hidden">
-	<div
-		bind:this={scrollDiv}
-		class="px-8 overflow-y-scroll h-full"
-		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
-	>
-		{#each projects as project}
-			<button
-				id={`project-${project.id}`}
-				onmousemove={() => {
-					if (!project.selected) selectById(project.id);
-				}}
-				onclick={() => {
-					loadProject(project.id);
-				}}
-				class={[
-					'first:mt-4 last:mb-4 cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
-					project.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
-				]}
-			>
-				<p class="flex-1">{project.name}</p>
-			</button>
-		{/each}
-	</div>
+	{#if appState.progress.started}
+		<div class="h-full p-8 content-center w-full">
+			<ProgressBar />
+		</div>
+	{:else}
+		<div
+			bind:this={scrollDiv}
+			class="px-8 overflow-y-scroll h-full gap-1 flex flex-col"
+			style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
+		>
+			{#if currentProject}
+				<div
+					class={[
+						'first:mt-4 last:mb-4 w-full px-2 py-2.5 rounded-lg flex items-center group',
+						' text-zinc-400'
+					]}
+				>
+					<span
+						style:background-image={`url(${currentProject.thumbnail})`}
+						class={[
+							currentProject.thumbnail ? 'opacity-100' : 'opacity-0',
+							'h-10 w-14 mr-4 flex flex-wrap justify-center content-center top-2 left-2 rounded-lg ',
+							'bg-cover bg-center transition-opacity duration-200'
+						]}
+					></span>
+					<span class="flex-1 text-left text-sm truncate mr-4">{currentProject.name}</span>
+					<span class={['text-sm ', ' text-zinc-700']}>open</span>
+				</div>
+			{/if}
+			{#each projects as project (project.id)}
+				<button
+					id={`project-${project.id}`}
+					onmousemove={() => {
+						if (!project.selected) selectById(project.id);
+					}}
+					onclick={() => {
+						selectProject(project.id);
+					}}
+					class={[
+						'first:mt-4 last:mb-4 cursor-pointer w-full px-2 py-2.5 rounded-lg flex items-center group',
+						project.selected ? 'text-white bg-hover' : ' text-zinc-400'
+					]}
+				>
+					<span
+						style:background-image={`url(${project.thumbnail})`}
+						class={[
+							project.thumbnail ? 'opacity-100' : 'opacity-0',
+							'h-10 w-14 mr-4 flex flex-wrap justify-center content-center top-2 left-2 rounded-lg ',
+							'bg-cover bg-center transition-opacity duration-200'
+						]}
+					></span>
+					<span class="flex-1 text-left text-sm truncate mr-4">{project.name}</span>
+					<span class={['text-sm ', project.selected ? 'text-zinc-500' : ' text-zinc-700']}>
+						{#if appState.project.id === project.id}
+							open
+						{:else}
+							{getRelativeTime(project.lastModified)}
+						{/if}
+					</span>
+				</button>
+			{/each}
+			<!-- {#if projects.length < 1}
+				<div class="text-zinc-400 select-none text-sm mt-6 mb-2">No other projects</div>
+			{/if} -->
+		</div>
+	{/if}
 </div>
 <svelte:window
 	onkeydown={(event) => {
 		switch (event.code) {
 			case 'Backspace':
-				if (appState.disableKeyboardShortcuts) break;
-				appState.palettePage = 'search';
+				if (appState.disableKeyboardShortcuts || appState.progress.started) break;
+				appState.palette.page = 'search';
 				break;
 			case 'ArrowDown':
 				event.preventDefault();
@@ -111,10 +200,10 @@
 				break;
 			case 'Enter':
 				event.preventDefault();
+				if (appState.progress.started) break;
 				for (const project of projects) {
 					if (project.selected) {
-						loadProject(project.id);
-						appState.showPalette = false;
+						selectProject(project.id);
 						break;
 					}
 				}

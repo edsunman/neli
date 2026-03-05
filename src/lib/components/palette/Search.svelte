@@ -21,7 +21,6 @@
 		helpIcon,
 		seekIcon,
 		playIcon,
-		folderIcon,
 		backIcon,
 		undoIcon,
 		redoIcon,
@@ -30,7 +29,7 @@
 		fileNewIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
-	import { createNewProject } from '$lib/project/actions';
+	import { createNewProject, createProjectThumbnail } from '$lib/project/actions';
 
 	let searchInput = $state<HTMLInputElement>();
 	let inputValue = $state<string>();
@@ -53,7 +52,7 @@
 					shortcuts: ['N'],
 					action: () => {
 						appState.import.importStarted = false;
-						appState.palettePage = 'import';
+						appState.palette.page = 'import';
 					}
 				},
 				{
@@ -62,7 +61,7 @@
 					selected: false,
 					icon: exportIcon,
 					shortcuts: ['M'],
-					action: () => (appState.palettePage = 'export')
+					action: () => (appState.palette.page = 'export')
 				},
 				/* {
 					id: 103,
@@ -78,7 +77,7 @@
 					selected: false,
 					icon: infoIcon,
 					shortcuts: [],
-					action: () => (appState.palettePage = 'about')
+					action: () => (appState.palette.page = 'about')
 				},
 				{
 					id: 105,
@@ -88,7 +87,7 @@
 					shortcuts: [],
 					action: () => {
 						window.open('https://neli.video/docs/getting-started', '_blank');
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -100,7 +99,7 @@
 					action: () => {
 						focusTrack(0);
 						historyManager.undo();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -112,7 +111,7 @@
 					action: () => {
 						focusTrack(0);
 						historyManager.redo();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				}
 			]
@@ -127,9 +126,10 @@
 					selected: false,
 					icon: fileNewIcon,
 					shortcuts: [],
-					action: () => {
+					action: async () => {
+						await createProjectThumbnail();
 						createNewProject();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -139,7 +139,7 @@
 					icon: fileOpenIcon,
 					shortcuts: [],
 					action: () => {
-						appState.palettePage = 'projects';
+						appState.palette.page = 'projects';
 					}
 				}
 			]
@@ -156,11 +156,19 @@
 					shortcuts: ['space'],
 					action: () => {
 						if (timelineState.playing || programState.playing) {
-							appState.selectedSource ? pauseProgram() : pause();
+							if (appState.selectedSource) {
+								pauseProgram();
+							} else {
+								pause();
+							}
 						} else {
-							appState.selectedSource ? playProgram() : play();
+							if (appState.selectedSource) {
+								playProgram();
+							} else {
+								play();
+							}
 						}
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -171,7 +179,7 @@
 					shortcuts: ['='],
 					action: () => {
 						zoomIn();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -182,7 +190,7 @@
 					shortcuts: ['-'],
 					action: () => {
 						zoomOut();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -193,7 +201,7 @@
 					shortcuts: ['right arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame + 1);
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -204,7 +212,7 @@
 					shortcuts: ['left arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame - 1);
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				}
 			]
@@ -300,7 +308,7 @@
 
 	const seekEvent = () => {
 		setCurrentFrame(targetFrame);
-		appState.showPalette = false;
+		appState.palette.open = false;
 		centerViewOnPlayhead();
 	};
 
@@ -317,7 +325,6 @@
 </script>
 
 <div class="mx-8 flex-none">
-	<!-- svelte-ignore a11y_autofocus -->
 	<form
 		onsubmit={() => {
 			if (showSeekOptions) {
@@ -349,14 +356,14 @@
 		class="px-8 overflow-y-scroll h-full"
 		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
 	>
-		{#each filtered as category}
+		{#each filtered as category (category.id)}
 			{#if category.commands.length > 0}
 				<div class="mb-4">
 					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">
 						{category.name}
 					</div>
 
-					{#each category.commands as command}
+					{#each category.commands as command (command.id)}
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
@@ -373,8 +380,9 @@
 							]}
 						>
 							{@render command.icon('size-5 inline mr-3')}
+							<!--  eslint-disable-next-line svelte/no-at-html-tags -->
 							<p class="flex-1">{@html formatString(command.text)}</p>
-							{#each command.shortcuts as key, i}
+							{#each command.shortcuts as key (key)}
 								<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
 								<div
 									class={[

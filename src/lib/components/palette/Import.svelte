@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 	import { processFile } from '$lib/source/actions';
-	import { infoIcon, audioIcon, helpIcon, backArrowIcon } from '../icons/Icons.svelte';
+	import { infoIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
+	import { closePalette } from '$lib/app/actions';
 
 	import Button from '../ui/Button.svelte';
 	import TitleBar from './TitleBar.svelte';
@@ -20,12 +21,12 @@
 	};
 
 	const fileDropped = async (file: File) => {
-		appState.lockPalette = true;
+		appState.palette.lock = true;
 		disableButton = true;
 
 		await processFile(file);
 
-		appState.lockPalette = false;
+		appState.palette.lock = false;
 		disableButton = false;
 	};
 
@@ -45,7 +46,7 @@
 <TitleBar
 	title="import"
 	onclick={() => {
-		appState.palettePage = 'search';
+		appState.palette.page = 'search';
 		appState.import.importStarted = false;
 	}}
 />
@@ -174,8 +175,7 @@
 		<div class="flex-none pt-5 pb-7 text-right">
 			<Button
 				onclick={() => {
-					appState.showPalette = false;
-					appState.import.importStarted = false;
+					closePalette();
 				}}
 				text={'Done'}
 				disabled={disableButton}
@@ -199,7 +199,7 @@
 			case 'Backspace':
 				if (appState.disableKeyboardShortcuts) break;
 				appState.import.importStarted = false;
-				appState.palettePage = 'search';
+				appState.palette.page = 'search';
 				break;
 		}
 	}}

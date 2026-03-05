@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, timelineState, workerManager } from '$lib/state.svelte';
+	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
 
 	type Props = {
 		value: any;
@@ -44,6 +44,9 @@
 			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
 				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+			}
+			if (timelineState.selectedClip) {
+				projectManager.updateClip(timelineState.selectedClip);
 			}
 			onBlur();
 		}}

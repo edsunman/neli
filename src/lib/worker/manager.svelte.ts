@@ -122,6 +122,14 @@ export class WorkerManager {
 		});
 	}
 
+	getThumbnail() {
+		if (!this.mediaWorker) throw new Error('Worker not available');
+		type ReturnData = {
+			bitmap: ImageBitmap;
+		};
+		return this.request<ReturnData>(this.mediaWorker, 'project-thumbnail');
+	}
+
 	sendFileToWaveformWorker = async (source: Source) => {
 		if (!this.waveformWorker) throw new Error('Worker not available');
 		type ReturnData = {
@@ -167,13 +175,13 @@ export class WorkerManager {
 		switch (command) {
 			case 'encode-progress': {
 				if (event.data.percentComplete > -1) {
-					appState.encoderProgress.percentage = event.data.percentComplete;
+					appState.progress.percentage = event.data.percentComplete;
 					if (event.data.percentComplete === 100) appState.exportSuccessCallback(true);
 				} else {
 					appState.exportSuccessCallback(false);
-					appState.encoderProgress.percentage = 0;
-					appState.encoderProgress.message = 'encoding failed';
-					appState.encoderProgress.fail = true;
+					appState.progress.percentage = 0;
+					appState.progress.message = 'encoding failed';
+					appState.progress.fail = true;
 				}
 
 				break;
@@ -191,8 +199,8 @@ export class WorkerManager {
 				document.body.removeChild(a);
 				URL.revokeObjectURL(event.data.link);
 
-				appState.encoderProgress.message = 'done';
-				appState.encoderProgress.percentage = 100;
+				appState.progress.message = 'done';
+				appState.progress.percentage = 100;
 
 				break;
 			}

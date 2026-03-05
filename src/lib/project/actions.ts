@@ -1,9 +1,11 @@
+import { closePalette } from '$lib/app/actions';
 import { setAllJoins } from '$lib/clip/actions';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
 import {
 	assignSourcesToFolders,
 	createSource,
+	createThumbnail,
 	getSourceFromId,
 	relinkFile,
 	setSourceThumbnail
@@ -15,7 +17,7 @@ import {
 	timelineState,
 	workerManager
 } from '$lib/state.svelte';
-import { pause, setAllTrackTypes, setTrackLocks, setTrackPositions } from '$lib/timeline/actions';
+import { focusTrack, pause, setTrackPositions, setZoom } from '$lib/timeline/actions';
 import { getNextProjectName } from './utils';
 
 export const changeProjectResolution = (width: number, height: number) => {
@@ -33,7 +35,14 @@ export const setupProjectManager = async () => {
 
 	const lastProject = await projectManager.getLastModifiedProject();
 	if (lastProject) {
-		loadProject(lastProject.id);
+		appState.palette.shrink = 'h-50';
+		appState.palette.open = true;
+		appState.palette.page = 'projects';
+		appState.palette.lock = true;
+		appState.progress.started = true;
+		await loadProject(lastProject.id);
+		appState.palette.lock = false;
+		closePalette();
 		return;
 	}
 
@@ -56,6 +65,7 @@ export const createNewProject = async () => {
 	appState.project.resolution.width = 1080;
 	appState.propertiesSection = 'project';
 	resizeCanvas(1920, 1080);
+	workerManager.reset();
 
 	appState.sources.length = 0;
 	const textSource = createSource('text', { type: 'text' });
@@ -64,6 +74,9 @@ export const createNewProject = async () => {
 	await projectManager.createSource(testSource);
 	assignSourcesToFolders();
 
+	timelineState.currentFrame = 0;
+	timelineState.duration = 1800;
+	setZoom(0.9);
 	timelineState.tracks.length = 0;
 	for (let i = 0; i < 2; i++) {
 		timelineState.tracks.push({
@@ -94,11 +107,13 @@ export const loadProject = async (id: number) => {
 	appState.project.aspect = project.aspect;
 	appState.propertiesSection = 'project';
 	resizeCanvas(project.width, project.height);
-
 	workerManager.reset();
+
+	appState.progress.message = 'linking files...';
 	appState.selectedSource = null;
 	appState.sources.length = 0;
 	const projectSources = await projectManager.getSources(id);
+	let i = 0;
 	for (const source of projectSources) {
 		const newSource = createSource(source.type, source.info);
 		newSource.id = source.id;
@@ -121,13 +136,19 @@ export const loadProject = async (id: number) => {
 			}
 			if (source.handle) newSource.handle = source.handle;
 		}
+
+		appState.progress.percentage = (i / projectSources.length) * 100;
+		i++;
 	}
 	assignSourcesToFolders();
 
+	timelineState.currentFrame = 0;
+	timelineState.duration = project.duration;
+	setZoom(0.9);
 	timelineState.tracks.length = 0;
 	timelineState.tracks = Array.from(project.tracks);
-	console.log(project.tracks);
-	//setTrackPositions();
+	focusTrack(0);
+	setTrackPositions();
 
 	timelineState.clips.length = 0;
 	timelineState.selectedClip = null;
@@ -138,13 +159,25 @@ export const loadProject = async (id: number) => {
 		if (!source) continue;
 		const newClip = new Clip(source, clip.track, clip.start, clip.duration, 0);
 		newClip.id = clip.id;
+		newClip.params = clip.params;
 		timelineState.clips.push(newClip);
 	}
 	workerManager.sendClip(timelineState.clips);
 	setAllJoins();
-	setAllTrackTypes();
-	setTrackLocks();
+	//setAllTrackTypes();
+	//setTrackLocks();
 	timelineState.invalidate = true;
 
 	historyManager.reset();
+	appState.progress.percentage = 100;
+};
+
+export const createProjectThumbnail = async () => {
+	const { bitmap } = await workerManager.getThumbnail();
+	console.log(bitmap);
+	const blob = await createThumbnail(bitmap, bitmap.width, bitmap.height);
+	//setSourceThumbnail(data.sourceId, blob);
+	projectManager.createThumbnail(blob, appState.project.id.toString());
+	bitmap.close();
+	return blob;
 };

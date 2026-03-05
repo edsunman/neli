@@ -77,7 +77,7 @@
 			case 'Backspace':
 			case 'KeyP':
 				if (appState.disableKeyboardShortcuts) break;
-				appState.palettePage = 'search';
+				appState.palette.page = 'search';
 				break;
 		}
 	}}

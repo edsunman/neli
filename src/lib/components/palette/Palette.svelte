@@ -1,22 +1,12 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 
-	let smallBox = $state(false);
-	const shrinkBox = () => {
-		smallBox = true;
-	};
-
 	import Search from './Search.svelte';
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
 	import About from './About.svelte';
 	import Projects from './Projects.svelte';
-
-	const closePalette = () => {
-		if (appState.lockPalette) return;
-		appState.showPalette = false;
-		appState.disableKeyboardShortcuts = false;
-	};
+	import { closePalette } from '$lib/app/actions';
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -27,22 +17,22 @@
 >
 	<div
 		class={[
-			smallBox ? 'h-60' : 'h-[30rem]',
-			'bg-zinc-925 w-lg rounded-2xl flex flex-col transition-all duration-500 ease-in-out'
+			appState.palette.shrink ? appState.palette.shrink : 'h-[30rem]',
+			'bg-zinc-925 w-lg rounded-2xl flex flex-col transition-all duration-300 ease-in-out'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
 		}}
 	>
-		{#if appState.palettePage === 'search'}
+		{#if appState.palette.page === 'search'}
 			<Search />
-		{:else if appState.palettePage === 'export'}
-			<Export {shrinkBox} />
-		{:else if appState.palettePage === 'import'}
+		{:else if appState.palette.page === 'export'}
+			<Export />
+		{:else if appState.palette.page === 'import'}
 			<Import />
-		{:else if appState.palettePage === 'projects'}
+		{:else if appState.palette.page === 'projects'}
 			<Projects />
-		{:else if appState.palettePage === 'about'}
+		{:else if appState.palette.page === 'about'}
 			<About />
 		{/if}
 	</div>

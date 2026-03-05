@@ -232,7 +232,7 @@
 <svelte:window
 	onkeydown={(e: KeyboardEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.showPalette) return;
+		if (appState.palette.open) return;
 		switch (e.code) {
 			case 'Digit1': {
 				setTimelineTool('pointer');

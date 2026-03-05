@@ -34,6 +34,7 @@ self.addEventListener('message', async function (event) {
 		case 'reset': {
 			clips.length = 0;
 			sources.length = 0;
+			latestSeekFrame = 0;
 			requestSeek();
 			break;
 		}
@@ -93,7 +94,7 @@ self.addEventListener('message', async function (event) {
 		case 'pause': {
 			playing = false;
 			decoderPool.pauseAll();
-			requestSeek();
+			requestSeek(event.data.frame);
 			break;
 		}
 		case 'seek': {
@@ -167,6 +168,9 @@ self.addEventListener('message', async function (event) {
 			seeking = false;
 			break;
 		}
+		case 'project-thumbnail': {
+			sendBitmapForThumbnail(event.data.requestId);
+		}
 	}
 });
 
@@ -181,6 +185,15 @@ const sendFrameForThumbnail = async (source: WorkerVideoSource, requestId: strin
 		{ command: 'import-done', requestId, sourceId: source.id, gap: source.gap, videoFrame },
 		[videoFrame]
 	);
+};
+
+const sendBitmapForThumbnail = async (requestId: string) => {
+	encoding = true;
+	await buildAndDrawFrame(latestSeekFrame);
+	encoding = false;
+	if (!renderer || !renderer.bitmap) return;
+	const bitmap = await createImageBitmap(renderer.bitmap);
+	self.postMessage({ command: 'project-thumbnail', requestId, bitmap }, [bitmap]);
 };
 
 const requestSeek = (frame: number = latestSeekFrame) => {

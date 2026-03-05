@@ -499,7 +499,7 @@
 	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.showPalette) return;
+		if (appState.palette.open) return;
 		switch (event.code) {
 			case 'Home':
 				if (timelineState.playing) pause();
@@ -525,11 +525,13 @@
 				zoomIn();
 				break;
 			case 'Digit0':
-				const maxZoom = calculateMaxZoomLevel();
-				if (timelineState.zoom < maxZoom) {
-					setZoom(maxZoom);
-				} else {
-					zoomToFit();
+				{
+					const maxZoom = calculateMaxZoomLevel();
+					if (timelineState.zoom < maxZoom) {
+						setZoom(maxZoom);
+					} else {
+						zoomToFit();
+					}
 				}
 				break;
 			case 'Space':

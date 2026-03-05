@@ -11,6 +11,7 @@ type ProjectTable = {
 	width: number;
 	aspect: number;
 	tracks: Track[];
+	duration: number;
 	createdAt: number;
 	lastModified: number;
 };
@@ -34,6 +35,7 @@ type ClipTable = {
 	track: number;
 	start: number;
 	duration: number;
+	params: number[];
 	createdAt: number;
 	lastModified: number;
 };
@@ -91,6 +93,7 @@ export class ProjectManager {
 			height: 1080,
 			width: 1920,
 			aspect: 0,
+			duration: 1800,
 			createdAt: Date.now(),
 			lastModified: Date.now()
 		};
@@ -127,6 +130,7 @@ export class ProjectManager {
 	}
 
 	async updateProject(updates: Partial<ProjectTable>) {
+		console.log(updates);
 		if (!this.db) return;
 		const tx = this.db.transaction('projects', 'readwrite');
 		const store = tx.objectStore('projects');
@@ -174,6 +178,7 @@ export class ProjectManager {
 			start: clip.start,
 			duration: clip.duration,
 			track: clip.track,
+			params: $state.snapshot(clip.params),
 			deleted: false,
 			createdAt: Date.now(),
 			lastModified: Date.now()
@@ -206,6 +211,7 @@ export class ProjectManager {
 					track: clip.track,
 					start: clip.start,
 					duration: clip.duration,
+					params: $state.snapshot(clip.params),
 					deleted: clip.deleted,
 					lastModified: Date.now()
 				};

@@ -168,8 +168,8 @@ export const processFile = async (file: File, handle?: FileSystemHandle) => {
 	) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = 'file type not supported';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
+		appState.palette.page = 'import';
+		appState.palette.open = true;
 		return;
 	}
 
@@ -179,8 +179,8 @@ export const processFile = async (file: File, handle?: FileSystemHandle) => {
 	if ('error' in info) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = info.error ?? '';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
+		appState.palette.page = 'import';
+		appState.palette.open = true;
 		return;
 	}
 
@@ -361,7 +361,7 @@ export const getSourceFromId = (id: string) => {
 	return foundSource;
 };
 
-const createThumbnail = async (
+export const createThumbnail = async (
 	image: ImageBitmap | VideoFrame,
 	imageWidth: number,
 	imageHeight: number

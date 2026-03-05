@@ -40,7 +40,6 @@
 
 	const onClick = (source: Source) => {
 		if (source.type === 'test' || source.type === 'text' || source.unlinked) return;
-		//if (source.preset) return;
 		hoverSelected = true;
 		showSourceInProgram(source);
 		appState.propertiesSection = 'source';
@@ -74,8 +73,8 @@
 					contentProps={{ side: 'right' }}
 					triggerProps={{
 						onclick: () => {
-							appState.palettePage = 'search';
-							appState.showPalette = true;
+							appState.palette.page = 'search';
+							appState.palette.open = true;
 						}
 					}}
 				>
@@ -270,8 +269,8 @@
 				ondragover={(e) => e.preventDefault()}
 				onclick={() => {
 					appState.import.importStarted = false;
-					appState.palettePage = 'import';
-					appState.showPalette = true;
+					appState.palette.page = 'import';
+					appState.palette.open = true;
 				}}
 			>
 				{@render addIcon('size-5 mr-2 pointer-events-none')} import
@@ -329,7 +328,7 @@
 	onkeydown={(e) => {
 		switch (e.code) {
 			case 'Escape':
-				if (appState.selectedSource && !appState.showPalette) {
+				if (appState.selectedSource && !appState.palette.open) {
 					showTimelineInProgram();
 					showHoverName = false;
 				}

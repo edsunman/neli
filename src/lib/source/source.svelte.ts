@@ -22,7 +22,7 @@ export class Source {
 	selection = { in: 0, out: 0, currentFrame: 0 };
 
 	constructor(type: SourceType, info: FileInfo) {
-		this.id = Math.random().toString(16).slice(2);
+		this.id = crypto.randomUUID();
 		this.type = type;
 		this.info = info;
 	}

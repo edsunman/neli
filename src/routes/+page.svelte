@@ -19,8 +19,8 @@
 			(navigator && !navigator.gpu) ||
 			!('VideoEncoder' in window && 'VideoDecoder' in window)
 		) {
-			appState.showPalette = true;
-			appState.palettePage = 'about';
+			appState.palette.open = true;
+			appState.palette.page = 'about';
 			localStorage.setItem('alreadyVisited', 'true');
 		}
 
@@ -61,7 +61,7 @@
 
 <div id="tooltipPortal" class="relative overflow-hidden z-8"></div>
 
-{#if appState.showPalette}
+{#if appState.palette.open}
 	<Palette />
 {/if}
 
@@ -87,22 +87,22 @@
 		if (appState.disableKeyboardShortcuts) return;
 		switch (e.code) {
 			case 'KeyP':
-				if (!appState.showPalette) {
-					appState.palettePage = 'search';
-					appState.showPalette = true;
+				if (!appState.palette.open) {
+					appState.palette.page = 'search';
+					appState.palette.open = true;
 				}
 				break;
 			case 'KeyN':
-				if (!appState.showPalette) {
-					appState.palettePage = 'import';
+				if (!appState.palette.open) {
+					appState.palette.page = 'import';
 					appState.import.importStarted = false;
-					appState.showPalette = true;
+					appState.palette.open = true;
 				}
 				break;
 			case 'KeyM':
-				if (!appState.showPalette) {
-					appState.palettePage = 'export';
-					appState.showPalette = true;
+				if (!appState.palette.open) {
+					appState.palette.page = 'export';
+					appState.palette.open = true;
 				}
 				break;
 		}
