@@ -78,7 +78,11 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 	const data = await workerManager.sendFile(newSource);
 	if (!newSource.thumbnail && data.videoFrame) {
 		const videoFrame = data.videoFrame as VideoFrame;
-		const blob = await createThumbnail(videoFrame, videoFrame.codedWidth, videoFrame.codedHeight);
+		const blob = await createThumbnailBlob(
+			videoFrame,
+			videoFrame.codedWidth,
+			videoFrame.codedHeight
+		);
 		setSourceThumbnail(data.sourceId, blob);
 		projectManager.createThumbnail(blob, newSource.id);
 		appState.import.thumbnail = newSource.thumbnail;
@@ -92,13 +96,21 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 	return newSource;
 };
 
-export const createImageSource = async (file: File, info: FileInfo) => {
-	const newSource = createSource('image', info, file);
+export const createImageSource = async (file: File, info: FileInfo, existingSource?: Source) => {
+	//const newSource = createSource('image', info, file);
+	let newSource;
+
+	if (existingSource) {
+		newSource = existingSource;
+		newSource.file = file;
+	} else {
+		newSource = createSource('image', info, file);
+	}
+
 	newSource.info = info;
 	const data = await workerManager.sendFile(newSource);
 	if (!newSource.thumbnail && data.bitmap) {
-		const bitmap = data.bitmap as ImageBitmap;
-		const blob = await createThumbnail(bitmap, bitmap.width, bitmap.height);
+		const blob = await createThumbnailBlob(data.bitmap, data.bitmap.width, data.bitmap.height);
 		setSourceThumbnail(data.sourceId, blob);
 		projectManager.createThumbnail(blob, newSource.id);
 		appState.import.thumbnail = newSource.thumbnail;
@@ -108,8 +120,15 @@ export const createImageSource = async (file: File, info: FileInfo) => {
 	return newSource;
 };
 
-export const createAudioSource = async (file: File, info: FileInfo) => {
-	const newSource = createSource('audio', info, file);
+export const createAudioSource = async (file: File, info: FileInfo, existingSource?: Source) => {
+	let newSource;
+
+	if (existingSource) {
+		newSource = existingSource;
+		newSource.file = file;
+	} else {
+		newSource = createSource('audio', info, file);
+	}
 
 	newSource.info = info;
 
@@ -202,7 +221,7 @@ export const relinkFile = async (file: File, sourceId: string) => {
 	if (!source) return;
 
 	if (source.type === 'video') await createVideoSource(file, source.info, source);
-	// TODO: audio file re-link
+	if (source.type === 'audio') await createAudioSource(file, source.info, source);
 
 	source.unlinked = false;
 };
@@ -273,7 +292,8 @@ export const checkDroppedSource = async (
 		return {
 			type: 'image',
 			format: fileType === 'image/jpeg' ? 'jpeg' : 'png',
-			resolution: { width: width, height: height }
+			resolution: { width: width, height: height },
+			extention: file.name.split('.').pop() || ''
 		};
 	}
 	return { error: 'File format is not supported' };
@@ -361,7 +381,7 @@ export const getSourceFromId = (id: string) => {
 	return foundSource;
 };
 
-export const createThumbnail = async (
+export const createThumbnailBlob = async (
 	image: ImageBitmap | VideoFrame,
 	imageWidth: number,
 	imageHeight: number

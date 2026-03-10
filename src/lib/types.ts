@@ -68,6 +68,7 @@ export type FileInfo =
 			type: 'image';
 			format: string;
 			resolution: { width: number; height: number };
+			extention: string;
 	  }
 	| { type: 'text' }
 	| { type: 'test' };

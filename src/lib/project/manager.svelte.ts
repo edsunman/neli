@@ -35,6 +35,7 @@ type ClipTable = {
 	track: number;
 	start: number;
 	duration: number;
+	sourceOffset: number;
 	params: number[];
 	createdAt: number;
 	lastModified: number;
@@ -130,7 +131,6 @@ export class ProjectManager {
 	}
 
 	async updateProject(updates: Partial<ProjectTable>) {
-		console.log(updates);
 		if (!this.db) return;
 		const tx = this.db.transaction('projects', 'readwrite');
 		const store = tx.objectStore('projects');
@@ -176,6 +176,7 @@ export class ProjectManager {
 			projectId: appState.project.id,
 			sourceId: clip.source.id,
 			start: clip.start,
+			sourceOffset: clip.sourceOffset,
 			duration: clip.duration,
 			track: clip.track,
 			params: $state.snapshot(clip.params),

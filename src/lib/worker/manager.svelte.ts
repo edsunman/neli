@@ -14,18 +14,26 @@ export class WorkerManager {
 	setup(canvas: HTMLCanvasElement) {
 		this.mediaWorker = new MediaWorker();
 		this.waveformWorker = new WaveformWorker();
-		const offscreenCanvas = canvas.transferControlToOffscreen();
+		this.mediaWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
+		this.waveformWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
 
-		this.mediaWorker.postMessage(
+		const offscreenCanvas = canvas.transferControlToOffscreen();
+		return this.request(
+			this.mediaWorker,
+			'init',
+			{
+				command: 'init',
+				canvas: offscreenCanvas
+			},
+			[offscreenCanvas]
+		);
+		/* this.mediaWorker.postMessage(
 			{
 				command: 'init',
 				canvas: offscreenCanvas
 			},
 			{ transfer: [offscreenCanvas] }
-		);
-
-		this.mediaWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
-		this.waveformWorker.addEventListener('message', (e) => this.mediaWorkerListner(e));
+		); */
 	}
 
 	reset() {

@@ -4,7 +4,6 @@
 	import { setupTests } from '$lib/tests';
 	import { loadFont } from '$lib/text/utils';
 	import { focusTrack } from '$lib/timeline/actions';
-	import { setupProjectManager } from '$lib/project/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
 	import Program from '$lib/components/panels/Program.svelte';
@@ -28,8 +27,6 @@
 		appState.fonts.push(font);
 
 		setupTests();
-
-		await setupProjectManager();
 	});
 </script>
 
@@ -43,7 +40,6 @@
 	{/if}
 </svelte:head>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	id="portalContainer"
 	class="relative overflow-hidden h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] height-xl:grid-rows-[calc(100svh-392px)_392px] bg-zinc-900"

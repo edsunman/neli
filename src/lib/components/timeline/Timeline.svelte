@@ -49,12 +49,12 @@
 		frameToCanvasPixel
 	} from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
-
-	import Controls from './Controls.svelte';
-	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
+
+	import Controls from './Controls.svelte';
+	import ContextMenu from '../ui/ContextMenu.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -437,7 +437,7 @@
 
 <div class="flex flex-col h-full">
 	<Controls />
-	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
+
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		style:cursor={cursorStyle}
@@ -537,9 +537,17 @@
 			case 'Space':
 				event.preventDefault();
 				if (timelineState.playing || programState.playing) {
-					appState.selectedSource ? pauseProgram() : pause();
+					if (appState.selectedSource) {
+						pauseProgram();
+					} else {
+						pause();
+					}
 				} else if (!appState.mouseIsDown) {
-					appState.selectedSource ? playProgram() : play();
+					if (appState.selectedSource) {
+						playProgram();
+					} else {
+						play();
+					}
 				}
 				break;
 			case 'Backspace':

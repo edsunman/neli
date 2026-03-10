@@ -28,12 +28,16 @@ self.addEventListener('message', async function (event) {
 			encoder = new Encoder();
 			canvas = event.data.canvas;
 			renderer = new WebGPURenderer(canvas);
+			await renderer.start();
+			requestSeek();
+			self.postMessage({ command: 'init-done', requestId: event.data.requestId });
 			break;
 		}
-
 		case 'reset': {
 			clips.length = 0;
 			sources.length = 0;
+			selectedSource = null;
+			programTimelineActive = false;
 			latestSeekFrame = 0;
 			requestSeek();
 			break;
@@ -47,6 +51,7 @@ self.addEventListener('message', async function (event) {
 			} else if (event.data.type === 'image') {
 				const bitmap = await createImageBitmap(event.data.file);
 				renderer.loadTexture(bitmap, event.data.id);
+				await saveFileToOPFS(event.data.file, event.data.id);
 				self.postMessage(
 					{
 						command: 'thumbnail',
@@ -208,14 +213,13 @@ const requestSeek = (frame: number = latestSeekFrame) => {
 const processSeekFrame = async () => {
 	seeking = true;
 	while (true) {
-		const frameToProcess = latestSeekFrame;
 		const versionToProcess = latestRequestId;
-
 		decoderPool.pauseAll();
+
 		if (selectedSource) {
-			await drawSourceFrame(frameToProcess, false, selectedSource);
+			await drawSourceFrame(latestSeekFrame, false, selectedSource);
 		} else {
-			await buildAndDrawFrame(frameToProcess);
+			await buildAndDrawFrame(latestSeekFrame);
 		}
 		if (latestRequestId === versionToProcess) {
 			break;
@@ -559,3 +563,36 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 		`Frame Timeout: Frame ${frameIndex} failed to render after ${maxRetries} attempts.`
 	);
 }
+
+const saveFileToOPFS = async (file: File, fileName: string) => {
+	const root = await navigator.storage.getDirectory();
+
+	const originalExt = file.name.split('.').pop() || '';
+	const finalFileName = `${fileName}.${originalExt}`;
+
+	// 1. Check if it already exists by trying to get it WITHOUT 'create: true'
+	const existingHandle = await root
+		.getFileHandle(finalFileName, { create: false })
+		.catch(() => null);
+
+	if (existingHandle) {
+		console.log(`File "${finalFileName}" already exists. Skipping save.`);
+		return; // Exit early
+	}
+
+	// 2. If we reach here, the file doesn't exist. Create it.
+	const fileHandle = await root.getFileHandle(finalFileName, { create: true });
+	const accessHandle = await fileHandle.createSyncAccessHandle();
+
+	try {
+		const buffer = await file.arrayBuffer();
+		accessHandle.write(new Uint8Array(buffer));
+		accessHandle.flush();
+
+		console.log(`Original file "${file.name}" saved as "${finalFileName}"`);
+	} catch (err) {
+		console.error('Failed to save to OPFS:', err);
+	} finally {
+		accessHandle.close();
+	}
+};

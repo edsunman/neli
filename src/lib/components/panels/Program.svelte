@@ -15,7 +15,8 @@
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
 	import { pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
-	import { createThumbnail } from '$lib/source/actions';
+	import { setupProjectManager } from '$lib/project/actions';
+	import { closePalette } from '$lib/app/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -108,12 +109,22 @@
 
 	onMount(async () => {
 		if (!canvas) return;
-		workerManager.setup(canvas);
+		appState.palette.shrink = 'h-50';
+		appState.palette.open = true;
+		appState.palette.page = 'projects';
+		appState.palette.lock = true;
+		appState.progress.started = true;
+		appState.progress.message = 'loading interface...';
+		await workerManager.setup(canvas);
+		await setupProjectManager();
+		appState.palette.lock = false;
+		appState.progress.percentage = 100;
+		setTimeout(() => closePalette(), 300);
+		//console.log('setup done');
 	});
 </script>
 
 <div class="h-full" style="container-type: size">
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		onmousedown={mouseDown}

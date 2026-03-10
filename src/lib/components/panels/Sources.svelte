@@ -10,7 +10,6 @@
 		folderIcon,
 		presetsIcon,
 		warningIcon,
-		seekIcon,
 		linkIcon
 	} from '../icons/Icons.svelte';
 	import { pause } from '$lib/timeline/actions';
@@ -32,6 +31,7 @@
 	let clickedSourceId = '';
 
 	let filteredSources = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		appState.sourceFolders;
 		return appState.sources.filter((source) => {
 			return source.folderId === appState.selectedSourceFolder;
@@ -65,7 +65,6 @@
 </script>
 
 <Tooltip.Provider delayDuration={500}>
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="mt-5 height-lg:mt-12 ml-16 xl:ml-[calc(100svw/20)] relative">
 		<div class="absolute -left-13">
 			<div class="bg-zinc-950 rounded-lg flex flex-col mb-5">
@@ -113,7 +112,7 @@
 					presets
 				</MyTooltip>
 
-				{#each appState.sourceFolders as folder}
+				{#each appState.sourceFolders as folder (folder.id)}
 					<MyTooltip
 						contentProps={{ side: 'right' }}
 						triggerProps={{
@@ -151,7 +150,7 @@
 			{hoverName}
 		</div>
 		<div class="text-zinc-500 text-sm w-full flex flex-col relative gap-1">
-			{#each filteredSources as source, i}
+			{#each filteredSources as source, i (source.id)}
 				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
 					oncontextmenu={(e) => {
@@ -245,8 +244,6 @@
 					<span class="hidden lg:block truncate">{source.name}</span>
 				</button>
 			{/each}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<button
 				class={[
 					dragHover

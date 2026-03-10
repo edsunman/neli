@@ -1,11 +1,11 @@
-import { closePalette } from '$lib/app/actions';
 import { setAllJoins } from '$lib/clip/actions';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
 import {
 	assignSourcesToFolders,
+	createImageSource,
 	createSource,
-	createThumbnail,
+	createThumbnailBlob,
 	getSourceFromId,
 	relinkFile,
 	setSourceThumbnail
@@ -35,14 +35,7 @@ export const setupProjectManager = async () => {
 
 	const lastProject = await projectManager.getLastModifiedProject();
 	if (lastProject) {
-		appState.palette.shrink = 'h-50';
-		appState.palette.open = true;
-		appState.palette.page = 'projects';
-		appState.palette.lock = true;
-		appState.progress.started = true;
 		await loadProject(lastProject.id);
-		appState.palette.lock = false;
-		closePalette();
 		return;
 	}
 
@@ -106,10 +99,10 @@ export const loadProject = async (id: number) => {
 	appState.project.resolution.height = project.height;
 	appState.project.aspect = project.aspect;
 	appState.propertiesSection = 'project';
+	appState.selectedSource = null;
 	resizeCanvas(project.width, project.height);
 	workerManager.reset();
 
-	appState.progress.message = 'linking files...';
 	appState.selectedSource = null;
 	appState.sources.length = 0;
 	const projectSources = await projectManager.getSources(id);
@@ -137,6 +130,18 @@ export const loadProject = async (id: number) => {
 			if (source.handle) newSource.handle = source.handle;
 		}
 
+		if (source.info.type === 'image') {
+			// check opfs for image
+			const fileName = `${source.id}.${source.info.extention}`;
+			const file = await getFileFromOPFS(fileName);
+			if (file) {
+				await createImageSource(file, source.info, newSource);
+			} else {
+				newSource.unlinked = true;
+			}
+		}
+
+		appState.progress.message = 'linking files...';
 		appState.progress.percentage = (i / projectSources.length) * 100;
 		i++;
 	}
@@ -147,6 +152,7 @@ export const loadProject = async (id: number) => {
 	setZoom(0.9);
 	timelineState.tracks.length = 0;
 	timelineState.tracks = Array.from(project.tracks);
+	timelineState.showPlayhead = true;
 	focusTrack(0);
 	setTrackPositions();
 
@@ -157,7 +163,7 @@ export const loadProject = async (id: number) => {
 	for (const clip of projectClips) {
 		const source = getSourceFromId(clip.sourceId);
 		if (!source) continue;
-		const newClip = new Clip(source, clip.track, clip.start, clip.duration, 0);
+		const newClip = new Clip(source, clip.track, clip.start, clip.duration, clip.sourceOffset);
 		newClip.id = clip.id;
 		newClip.params = clip.params;
 		timelineState.clips.push(newClip);
@@ -174,10 +180,22 @@ export const loadProject = async (id: number) => {
 
 export const createProjectThumbnail = async () => {
 	const { bitmap } = await workerManager.getThumbnail();
-	console.log(bitmap);
-	const blob = await createThumbnail(bitmap, bitmap.width, bitmap.height);
-	//setSourceThumbnail(data.sourceId, blob);
+	const blob = await createThumbnailBlob(bitmap, bitmap.width, bitmap.height);
 	projectManager.createThumbnail(blob, appState.project.id.toString());
 	bitmap.close();
 	return blob;
+};
+
+const getFileFromOPFS = async (fileName: string) => {
+	const root = await navigator.storage.getDirectory();
+	let handle;
+	// We still use try/cahch internally, but your main code stays clean
+	try {
+		handle = await root.getFileHandle(fileName, { create: false });
+	} catch (e) {
+		console.error(e);
+		return;
+	}
+
+	return handle.getFile();
 };
