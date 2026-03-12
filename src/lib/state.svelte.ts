@@ -46,7 +46,7 @@ class AppState {
 	});
 
 	project = $state({
-		id: 0,
+		id: '',
 		name: '',
 		resolution: { height: 1080, width: 1920 },
 		aspect: 0

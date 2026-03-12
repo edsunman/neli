@@ -27,13 +27,6 @@ export class WorkerManager {
 			},
 			[offscreenCanvas]
 		);
-		/* this.mediaWorker.postMessage(
-			{
-				command: 'init',
-				canvas: offscreenCanvas
-			},
-			{ transfer: [offscreenCanvas] }
-		); */
 	}
 
 	reset() {

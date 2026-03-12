@@ -11,9 +11,12 @@ import {
 import { pause } from '$lib/timeline/actions';
 import { programTimelinePixelToFrame, scaleToFit } from './utils';
 
-export const playProgram = () => {
+export const playProgram = async () => {
 	if (appState.selectedSource?.type === 'audio') startProgramPlayLoop();
-	if (appState.selectedSource?.type == 'video') workerManager.play(programState.currentFrame);
+	if (appState.selectedSource?.type == 'video') {
+		const result = await workerManager.play(programState.currentFrame);
+		if (result.workerStarted) startProgramPlayLoop();
+	}
 };
 
 export const startProgramPlayLoop = () => {

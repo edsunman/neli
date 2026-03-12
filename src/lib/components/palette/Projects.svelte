@@ -8,7 +8,7 @@
 	import { getRelativeTime } from '$lib/project/utils';
 
 	type Project = {
-		id: number;
+		id: string;
 		name: string;
 		createdAt: number;
 		lastModified: number;
@@ -18,11 +18,10 @@
 
 	let scrollDiv = $state<HTMLDivElement>();
 	let projects = $state<Project[]>([]);
-	let currentProject = $state<Project>();
 
-	let selectedIndex = 0;
+	let selectedIndex = 1;
 
-	const selectProject = async (id: number) => {
+	const selectProject = async (id: string) => {
 		if (appState.project.id === id) {
 			closePalette();
 			return;
@@ -37,7 +36,7 @@
 		closePalette();
 	};
 
-	const selectById = (id: number) => {
+	const selectById = (id: string) => {
 		let i = -1;
 		projects.forEach((project) => {
 			if (project.selected) project.selected = false;
@@ -57,7 +56,7 @@
 			index = 0;
 		}
 		let i = 0;
-		let projectId = 0;
+		let projectId = '';
 		projects.forEach((project) => {
 			if (project.selected) project.selected = false;
 			if (index === i) {
@@ -83,28 +82,26 @@
 	onMount(async () => {
 		const dbProject = await projectManager.getProject(appState.project.id);
 		if (!dbProject) return;
-		currentProject = { ...dbProject, selected: false, thumbnail: '' };
 		const dbProjects = (await projectManager.getAllProjects()) ?? [];
 		projects = dbProjects
-			.filter((project) => project.id !== appState.project.id)
 			.sort((a, b) => b.lastModified - a.lastModified)
 			.map(
 				(project, i): Project => ({
 					...project,
-					selected: i === 0 ? true : false,
+					selected: i === selectedIndex ? true : false,
 					thumbnail: ''
 				})
 			);
-		const thumbnail = await projectManager.getThumbnail(appState.project.id.toString());
-		if (thumbnail) currentProject.thumbnail = URL.createObjectURL(thumbnail);
 		for (let i = 0; i < projects.length; i++) {
-			const thumbnail = await projectManager.getThumbnail(projects[i].id.toString());
+			if (projects[i].id === appState.project.id) {
+				const blob = await createProjectThumbnail();
+				projects[i].thumbnail = URL.createObjectURL(blob);
+				continue;
+			}
+			const thumbnail = await projectManager.getThumbnail(projects[i].id);
 			if (!thumbnail) continue;
 			projects[i].thumbnail = URL.createObjectURL(thumbnail);
 		}
-
-		const blob = await createProjectThumbnail();
-		currentProject.thumbnail = URL.createObjectURL(blob);
 	});
 </script>
 
@@ -126,7 +123,7 @@
 			class="px-8 overflow-y-scroll h-full gap-1 flex flex-col"
 			style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
 		>
-			{#if currentProject}
+			<!-- {#if currentProject}
 				<div
 					class={[
 						'first:mt-4 last:mb-4 w-full px-2 py-2.5 rounded-lg flex items-center group',
@@ -144,7 +141,7 @@
 					<span class="flex-1 text-left text-sm truncate mr-4">{currentProject.name}</span>
 					<span class={['text-sm ', ' text-zinc-700']}>open</span>
 				</div>
-			{/if}
+			{/if} -->
 			{#each projects as project (project.id)}
 				<button
 					id={`project-${project.id}`}
@@ -170,7 +167,7 @@
 					<span class="flex-1 text-left text-sm truncate mr-4">{project.name}</span>
 					<span class={['text-sm ', project.selected ? 'text-zinc-500' : ' text-zinc-700']}>
 						{#if appState.project.id === project.id}
-							open
+							open now
 						{:else}
 							{getRelativeTime(project.lastModified)}
 						{/if}

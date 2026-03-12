@@ -5,7 +5,7 @@ import type { FileInfo, SourceType, Track } from '$lib/types';
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
 
 type ProjectTable = {
-	id: number;
+	id: string;
 	name: string;
 	height: number;
 	width: number;
@@ -18,7 +18,7 @@ type ProjectTable = {
 
 type SourceTable = {
 	id: string;
-	projectId: number;
+	projectId: string;
 	type: SourceType;
 	info: FileInfo;
 	name: string;
@@ -29,7 +29,7 @@ type SourceTable = {
 
 type ClipTable = {
 	id: string;
-	projectId: number;
+	projectId: string;
 	sourceId: string;
 	deleted: boolean;
 	track: number;
@@ -43,18 +43,18 @@ type ClipTable = {
 
 interface VideoEditorDB extends DBSchema {
 	projects: {
-		key: number;
+		key: string;
 		value: ProjectTable;
 	};
 	sources: {
-		key: number;
+		key: string;
 		value: SourceTable;
-		indexes: { 'by-project': number };
+		indexes: { 'by-project': string };
 	};
 	clips: {
 		key: string;
 		value: ClipTable;
-		indexes: { 'by-project': number };
+		indexes: { 'by-project': string };
 	};
 	thumbnails: {
 		key: string;
@@ -64,20 +64,24 @@ interface VideoEditorDB extends DBSchema {
 
 export class ProjectManager {
 	private dbName = 'VideoEditorDB';
+	// Increment when schema changes
 	private dbVersion = 1;
 	private db: IDBPDatabase<VideoEditorDB> | null = null;
 
 	async init() {
 		this.db = await openDB(this.dbName, this.dbVersion, {
 			upgrade(db) {
+				// Delete existing stores
+				const existingStores = Array.from(db.objectStoreNames);
+				existingStores.forEach((storeName) => {
+					db.deleteObjectStore(storeName);
+				});
+				// Create new ones
 				db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
-
 				const clipStore = db.createObjectStore('clips', { keyPath: 'id' });
 				clipStore.createIndex('by-project', 'projectId');
-
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
-
 				db.createObjectStore('thumbnails');
 			}
 		});
@@ -88,7 +92,8 @@ export class ProjectManager {
 			console.error('db not ready');
 			return;
 		}
-		const newProject: Omit<ProjectTable, 'id'> = {
+		const newProject: ProjectTable = {
+			id: crypto.randomUUID(),
 			name,
 			tracks: [],
 			height: 1080,
@@ -125,7 +130,7 @@ export class ProjectManager {
 		return last;
 	}
 
-	async getProject(id: number) {
+	async getProject(id: string) {
 		if (!this.db) return;
 		return await this.db.get('projects', id);
 	}
@@ -163,10 +168,27 @@ export class ProjectManager {
 		return id;
 	}
 
-	async getSources(projectId: number) {
+	async getSources(projectId: string) {
 		if (!this.db) return [];
 		const sources = await this.db.getAllFromIndex('sources', 'by-project', projectId);
 		return sources.sort((a, b) => a.createdAt - b.createdAt);
+	}
+
+	async updateSource(sourceId: string, updates: Partial<SourceTable>) {
+		if (!this.db) return;
+		const tx = this.db.transaction('sources', 'readwrite');
+		const store = tx.objectStore('sources');
+		const source = await store.get(sourceId);
+		if (!source) throw new Error(`Source not found`);
+		const updatedSource = {
+			...source,
+			...updates,
+			lastModified: Date.now()
+		};
+
+		await store.put(updatedSource);
+		await tx.done;
+		return updatedSource;
 	}
 
 	async createClip(clip: Clip) {
@@ -188,7 +210,7 @@ export class ProjectManager {
 		return id;
 	}
 
-	async getClips(projectId: number) {
+	async getClips(projectId: string) {
 		if (!this.db) return [];
 		return await this.db.getAllFromIndex('clips', 'by-project', projectId);
 	}
@@ -200,17 +222,22 @@ export class ProjectManager {
 		const tx = this.db.transaction('clips', 'readwrite');
 		const store = tx.objectStore('clips');
 
+		const missingClips: Clip[] = [];
 		await Promise.all(
 			updates.map(async (clip) => {
 				if (!clip.id) throw new Error('Update missing id');
 
 				const existing = await store.get(clip.id);
-				if (!existing) return null;
+				if (!existing) {
+					missingClips.push(clip);
+					return null;
+				}
 
 				const merged = {
 					...existing,
 					track: clip.track,
 					start: clip.start,
+					sourceOffset: clip.sourceOffset,
 					duration: clip.duration,
 					params: $state.snapshot(clip.params),
 					deleted: clip.deleted,
@@ -223,6 +250,10 @@ export class ProjectManager {
 		);
 
 		await tx.done;
+
+		for (const clip of missingClips) {
+			await this.createClip(clip);
+		}
 	}
 
 	async purgeDeletedClips() {

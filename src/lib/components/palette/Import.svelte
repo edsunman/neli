@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import { processFile } from '$lib/source/actions';
+	import { clickToImportFile, dropToImportFile } from '$lib/source/actions';
 	import { infoIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
 	import { closePalette } from '$lib/app/actions';
 
 	import Button from '../ui/Button.svelte';
 	import TitleBar from './TitleBar.svelte';
 
-	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
-	let disableButton = $state(false);
 
 	const formatDuration = (seconds: number) => {
 		seconds = Math.floor(seconds);
@@ -18,16 +16,6 @@
 		const formattedMinutes = String(minutes).padStart(2, '0');
 		const formattedSeconds = String(remainingSeconds).padStart(2, '0');
 		return `${formattedMinutes}:${formattedSeconds}`;
-	};
-
-	const fileDropped = async (file: File) => {
-		appState.palette.lock = true;
-		disableButton = true;
-
-		await processFile(file);
-
-		appState.palette.lock = false;
-		disableButton = false;
 	};
 
 	const truncateString = (str: string, maxLength: number) => {
@@ -57,39 +45,23 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
 			class={[
-				dragHover ? 'border-zinc-400' : 'border-zinc-600',
-				'hover:border-zinc-400 rounded-xl border-2 text-zinc-200 flex-1',
+				dragHover ? 'border-zinc-400 text-zinc-200' : 'border-zinc-600 text-zinc-400',
+				'hover:border-zinc-400 rounded-xl border-2 hover:text-zinc-200 flex-1',
 				'grow mt-8 mx-12 mb-12 border-dashed items-center justify-center flex'
 			]}
-			ondrop={(e: DragEvent) => {
+			ondrop={(e) => {
 				e.preventDefault();
-				dragHover = false;
-				const files = e.dataTransfer?.files;
-				if (!files) return;
-				fileDropped(files[0]);
+				dropToImportFile(e);
 			}}
 			ondragover={(e) => e.preventDefault()}
 			ondragenter={() => (dragHover = true)}
 			ondragleave={() => (dragHover = false)}
-			onclick={() => {
-				if (!fileInput) return;
-				fileInput.click();
-			}}
+			onclick={() => clickToImportFile()}
 		>
 			<p class="text-center">
 				drop files to import<br /><small>(.mp4, .mp3, .wav, .srt, .jpg, .png)</small>
 			</p>
 		</div>
-		<input
-			onchange={(e) => {
-				if (!e.currentTarget.files) return;
-				const file = e.currentTarget.files[0];
-				fileDropped(file);
-			}}
-			bind:this={fileInput}
-			type="file"
-			class="hidden"
-		/>
 	{:else if appState.import.fileDetails}
 		{@const fileDetails = appState.import.fileDetails}
 		<div class="flex-1">
@@ -177,8 +149,8 @@
 				onclick={() => {
 					closePalette();
 				}}
-				text={'Done'}
-				disabled={disableButton}
+				text="done"
+				disabled={appState.palette.lock}
 			/>
 		</div>
 	{/if}

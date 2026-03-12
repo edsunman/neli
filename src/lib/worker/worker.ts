@@ -228,7 +228,7 @@ const processSeekFrame = async () => {
 	seeking = false;
 };
 
-const setupFrame = async (frameNumber: number) => {
+const setupFrame = async (frameNumber: number, useSavedFrame: boolean) => {
 	for (const clip of clips) {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
@@ -237,7 +237,7 @@ const setupFrame = async (frameNumber: number) => {
 			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
 			const frameDurationMs = 1000 / 30;
 			const frameTimeMs = clipFrame * frameDurationMs;
-			decoderPool.decoders.get(clip.id)?.play(frameTimeMs, true);
+			decoderPool.decoders.get(clip.id)?.play(frameTimeMs, useSavedFrame);
 		}
 	}
 };
@@ -255,7 +255,7 @@ const startPlayLoop = async (startingFrame: number) => {
 		fps = selectedSource.frameRate;
 		await setupSourceFrame(startingFrame, selectedSource);
 	} else {
-		await setupFrame(startingFrame);
+		await setupFrame(startingFrame, true);
 	}
 
 	const msPerFrame = 1000 / fps;
@@ -442,7 +442,7 @@ const encodeAndCreateFile = async (
 
 	encodeAudio(audioBuffer, durationInFrames);
 
-	await setupFrame(startFrame);
+	await setupFrame(startFrame, false);
 
 	try {
 		for await (const { frame, index } of frameGenerator(durationInFrames, startFrame)) {
@@ -488,18 +488,18 @@ const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
 	const numberOfChannels = 2;
 
 	const durationInSeconds = durationInFrames / 30;
-	const totalInputFrames = 48000 * durationInSeconds;
+	const totalInputFrames = Math.floor(48000 * durationInSeconds);
 
 	const chunkFrameSize = 1024; // Number of frames per AudioData chunk
 
 	// Split buffer into seperate arrays for each channel
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
 		const startOffset = c * totalInputFrames;
-		return new Float32Array(
-			audioBuffer.buffer,
-			startOffset * Float32Array.BYTES_PER_ELEMENT,
-			totalInputFrames
+		const startByteOffest = startOffset * Float32Array.BYTES_PER_ELEMENT;
+		console.log(
+			`trying with startOffset: ${startOffset}, byteOffset:${startByteOffest}, input frames: ${totalInputFrames}`
 		);
+		return new Float32Array(audioBuffer.buffer, startByteOffest, totalInputFrames);
 	});
 
 	let encodeTimestamp = 0;
@@ -566,21 +566,14 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 
 const saveFileToOPFS = async (file: File, fileName: string) => {
 	const root = await navigator.storage.getDirectory();
-
 	const originalExt = file.name.split('.').pop() || '';
 	const finalFileName = `${fileName}.${originalExt}`;
 
-	// 1. Check if it already exists by trying to get it WITHOUT 'create: true'
 	const existingHandle = await root
 		.getFileHandle(finalFileName, { create: false })
 		.catch(() => null);
+	if (existingHandle) return;
 
-	if (existingHandle) {
-		console.log(`File "${finalFileName}" already exists. Skipping save.`);
-		return; // Exit early
-	}
-
-	// 2. If we reach here, the file doesn't exist. Create it.
 	const fileHandle = await root.getFileHandle(finalFileName, { create: true });
 	const accessHandle = await fileHandle.createSyncAccessHandle();
 
@@ -588,8 +581,6 @@ const saveFileToOPFS = async (file: File, fileName: string) => {
 		const buffer = await file.arrayBuffer();
 		accessHandle.write(new Uint8Array(buffer));
 		accessHandle.flush();
-
-		console.log(`Original file "${file.name}" saved as "${finalFileName}"`);
 	} catch (err) {
 		console.error('Failed to save to OPFS:', err);
 	} finally {

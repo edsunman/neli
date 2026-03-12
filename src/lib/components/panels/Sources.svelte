@@ -14,7 +14,7 @@
 	} from '../icons/Icons.svelte';
 	import { pause } from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
-	import { getSourceFromId, processFile, relinkFile } from '$lib/source/actions';
+	import { clickToRelinkFile, dropToImportFile } from '$lib/source/actions';
 	import { showSourceInProgram, showTimelineInProgram } from '$lib/program/actions';
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
@@ -26,7 +26,6 @@
 	let showHoverName = $state(false);
 	let hoverSelected = $state(false);
 	let forceHoverId = $state('');
-	let fileInput = $state<HTMLInputElement>();
 
 	let clickedSourceId = '';
 
@@ -43,22 +42,6 @@
 		hoverSelected = true;
 		showSourceInProgram(source);
 		appState.propertiesSection = 'source';
-	};
-
-	const onDrop = async (e: DragEvent) => {
-		e.preventDefault();
-		dragHover = false;
-
-		const files = e.dataTransfer?.files;
-		const items = e.dataTransfer?.items;
-		if (!files || !items) return;
-
-		if (items[0] && typeof items[0].getAsFileSystemHandle === 'function') {
-			const fileHandle = await items[0].getAsFileSystemHandle();
-			if (fileHandle) processFile(files[0], fileHandle);
-		} else {
-			processFile(files[0]);
-		}
 	};
 
 	let contextMenu: ContextMenu;
@@ -246,17 +229,17 @@
 			{/each}
 			<button
 				class={[
-					dragHover
-						? 'border-zinc-300 text-zinc-200'
-						: appState.sources.length <= 2
-							? 'border-zinc-600 text-zinc-500'
-							: 'border-zinc-800 text-zinc-800',
+					dragHover ? 'border-zinc-300 text-zinc-200' : 'border-zinc-600 text-zinc-500',
 					!appState.mouseIsDown && 'hover:border-zinc-500 hover:text-zinc-400',
 					'focus:border-zinc-300 focus:text-zinc-200 focus:outline-none',
 					'[&:nth-child(n+8)]:hidden height-xl:[&:nth-child(n+8)]:flex rounded-lg border-2 select-none ',
 					'border-dashed items-center justify-center flex h-14 mt-2 ml-2'
 				]}
-				ondrop={onDrop}
+				ondrop={(e) => {
+					e.preventDefault();
+					dragHover = false;
+					dropToImportFile(e);
+				}}
 				ondragenter={() => {
 					dragHover = true;
 				}}
@@ -277,41 +260,14 @@
 	</div>
 </Tooltip.Provider>
 
-<input
-	onchange={(e) => {
-		if (!e.currentTarget.files) return;
-		const file = e.currentTarget.files[0];
-		relinkFile(file, clickedSourceId);
-	}}
-	bind:this={fileInput}
-	type="file"
-	class="hidden"
-/>
-
 <ContextMenu
 	bind:this={contextMenu}
 	buttons={[
 		{
 			text: 'relink file',
 			icon: linkIcon,
-			onClick: async () => {
-				const source = getSourceFromId(clickedSourceId);
-				console.log(source);
-				if (!source) return;
-				if (source.handle && source.handle.kind === 'file') {
-					const fileHandle = source.handle as FileSystemFileHandle;
-					let permission = await fileHandle.queryPermission({ mode: 'read' });
-					// 2. If it's not 'granted', we MUST ask the user
-					if (permission !== 'granted') {
-						permission = await fileHandle.requestPermission({ mode: 'read' });
-					}
-
-					const file = await fileHandle.getFile();
-					relinkFile(file, clickedSourceId);
-					console.log(file);
-				} else {
-					fileInput?.click();
-				}
+			onClick: () => {
+				clickToRelinkFile(clickedSourceId);
 			},
 			shortcuts: []
 		}

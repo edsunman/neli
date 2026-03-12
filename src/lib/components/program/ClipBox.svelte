@@ -12,6 +12,7 @@
 		workerManager
 	} from '$lib/state.svelte';
 	import { measureText } from '$lib/text/utils';
+	import { scaleToFillIcon, scaleToFitIcon } from '../icons/Icons.svelte';
 
 	type Props = {
 		clip: Clip;
@@ -124,7 +125,6 @@
 
 {#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<div
 		style:top={`${position.top}px`}
 		style:left={`${position.left}px`}
@@ -190,6 +190,7 @@
 				const scaleFactor = getClipFitScaleFactor(clip);
 				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
 			},
+			icon: scaleToFitIcon,
 			shortcuts: []
 		},
 		{
@@ -200,6 +201,7 @@
 				const scaleFactor = getClipFillScaleFactor(clip);
 				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
 			},
+			icon: scaleToFillIcon,
 			shortcuts: []
 		}
 	]}

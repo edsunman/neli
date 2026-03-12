@@ -56,7 +56,7 @@
 					e.stopPropagation();
 				}}
 			>
-				{#each buttons as button}
+				{#each buttons as button (button.text)}
 					<button
 						class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center justify-between whitespace-nowrap"
 						onclick={() => {
@@ -65,15 +65,15 @@
 							showContextMenu = false;
 						}}
 					>
-						<span>
+						<span class="mr-4">
 							{#if button.icon}
-								{@render button.icon('size-4 inline mr-2')}
+								{@render button.icon('size-4 inline mr-3')}
 							{/if}
 							{button.text}
 						</span>
 						{#if button.shortcuts.length > 0}
-							<span class="ml-10 text-xs text-zinc-500">
-								{#each button.shortcuts as shortcut, i}
+							<span class="ml-3 text-xs text-zinc-500">
+								{#each button.shortcuts as shortcut, i (shortcut)}
 									<span class="px-1.5 py-0.5 rounded-sm border border-zinc-400">
 										{#if typeof shortcut === 'string'}
 											{shortcut}

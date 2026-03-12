@@ -69,7 +69,6 @@
 				<div class="flex items-center justify-between text-sm font-medium text-white">
 					<span class="text-zinc-400">file name</span>
 				</div>
-				<!-- svelte-ignore a11y_autofocus -->
 				<Input bind:value={inputValue} />
 			</div>
 			<div class="flex gap-6">
@@ -77,7 +76,6 @@
 					<div class="flex items-center justify-between text-sm font-medium text-white">
 						<span class="text-zinc-400">start</span>
 					</div>
-					<!-- svelte-ignore a11y_autofocus -->
 					<Input
 						value={framesToTimecode(0)}
 						oninput={(e) => {
@@ -95,7 +93,6 @@
 					<div class="flex items-center justify-between text-sm font-medium text-white">
 						<span class="text-zinc-400">end</span>
 					</div>
-					<!-- svelte-ignore a11y_autofocus -->
 					<Input
 						value={framesToTimecode(getUsedTimelineDuration())}
 						oninput={(e) => {
@@ -115,9 +112,9 @@
 
 	<div class="flex-none pt-5 pb-7 text-right">
 		{#if !appState.progress.started}
-			<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text={'Export'} />
+			<Button disabled={startFrame >= endFrame} onclick={() => exportFile()} text="Export" />
 		{:else if appState.progress.started && !encodingFinished}
-			<Button onclick={() => cancel()} text={'cancel'} />
+			<Button onclick={() => cancel()} text="cancel" />
 		{:else}
 			<Button
 				bind:ref={closeButton}
@@ -125,8 +122,7 @@
 					closePalette();
 					appState.disableKeyboardShortcuts = false;
 				}}
-				text={'close'}
-				disabled={!(appState.progress.fail || appState.progress.percentage === 100)}
+				text="close"
 			/>
 		{/if}
 	</div>

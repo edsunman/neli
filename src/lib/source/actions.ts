@@ -216,14 +216,15 @@ export const processFile = async (file: File, handle?: FileSystemHandle) => {
 	await projectManager.createSource(newSource);
 };
 
-export const relinkFile = async (file: File, sourceId: string) => {
-	const source = getSourceFromId(sourceId);
-	if (!source) return;
-
+export const relinkFile = async (file: File, source: Source, handle?: FileSystemHandle) => {
 	if (source.type === 'video') await createVideoSource(file, source.info, source);
 	if (source.type === 'audio') await createAudioSource(file, source.info, source);
 
 	source.unlinked = false;
+	if (handle) {
+		source.handle = handle;
+		projectManager.updateSource(source.id, { handle });
+	}
 };
 
 export const checkDroppedSource = async (
@@ -415,4 +416,87 @@ export const createThumbnailBlob = async (
 	context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
 	image.close();
 	return await canvas.convertToBlob({ type: 'image/png' });
+};
+
+export const clickToImportFile = async () => {
+	if ('showOpenFilePicker' in window) {
+		// chrome spesific api
+		const [fileHandle] = await window.showOpenFilePicker();
+		const file = await fileHandle.getFile();
+		appState.palette.lock = true;
+		await processFile(file, fileHandle);
+		appState.palette.lock = false;
+	} else {
+		// safari/firefox api
+		console.log('old');
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.style.display = 'none';
+		input.onchange = async (e: Event) => {
+			const target = e.currentTarget as HTMLInputElement;
+			if (!target.files) return;
+			const file = target.files[0];
+			appState.palette.lock = true;
+			await processFile(file);
+			appState.palette.lock = false;
+		};
+		input.oncancel = () => {
+			input.remove();
+		};
+
+		document.body.appendChild(input);
+		input.click();
+	}
+};
+
+export const dropToImportFile = async (e: DragEvent) => {
+	appState.palette.lock = true;
+	const files = e.dataTransfer?.files;
+	const items = e.dataTransfer?.items;
+	if (!files || !items) return;
+
+	if (items[0] && typeof items[0].getAsFileSystemHandle === 'function') {
+		const fileHandle = await items[0].getAsFileSystemHandle();
+		if (fileHandle) processFile(files[0], fileHandle);
+	} else {
+		await processFile(files[0]);
+	}
+	appState.palette.lock = false;
+};
+
+export const clickToRelinkFile = async (sourceId: string) => {
+	const source = getSourceFromId(sourceId);
+	if (!source) return;
+	if (source.handle && source.handle.kind === 'file') {
+		// Already had a handle
+		const fileHandle = source.handle as FileSystemFileHandle;
+		let permission = await fileHandle.queryPermission({ mode: 'read' });
+		if (permission !== 'granted') {
+			permission = await fileHandle.requestPermission({ mode: 'read' });
+		}
+		const file = await fileHandle.getFile();
+		relinkFile(file, source, fileHandle);
+	} else {
+		if ('showOpenFilePicker' in window) {
+			const [fileHandle] = await window.showOpenFilePicker();
+			const file = await fileHandle.getFile();
+			relinkFile(file, source, fileHandle);
+		} else {
+			const input = document.createElement('input');
+			input.type = 'file';
+			input.style.display = 'none';
+			input.onchange = async (e: Event) => {
+				const target = e.currentTarget as HTMLInputElement;
+				if (!target.files) return;
+				const file = target.files[0];
+				relinkFile(file, source);
+			};
+			input.oncancel = () => {
+				input.remove();
+			};
+
+			document.body.appendChild(input);
+			input.click();
+		}
+	}
 };

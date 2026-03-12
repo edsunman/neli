@@ -35,6 +35,8 @@
 		pointerIcon,
 		presetsIcon,
 		redoIcon,
+		scaleToFitIcon,
+		scaleToFillIcon,
 		scissorsIcon,
 		seekIcon,
 		settingsIcon,
@@ -640,6 +642,76 @@
 	>
 		<path d="M19,17 L19,15 C19,10.0294373 15.1944204,6 10.5,6 C5.80557963,6 2,10.0294373 2,15" />
 		<polyline points="16 15 19 18 22 15" />
+	</svg>
+{/snippet}
+
+{#snippet scaleToFillIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		<path
+			class="cls-2"
+			d="M12.7,2.98v13.97h-5.27V2.98h5.27M12.7.98h-5.27c-1.1,0-2,.9-2,2v13.97c0,1.1.9,2,2,2h5.27c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2h0Z"
+		/><path class="cls-2" d="M4.61.98v2h-1.52v1.43H1.08s0-.38,0-1.43S1.88.98,3.08.98h1.52Z" /><path
+			class="cls-2"
+			d="M19.05,4.5h-2v-1.52h-1.43V.97s.38,0,1.43,0,2,.79,2,2v1.52Z"
+		/><path class="cls-2" d="M15.53,18.94v-2h1.52v-1.43h2s0,.38,0,1.43-.79,2-2,2h-1.52Z" /><path
+			class="cls-2"
+			d="M1.08,15.42h2v1.52h1.43v2s-.38,0-1.43,0-2-.79-2-2v-1.52Z"
+		/><polygon class="cls-1" points="3.08 8.72 1.08 8.72 1.08 6.55 3.08 6.55 3.08 8.72" /><rect
+			class="cls-1"
+			x="1.08"
+			y="11.05"
+			width="2"
+			height="2.23"
+		/><polygon class="cls-1" points="19.05 8.8 17.05 8.8 17.05 6.63 19.05 6.63 19.05 8.8" /><rect
+			class="cls-1"
+			x="17.06"
+			y="11.13"
+			width="2"
+			height="2.23"
+		/>
+	</svg>
+{/snippet}
+
+{#snippet scaleToFitIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		<path
+			d="M17.05.98H3.08C1.98.98,1.08,1.88,1.08,2.98v13.97c0,1.1.9,2,2,2h13.97c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2ZM17.05,16.95H3.08V2.92h13.97v14.02Z"
+		/><rect class="cls-1" x="5.43" y="6.92" width="2" height="2.22" /><rect
+			class="cls-1"
+			x="5.43"
+			y="2.92"
+			width="2"
+			height="2.24"
+		/><rect x="5.43" y="14.92" width="2" height="2" /><rect
+			x="5.43"
+			y="10.92"
+			width="2"
+			height="2.24"
+		/><rect x="12.7" y="14.92" width="2" height="2" /><rect
+			x="12.7"
+			y="6.92"
+			width="2"
+			height="2.22"
+		/><polyline points="14.7 2.92 14.7 5.17 12.7 5.17 12.7 2.92" /><rect
+			x="12.7"
+			y="10.92"
+			width="2"
+			height="2.24"
+		/>
 	</svg>
 {/snippet}
 

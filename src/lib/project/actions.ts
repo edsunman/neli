@@ -89,7 +89,7 @@ export const createNewProject = async () => {
 	timelineState.invalidate = true;
 };
 
-export const loadProject = async (id: number) => {
+export const loadProject = async (id: string) => {
 	const project = await projectManager.getProject(id);
 	if (!project) return;
 
@@ -124,7 +124,7 @@ export const loadProject = async (id: number) => {
 				if (permission == 'granted') {
 					const fileHandle = source.handle as FileSystemFileHandle;
 					const file = await fileHandle.getFile();
-					await relinkFile(file, source.id);
+					await relinkFile(file, newSource);
 				}
 			}
 			if (source.handle) newSource.handle = source.handle;
@@ -141,7 +141,7 @@ export const loadProject = async (id: number) => {
 			}
 		}
 
-		appState.progress.message = 'linking files...';
+		appState.progress.message = 'loading files...';
 		appState.progress.percentage = (i / projectSources.length) * 100;
 		i++;
 	}

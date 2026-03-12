@@ -87,9 +87,9 @@ export const drawCanvas = (
 		timelineState.trackDropZone < 0 &&
 		timelineState.selectedClip.track > 0
 	) {
-		if (!timelineState.selectedClip.invalid) {
-			drawBaseShape(context, timelineState.selectedClip, width);
-		}
+		//if (!timelineState.selectedClip.invalid) {
+		drawBaseShape(context, timelineState.selectedClip, width);
+		//}
 		drawClip(context, timelineState.selectedClip, width, true);
 	}
 
@@ -336,7 +336,7 @@ const drawClip = (
 	}
 	if (clip.invalid) {
 		clipColor = '#2b2d30';
-		clipBaseColor = '#222223';
+		clipBaseColor = '#2b2d30';
 	}
 	if (clip.source.unlinked) {
 		clipColor = '#dc2626';
@@ -404,11 +404,12 @@ const drawClip = (
 		]);
 
 		if (!selected || clip.invalid) context.fillStyle = clipBaseColor;
-		if (clip.invalid && pattern) context.fillStyle = pattern;
+		//if (clip.invalid && pattern) context.fillStyle = pattern;
+		//if (clip.invalid) context.fillStyle = clipBaseColor;
 		context.fill();
 		context.stroke();
 	}
-	if (clipWidth < 32 || clip.invalid) return;
+	if (clipWidth < 32) return;
 	if (selected || (clip.hovered && !multiSelected)) {
 		// handles
 		context.save();

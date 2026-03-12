@@ -199,7 +199,6 @@ export class WebGPURenderer {
 	}
 
 	loadTexture(image: ImageBitmap, soruceId: string) {
-		console.log('loading texture', image);
 		if (!this.device) return;
 
 		const texture = this.device.createTexture({

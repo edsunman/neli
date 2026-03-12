@@ -72,11 +72,11 @@ export const createClip = (
 
 	timelineState.clips.push(clip);
 	timelineState.invalidate = true;
-	projectManager.createClip(clip);
 
 	if (!temp) {
 		trimSiblingClips(clip);
 		workerManager.sendClip(clip);
+		projectManager.createClip(clip);
 		historyManager.pushAction({ action: 'addClip', data: { clipId: clip.id } });
 	}
 

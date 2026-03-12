@@ -55,6 +55,7 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
+	import { scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -475,11 +476,13 @@
 					timelineState.invalidateWaveform = true;
 				}
 			},
+			icon: scissorsIcon,
 			shortcuts: []
 		},
 		{
 			text: 'focus clip',
 			onClick: () => focusClip(),
+			icon: zoomInIcon,
 			shortcuts: ['shift', 'F']
 		}
 	]}
@@ -501,6 +504,9 @@
 		if (appState.disableKeyboardShortcuts) return;
 		if (appState.palette.open) return;
 		switch (event.code) {
+			case 'Escape':
+				if (timelineState.focusedTrack > 0) focusTrack(0);
+				break;
 			case 'Home':
 				if (timelineState.playing) pause();
 				setCurrentFrame(0);
