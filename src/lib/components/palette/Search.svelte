@@ -9,7 +9,6 @@
 		zoomIn,
 		zoomOut
 	} from '$lib/timeline/actions';
-	import { onMount } from 'svelte';
 	import { stringToFramesAndSynopsis } from '$lib/timeline/utils';
 
 	import {
@@ -26,12 +25,14 @@
 		redoIcon,
 		forwardIcon,
 		fileOpenIcon,
-		fileNewIcon
+		fileNewIcon,
+		deleteIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
 	import { createNewProject, createProjectThumbnail } from '$lib/project/actions';
 
-	let searchInput = $state<HTMLInputElement>();
+	let { onSelect } = $props();
+
 	let inputValue = $state<string>();
 	let selectedIndex = 0;
 	let showSeekOptions = $state(false);
@@ -118,38 +119,10 @@
 		},
 		{
 			id: 2,
-			name: 'Project',
-			commands: [
-				{
-					id: 201,
-					text: 'new project',
-					selected: false,
-					icon: fileNewIcon,
-					shortcuts: [],
-					action: async () => {
-						await createProjectThumbnail();
-						createNewProject();
-						appState.palette.open = false;
-					}
-				},
-				{
-					id: 202,
-					text: 'load project',
-					selected: false,
-					icon: fileOpenIcon,
-					shortcuts: [],
-					action: () => {
-						appState.palette.page = 'projects';
-					}
-				}
-			]
-		},
-		{
-			id: 3,
 			name: 'Timeline',
 			commands: [
 				{
-					id: 301,
+					id: 201,
 					text: 'play / pause',
 					selected: false,
 					icon: playIcon,
@@ -172,7 +145,7 @@
 					}
 				},
 				{
-					id: 302,
+					id: 202,
 					text: 'zoom in',
 					selected: false,
 					icon: zoomInIcon,
@@ -183,7 +156,7 @@
 					}
 				},
 				{
-					id: 303,
+					id: 203,
 					text: 'zoom out',
 					selected: false,
 					icon: zoomOutIcon,
@@ -194,7 +167,7 @@
 					}
 				},
 				{
-					id: 304,
+					id: 204,
 					text: 'one frame forward',
 					selected: false,
 					icon: forwardIcon,
@@ -205,7 +178,7 @@
 					}
 				},
 				{
-					id: 305,
+					id: 205,
 					text: 'one frame back',
 					selected: false,
 					icon: backIcon,
@@ -216,6 +189,47 @@
 					}
 				}
 			]
+		},
+		{
+			id: 3,
+			name: 'Project',
+			commands: [
+				{
+					id: 301,
+					text: 'new project',
+					selected: false,
+					icon: fileNewIcon,
+					shortcuts: [],
+					action: async () => {
+						await createProjectThumbnail();
+						createNewProject();
+						appState.palette.open = false;
+					}
+				},
+				{
+					id: 302,
+					text: 'load project',
+					selected: false,
+					icon: fileOpenIcon,
+					shortcuts: [],
+					action: () => {
+						appState.palette.page = 'projects';
+					},
+					hide: () => appState.projectCount < 2
+				},
+				{
+					id: 303,
+					text: 'delete project',
+					selected: false,
+					icon: deleteIcon,
+					shortcuts: [],
+					action: async () => {
+						appState.palette.page = 'delete';
+						appState.palette.shrink = 'h-45';
+					},
+					hide: () => appState.projectCount < 2
+				}
+			]
 		}
 	]);
 	let filtered = $derived.by(() => {
@@ -223,6 +237,8 @@
 			return {
 				...category,
 				commands: category.commands.filter((command) => {
+					if ('hide' in command && typeof command.hide === 'function' && command.hide())
+						return false;
 					return command.text.toLowerCase().includes(inputValue?.toLowerCase() ?? '');
 				})
 			};
@@ -236,8 +252,22 @@
 		targetFrameFormatted = synopsis;
 	};
 
-	const onInputChange = () => {
-		if (typeof inputValue === 'undefined') return;
+	export const chooseSelected = () => {
+		if (showSeekOptions) {
+			seekEvent();
+		}
+		for (const category of filtered) {
+			for (const command of category.commands) {
+				if (command.selected && command.action) {
+					command.action();
+					break;
+				}
+			}
+		}
+	};
+
+	export const onInputChange = (input: string) => {
+		inputValue = input;
 		if (/^\d/.test(inputValue)) {
 			showSeekOptions = true;
 			parseInputNumbers(inputValue);
@@ -318,106 +348,75 @@
 			return '<span class="underline">' + str + '</span>';
 		});
 	};
-
-	onMount(() => {
-		searchInput?.focus();
-	});
 </script>
 
-<div class="mx-8 flex-none">
-	<form
-		onsubmit={() => {
-			if (showSeekOptions) {
-				seekEvent();
-			}
-			for (const category of filtered) {
-				for (const command of category.commands) {
-					if (command.selected && command.action) {
-						command.action();
-						break;
-					}
-				}
-			}
-		}}
-	>
-		<input
-			bind:this={searchInput}
-			bind:value={inputValue}
-			oninput={onInputChange}
-			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
-			type="text"
-			placeholder="Search (or type number to seek)"
-		/>
-	</form>
-</div>
-<div class="flex-1 bg-zinc-900 rounded-2xl overflow-y-hidden">
-	<div
-		bind:this={scrollDiv}
-		class="px-8 overflow-y-scroll h-full"
-		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
-	>
-		{#each filtered as category (category.id)}
-			{#if category.commands.length > 0}
-				<div class="mb-4">
-					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">
-						{category.name}
-					</div>
-
-					{#each category.commands as command (command.id)}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							id={`command-${command.id}`}
-							onmousemove={() => {
-								if (!command.selected) selectById(command.id);
-							}}
-							onclick={() => {
-								command.action();
-							}}
-							class={[
-								'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
-								command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
-							]}
-						>
-							{@render command.icon('size-5 inline mr-3')}
-							<!--  eslint-disable-next-line svelte/no-at-html-tags -->
-							<p class="flex-1">{@html formatString(command.text)}</p>
-							{#each command.shortcuts as key (key)}
-								<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
-								<div
-									class={[
-										'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
-										command.selected
-											? 'border-zinc-500 text-zinc-400'
-											: 'border-zinc-700 text-zinc-600'
-									]}
-								>
-									{key}
-								</div>
-							{/each}
-						</div>
-					{/each}
+<div
+	bind:this={scrollDiv}
+	class="px-8 overflow-y-scroll h-full"
+	style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
+>
+	{#each filtered as category (category.id)}
+		{#if category.commands.length > 0}
+			<div class="mb-4">
+				<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">
+					{category.name}
 				</div>
-			{/if}
-		{/each}
-		{#if showSeekOptions}
-			<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">Timeline</div>
-			<button
-				class={[
-					'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center',
-					'text-zinc-200 bg-hover'
-				]}
-				onclick={seekEvent}
-			>
-				{@render seekIcon('size-5 inline mr-2')}
-				<p>{targetFrameFormatted}</p>
-			</button>
+
+				{#each category.commands as command (command.id)}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						id={`command-${command.id}`}
+						onmousemove={() => {
+							if (!command.selected) selectById(command.id);
+						}}
+						onclick={() => {
+							command.action();
+							onSelect();
+						}}
+						class={[
+							'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
+							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
+						]}
+					>
+						{@render command.icon('size-5 inline mr-3')}
+						<!--  eslint-disable-next-line svelte/no-at-html-tags -->
+						<p class="flex-1">{@html formatString(command.text)}</p>
+						{#each command.shortcuts as key (key)}
+							<div
+								class={[
+									'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
+									command.selected
+										? 'border-zinc-500 text-zinc-400'
+										: 'border-zinc-700 text-zinc-600'
+								]}
+							>
+								{key}
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
 		{/if}
-		{#if allCategoriesEmpty}
-			<div class="text-zinc-200 select-none text-sm mt-6 mb-2">No results</div>
-		{/if}
-	</div>
+	{/each}
+	{#if showSeekOptions}
+		<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">Timeline</div>
+		<button
+			class={[
+				'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center',
+				'text-zinc-200 bg-hover'
+			]}
+			onclick={seekEvent}
+		>
+			{@render seekIcon('size-5 inline mr-2')}
+			<p>{targetFrameFormatted}</p>
+		</button>
+	{/if}
+	{#if allCategoriesEmpty && !showSeekOptions}
+		<div class="text-zinc-200 select-none text-sm mt-6 mb-2">No results</div>
+	{/if}
 </div>
+
 <svelte:window
 	onkeydown={(event) => {
 		switch (event.code) {

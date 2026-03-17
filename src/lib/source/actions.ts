@@ -1,7 +1,14 @@
-import { appState, projectManager, workerManager } from '$lib/state.svelte';
+import {
+	appState,
+	historyManager,
+	projectManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
+import { showTimelineInProgram } from '$lib/program/actions';
 
 export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	const newSource = new Source(type, info);
@@ -24,12 +31,13 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	return newSource;
 };
 
-export const assignSourcesToFolders = () => {
+export const assignSourcesToFolders = (sourceId = '') => {
 	appState.sourceFolders.length = 0;
 
-	const sourceCount = appState.sources.filter(
-		(source) => source.type !== 'text' && source.type !== 'test'
-	).length;
+	const sourceCount = appState.sources.filter((source) => {
+		if (source.deleted) return false;
+		return source.type !== 'text' && source.type !== 'test';
+	}).length;
 
 	let folderId = 0;
 	for (let i = 0; i < sourceCount / 7; i++) {
@@ -38,16 +46,18 @@ export const assignSourcesToFolders = () => {
 	}
 
 	let i = 0;
+	let folderToShow = folderId;
 	for (const source of appState.sources) {
-		if (source.type === 'text' || source.type === 'test') {
+		if (source.type === 'text' || source.type === 'test' || source.deleted) {
 			source.folderId = 0;
 			continue;
 		}
 		source.folderId = Math.floor(i / 7) + 1;
+		if (sourceId === source.id) folderToShow = source.folderId;
 		i++;
 	}
 
-	appState.selectedSourceFolder = folderId;
+	appState.selectedSourceFolder = folderToShow;
 };
 
 export const createVideoSource = async (file: File, info: FileInfo, existingSource?: Source) => {
@@ -84,7 +94,7 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 			videoFrame.codedHeight
 		);
 		setSourceThumbnail(data.sourceId, blob);
-		projectManager.createThumbnail(blob, newSource.id);
+		projectManager.createThumbnail(blob, newSource.id, appState.project.id);
 		appState.import.thumbnail = newSource.thumbnail;
 	} else {
 		data.videoFrame?.close();
@@ -97,7 +107,6 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 };
 
 export const createImageSource = async (file: File, info: FileInfo, existingSource?: Source) => {
-	//const newSource = createSource('image', info, file);
 	let newSource;
 
 	if (existingSource) {
@@ -112,7 +121,7 @@ export const createImageSource = async (file: File, info: FileInfo, existingSour
 	if (!newSource.thumbnail && data.bitmap) {
 		const blob = await createThumbnailBlob(data.bitmap, data.bitmap.width, data.bitmap.height);
 		setSourceThumbnail(data.sourceId, blob);
-		projectManager.createThumbnail(blob, newSource.id);
+		projectManager.createThumbnail(blob, newSource.id, appState.project.id);
 		appState.import.thumbnail = newSource.thumbnail;
 	} else {
 		data.bitmap?.close();
@@ -499,4 +508,20 @@ export const clickToRelinkFile = async (sourceId: string) => {
 			input.click();
 		}
 	}
+};
+
+export const deleteSource = (source: Source) => {
+	if (appState.selectedSource && appState.selectedSource.id === source.id) {
+		showTimelineInProgram();
+	}
+	const sourceClips = timelineState.clips.filter((clip) => {
+		if (clip.deleted) return false;
+		if (clip.source.id === source.id) return true;
+		return false;
+	});
+	if (sourceClips.length > 0) return;
+	source.deleted = true;
+	historyManager.newCommand({ action: 'deleteSource', data: { sourceId: source.id } });
+	projectManager.updateSource(source.id, { deleted: true });
+	assignSourcesToFolders();
 };

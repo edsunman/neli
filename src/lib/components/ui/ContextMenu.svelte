@@ -7,7 +7,8 @@
 			text: string;
 			icon?: Snippet<[string]>;
 			onClick: () => void;
-			shortcuts: (string | Snippet<[string]>)[];
+			shortcuts?: (string | Snippet<[string]>)[];
+			hideCondition?: () => boolean;
 		}[];
 		onClose?: () => void;
 	};
@@ -57,35 +58,37 @@
 				}}
 			>
 				{#each buttons as button (button.text)}
-					<button
-						class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center justify-between whitespace-nowrap"
-						onclick={() => {
-							button.onClick();
-							if (onClose) onClose();
-							showContextMenu = false;
-						}}
-					>
-						<span class="mr-4">
-							{#if button.icon}
-								{@render button.icon('size-4 inline mr-3')}
-							{/if}
-							{button.text}
-						</span>
-						{#if button.shortcuts.length > 0}
-							<span class="ml-3 text-xs text-zinc-500">
-								{#each button.shortcuts as shortcut, i (shortcut)}
-									<span class="px-1.5 py-0.5 rounded-sm border border-zinc-400">
-										{#if typeof shortcut === 'string'}
-											{shortcut}
-										{:else}
-											{@render shortcut('size-3 inline relative -top-[1px]')}
-										{/if}
-									</span>
-									{i + 1 < button.shortcuts.length ? '+ ' : ''}
-								{/each}
+					{#if button.hideCondition && button.hideCondition()}{:else}
+						<button
+							class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center justify-between whitespace-nowrap"
+							onclick={() => {
+								button.onClick();
+								if (onClose) onClose();
+								showContextMenu = false;
+							}}
+						>
+							<span class="mr-4">
+								{#if button.icon}
+									{@render button.icon('size-4 inline mr-3')}
+								{/if}
+								{button.text}
 							</span>
-						{/if}
-					</button>
+							{#if button.shortcuts && button.shortcuts.length > 0}
+								<span class="ml-3 text-xs text-zinc-500">
+									{#each button.shortcuts as shortcut (shortcut)}
+										<span class="px-1.5 py-0.5 ml-1 rounded-sm border border-zinc-400">
+											{#if typeof shortcut === 'string'}
+												{shortcut}
+											{:else}
+												{@render shortcut('size-3 inline relative -top-[1px]')}
+											{/if}
+										</span>
+										<!-- {i + 1 < button.shortcuts.length ? '+ ' : ''} -->
+									{/each}
+								</span>
+							{/if}
+						</button>
+					{/if}
 				{/each}
 			</div>
 		</div>

@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
-	import { infoIcon, logoIcon } from '../icons/Icons.svelte';
+	import { fileIcon, fileNewIcon, infoIcon } from '../icons/Icons.svelte';
+	import Button from '../ui/Button.svelte';
+	import { closePalette } from '$lib/app/actions';
+
+	let { onSelect } = $props();
 
 	let errorMessage = $state<'none' | 'webGpu' | 'webCodecs'>('none');
 
@@ -16,9 +20,8 @@
 </script>
 
 <div class="px-8 bg-zinc-900 rounded-2xl flex-1 grow flex flex-col relative items-center">
-	{@render logoIcon('text-rose-500 size-35 absolute -top-5 left-46 ')}
 	<svg
-		class="text-white w-40 mt-35 mb-5"
+		class="text-white w-40 mt-12 mb-5"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 648.87 342.4"
 		fill="currentColor"
@@ -37,7 +40,12 @@
 			d="M549.78,166.44v-44.71h85.31v44.71h-85.31ZM603.92,84.41c-9.84,0-18.32-3.55-25.43-10.66-7.11-7.11-10.66-15.31-10.66-24.61,0-9.84,3.55-18.18,10.66-25.02,7.11-6.83,15.59-10.25,25.43-10.25,6.56,0,12.57,1.58,18.05,4.72,5.47,3.15,9.84,7.38,13.12,12.71s4.92,11.28,4.92,17.84c0,6.02-1.64,11.83-4.92,17.43-3.28,5.61-7.66,9.98-13.12,13.12-5.47,3.15-11.48,4.72-18.05,4.72ZM583,328.87V121.74h52.09v207.13h-52.09Z"
 		/>
 	</svg>
-	<div class="text-zinc-500 font-semibold text-sm text-center">v{__VERSION__}</div>
+	<div class="text-zinc-500 font-semibold text-sm text-center">
+		v{__VERSION__}
+		<span class="ml-2 bg-zinc-600 p-1 py-0.5 rounded-sm text-zinc-900 font-extralight"
+			>pre-alpha</span
+		>
+	</div>
 	{#if errorMessage !== 'none'}
 		<div class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center">
 			{@render infoIcon('size-6 mr-2 text-rose-600 ')}
@@ -47,17 +55,27 @@
 			</p>
 		</div>
 	{:else}
-		<div class="text-zinc-300 mt-10 text-center px-10">
+		<div class="mt-10">
+			<Button
+				large
+				onclick={() => closePalette()}
+				text="Start new project"
+				icon={fileIcon}
+				className="w-70 text-left"
+			/>
+		</div>
+		<div class="text-zinc-300 mt-18 mb-10 text-center px-10 text-sm">
 			<p>
-				Press <span class="text-sm mx-1 px-1.5 py-0.5 rounded-sm border border-zinc-500">P</span> at
-				any time to open the command pallete, where you can view menu options and learn shortcuts.
+				Press
+				<span class="text-sm mx-1 px-1.5 py-0.5 rounded-sm border border-zinc-500">P</span> at any time
+				to open the command pallete, where you can view menu options and learn shortcuts.
 			</p>
 		</div>
 	{/if}
 
 	<a href="https://github.com/edsunman/neli" target="_blank" aria-label="github repo">
 		<svg
-			class="size-8 mt-10 text-zinc-300 hover:text-white"
+			class="size-8 text-zinc-300 hover:text-white"
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 98 96"
 			fill="currentColor"
@@ -78,6 +96,7 @@
 			case 'KeyP':
 				if (appState.disableKeyboardShortcuts) break;
 				appState.palette.page = 'search';
+				onSelect();
 				break;
 		}
 	}}

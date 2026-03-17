@@ -5,7 +5,6 @@
 	import { closePalette } from '$lib/app/actions';
 
 	import Button from '../ui/Button.svelte';
-	import TitleBar from './TitleBar.svelte';
 
 	let dragHover = $state(false);
 
@@ -30,14 +29,6 @@
 		return str.substring(0, truncateLength) + ellipsis;
 	};
 </script>
-
-<TitleBar
-	title="import"
-	onclick={() => {
-		appState.palette.page = 'search';
-		appState.import.importStarted = false;
-	}}
-/>
 
 <div class="flex-1 px-8 bg-zinc-900 rounded-2xl grow flex flex-col">
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -164,15 +155,3 @@
 		</span>
 	</div>
 {/snippet}
-
-<svelte:window
-	onkeydown={(event) => {
-		switch (event.code) {
-			case 'Backspace':
-				if (appState.disableKeyboardShortcuts) break;
-				appState.import.importStarted = false;
-				appState.palette.page = 'search';
-				break;
-		}
-	}}
-/>

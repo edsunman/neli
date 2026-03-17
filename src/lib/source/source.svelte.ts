@@ -11,6 +11,7 @@ export class Source {
 	folderId = 0;
 	unlinked = $state(false);
 	thumbnail = $state('');
+	deleted = $state(false);
 
 	sink: EncodedPacketSink | undefined;
 	sampleSink: AudioSampleSink | undefined;

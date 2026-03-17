@@ -22,7 +22,10 @@
  your root layout content
 -->
 <Tooltip.Root bind:open>
-	<Tooltip.Trigger {...triggerProps}>
+	<Tooltip.Trigger
+		{...triggerProps}
+		class="focus-visible:outline-hidden focus-visible:ring-2 rounded-lg ring-zinc-300"
+	>
 		{@render trigger()}
 	</Tooltip.Trigger>
 	<Tooltip.Portal to="#tooltipPortal">

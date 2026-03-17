@@ -16,7 +16,7 @@ export const startApp = async (canvas: HTMLCanvasElement) => {
 		return;
 	}
 
-	appState.palette.shrink = 'h-50';
+	appState.palette.shrink = 'h-30';
 	appState.palette.open = true;
 	appState.palette.page = 'projects';
 	appState.palette.lock = true;

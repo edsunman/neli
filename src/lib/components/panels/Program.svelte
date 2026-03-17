@@ -15,8 +15,7 @@
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
 	import { pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
-	import { setupProjectManager } from '$lib/project/actions';
-	import { closePalette, startApp } from '$lib/app/actions';
+	import { startApp } from '$lib/app/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();

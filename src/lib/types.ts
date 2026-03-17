@@ -19,7 +19,7 @@ export type ImportState = {
 
 export type PaletteState = {
 	open: boolean;
-	page: 'search' | 'export' | 'import' | 'about' | 'projects';
+	page: 'search' | 'export' | 'import' | 'about' | 'projects' | 'delete';
 	shrink: string;
 	lock: boolean;
 };
@@ -126,7 +126,8 @@ export type Command =
 	| {
 			action: 'clipParam';
 			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
-	  };
+	  }
+	| { action: 'deleteSource'; data: { sourceId: string } };
 
 export type WorkerClip = {
 	id: string;

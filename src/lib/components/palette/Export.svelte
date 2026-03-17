@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { Progress, useId } from 'bits-ui';
 	import { appState, workerManager } from '$lib/state.svelte';
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
 	import { tick } from 'svelte';
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
-	import TitleBar from './TitleBar.svelte';
+	/* 	import TitleBar from './TitleBar.svelte'; */
 	import { renderAudioForExport } from '$lib/audio/actions';
 	import ProgressBar from './ProgressBar.svelte';
 	import { closePalette } from '$lib/app/actions';
@@ -20,7 +19,7 @@
 	const exportFile = async () => {
 		if (startFrame >= endFrame) return;
 
-		appState.palette.shrink = 'h-70';
+		appState.palette.shrink = 'h-50';
 		appState.palette.lock = true;
 		appState.progress.started = true;
 		appState.progress.message = 'preparing audio...';
@@ -34,7 +33,7 @@
 		workerManager.encode(fileName, startFrame, endFrame, audioBuffer);
 	};
 
-	const exportCallback = async (success: boolean) => {
+	const exportCallback = async () => {
 		encodingFinished = true;
 		appState.palette.lock = false;
 		await tick();
@@ -52,13 +51,13 @@
 </script>
 
 <!-- <button onclick={() => (page = 'search')}>Back</button> -->
-<TitleBar
+<!-- <TitleBar
 	title="export"
 	onclick={() => {
 		appState.palette.page = 'search';
 	}}
 	disabled={appState.progress.started}
-/>
+/> -->
 
 <div class="px-8 flex-1 flex flex-col bg-zinc-900 rounded-2xl content-center flex-wrap">
 	<div class="flex-1 content-center flex-wrap w-full">

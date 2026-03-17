@@ -23,6 +23,7 @@ type SourceTable = {
 	info: FileInfo;
 	name: string;
 	handle: FileSystemHandle | null;
+	deleted: boolean;
 	createdAt: number;
 	lastModified: number;
 };
@@ -58,7 +59,8 @@ interface VideoEditorDB extends DBSchema {
 	};
 	thumbnails: {
 		key: string;
-		value: Blob;
+		value: { image: Blob; projectId: string };
+		indexes: { 'by-project': string };
 	};
 }
 
@@ -82,7 +84,8 @@ export class ProjectManager {
 				clipStore.createIndex('by-project', 'projectId');
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
-				db.createObjectStore('thumbnails');
+				const thumbnailStore = db.createObjectStore('thumbnails');
+				thumbnailStore.createIndex('by-project', 'projectId');
 			}
 		});
 	}
@@ -110,6 +113,37 @@ export class ProjectManager {
 	async getAllProjects() {
 		if (!this.db) return [];
 		return await this.db.getAll('projects');
+	}
+
+	async getProjectCount() {
+		if (!this.db) return 0;
+		return await this.db.count('projects');
+	}
+
+	async deleteProject(projectId: string) {
+		if (!this.db) return;
+		const tx = this.db.transaction(['projects', 'clips', 'sources', 'thumbnails'], 'readwrite');
+
+		const projectStore = tx.objectStore('projects');
+		const clipStore = tx.objectStore('clips');
+		const sourceStore = tx.objectStore('sources');
+		const thumbnailStore = tx.objectStore('thumbnails');
+		const clipIndex = clipStore.index('by-project');
+		const sourceIndex = sourceStore.index('by-project');
+		const thumbnailIndex = thumbnailStore.index('by-project');
+
+		const clipKeys = await clipIndex.getAllKeys(projectId);
+		const sourceKeys = await sourceIndex.getAllKeys(projectId);
+		const thumbnailKeys = await thumbnailIndex.getAllKeys(projectId);
+
+		await Promise.all([
+			...clipKeys.map((key) => clipStore.delete(key)),
+			...sourceKeys.map((key) => sourceStore.delete(key)),
+			...thumbnailKeys.map((key) => thumbnailStore.delete(key)),
+			projectStore.delete(projectId)
+		]);
+
+		await tx.done;
 	}
 
 	/**
@@ -161,6 +195,7 @@ export class ProjectManager {
 			type: source.type,
 			info: source.info,
 			handle: source.handle ?? null,
+			deleted: false,
 			createdAt: Date.now(),
 			lastModified: Date.now()
 		};
@@ -189,6 +224,21 @@ export class ProjectManager {
 		await store.put(updatedSource);
 		await tx.done;
 		return updatedSource;
+	}
+
+	async purgeDeletedSources() {
+		if (!this.db) return;
+
+		const tx = this.db.transaction('sources', 'readwrite');
+		const store = tx.objectStore('sources');
+		let cursor = await store.openCursor();
+
+		while (cursor) {
+			if (cursor.value.deleted === true) await cursor.delete();
+			cursor = await cursor.continue();
+		}
+
+		await tx.done;
 	}
 
 	async createClip(clip: Clip) {
@@ -271,14 +321,14 @@ export class ProjectManager {
 		await tx.done;
 	}
 
-	async createThumbnail(thumbnail: Blob, projectId: string) {
+	async createThumbnail(thumbnail: Blob, key: string, projectId: string) {
 		if (!this.db) return;
-		const id = await this.db.put('thumbnails', thumbnail, projectId);
+		const id = await this.db.put('thumbnails', { image: thumbnail, projectId }, key);
 		return id;
 	}
 
-	async getThumbnail(sourceId: string) {
+	async getThumbnail(key: string) {
 		if (!this.db) return;
-		return await this.db.get('thumbnails', sourceId);
+		return await this.db.get('thumbnails', key);
 	}
 }

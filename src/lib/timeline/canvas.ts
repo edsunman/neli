@@ -21,10 +21,10 @@ const MARKER_PATH = new Path2D(
 	'M11.3087 5.9281c0 1.2419-.2987 2.4365-.8712 3.5387l-1.3459 2.5905c-.836 1.6093-3.1389 1.6099-3.9749 0l-1.3448-2.5878c-.5731-1.1022-.8718-2.2973-.8718-3.5393v-.6935c0-1.237 1.0027-2.2396 2.2396-2.2396h3.9292c1.237 0 2.2396 1.0027 2.2396 2.2396v.6908Z '
 );
 
-let pattern: CanvasPattern;
+//let pattern: CanvasPattern;
 
 export const setPattern = (p: CanvasPattern) => {
-	pattern = p;
+	//pattern = p;
 };
 
 export const drawCanvas = (
@@ -174,7 +174,7 @@ export const drawSourceCanvas = (
 ) => {
 	if (!appState.selectedSource) return;
 
-	context.fillStyle = '#09090b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(0, 0, width, height);
 
 	context.fillStyle = '#34343c';
@@ -198,7 +198,7 @@ export const drawSourceCanvas = (
 	context.fill();
 	context.restore();
 
-	context.fillStyle = '#09090b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(inPosition - 3, 25, 3, 8);
 	context.fillRect(outPosition, 25, 3, 8);
 

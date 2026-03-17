@@ -56,7 +56,7 @@
 
 <div class="h-12 flex-none flex justify-center font-semibold text-2xl items-center">
 	<Tooltip.Provider delayDuration={500}>
-		<div class="h-full w-48 mr-12 flex justify-end">
+		<div class="h-full w-48 mr-12 flex justify-end items-center">
 			{#if appState.selectedSource}
 				{#if appState.selectedSource.type === 'audio' || appState.selectedSource.type === 'video'}
 					{@render button('set in point', 'I', inPointIcon, () => setInPoint(), false, false)}
@@ -93,6 +93,7 @@
 			class={[
 				!appState.mouseIsDown && !disablePlaybackButton && 'hover:bg-zinc-700 group',
 				'text-white pl-9 pr-3 py-1 bg-hover rounded-lg relative',
+				'focus-visible:ring-2 ring-zinc-300 focus-visible:outline-none',
 				'transition-colors duration-200 hover:duration-0 select-none'
 			]}
 			oncontextmenu={(e) => {
@@ -105,9 +106,17 @@
 					contextButtonText = showFrames ? 'show timecode' : 'show frames';
 				} else {
 					if (timelineState.playing || programState.playing) {
-						appState.selectedSource ? pauseProgram() : pause();
+						if (appState.selectedSource) {
+							pauseProgram();
+						} else {
+							pause();
+						}
 					} else {
-						appState.selectedSource ? playProgram() : play();
+						if (appState.selectedSource) {
+							playProgram();
+						} else {
+							play();
+						}
 					}
 				}
 			}}
@@ -133,12 +142,12 @@
 				{/if}
 			</span>
 		</button>
-		<div class="h-full ml-12 w-48 flex">
+		<div class="h-full ml-12 w-48 flex items-center">
 			{#if appState.selectedSource}
 				{#if appState.selectedSource.type === 'audio' || appState.selectedSource.type === 'video'}
 					{@render button(
 						'reset in/out points',
-						'I',
+						'',
 						undoIcon,
 						() => resetInOutPoints(),
 						false,
@@ -197,36 +206,39 @@
 	disabled = false,
 	selected = false
 )}
-	<MyTooltip
-		contentProps={{ side: 'bottom' }}
-		triggerProps={{
-			onclick,
-			onmouseup: (e) => e.currentTarget.blur(),
-			onmouseleave: (e) => e.currentTarget.blur()
-		}}
+	<div
+		inert={disabled}
+		class={[
+			disabled
+				? 'text-zinc-700 opacity-50'
+				: selected
+					? 'text-zinc-50 bg-zinc-700'
+					: 'text-zinc-600  active:text-zinc-50',
+			!selected && !disabled && !appState.mouseIsDown && 'hover:text-zinc-400',
+			'rounded-lg h-9 mx-1'
+		]}
 	>
-		{#snippet trigger()}
-			<div
-				class={[
-					disabled
-						? 'text-zinc-700 opacity-50'
-						: selected
-							? 'text-zinc-50 bg-zinc-700'
-							: 'text-zinc-600  active:text-zinc-50',
-					!selected && !disabled && !appState.mouseIsDown && 'hover:text-zinc-400',
-					'mx-1 py-1.5 px-1.5 rounded-lg h-9'
-				]}
-			>
-				{@render icon('size-6')}
-			</div>
-		{/snippet}
-		{description}
-		{#if shortcut}
-			<span class="ml-1 px-1.5 py-0.5 rounded-sm border border-zinc-400 text-zinc-500"
-				>{shortcut}</span
-			>
-		{/if}
-	</MyTooltip>
+		<MyTooltip
+			contentProps={{ side: 'bottom' }}
+			triggerProps={{
+				onclick,
+				onmouseup: (e) => e.currentTarget.blur(),
+				onmouseleave: (e) => e.currentTarget.blur()
+			}}
+		>
+			{#snippet trigger()}
+				<div class="p-1.5">
+					{@render icon('size-6')}
+				</div>
+			{/snippet}
+			{description}
+			{#if shortcut}
+				<span class="ml-1 px-1.5 py-0.5 rounded-sm border border-zinc-400 text-zinc-500"
+					>{shortcut}</span
+				>
+			{/if}
+		</MyTooltip>
+	</div>
 {/snippet}
 
 <svelte:window

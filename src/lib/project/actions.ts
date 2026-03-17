@@ -29,9 +29,11 @@ export const changeProjectResolution = (width: number, height: number) => {
 	resizeCanvas(width, height);
 };
 
-//** Called on page load */
+/** Called on page load */
 export const setupProjectManager = async () => {
 	await projectManager.init();
+
+	appState.projectCount = await projectManager.getProjectCount();
 
 	const lastProject = await projectManager.getLastModifiedProject();
 	if (lastProject) {
@@ -50,12 +52,13 @@ export const createNewProject = async () => {
 	const name = getNextProjectName(projectNames);
 	const id = await projectManager.createProject(name);
 	if (!id) return;
+	appState.projectCount++;
 
 	appState.project.id = id;
 	appState.project.name = name;
 	appState.project.aspect = 0;
-	appState.project.resolution.height = 1920;
-	appState.project.resolution.width = 1080;
+	appState.project.resolution.height = 1080;
+	appState.project.resolution.width = 1920;
 	appState.propertiesSection = 'project';
 	resizeCanvas(1920, 1080);
 	workerManager.reset();
@@ -93,6 +96,8 @@ export const loadProject = async (id: string) => {
 	const project = await projectManager.getProject(id);
 	if (!project) return;
 
+	appState.progress.message = 'loading project...';
+
 	appState.project.id = project.id;
 	appState.project.name = project.name;
 	appState.project.resolution.width = project.width;
@@ -105,6 +110,7 @@ export const loadProject = async (id: string) => {
 
 	appState.selectedSource = null;
 	appState.sources.length = 0;
+	await projectManager.purgeDeletedSources();
 	const projectSources = await projectManager.getSources(id);
 	let i = 0;
 	for (const source of projectSources) {
@@ -113,8 +119,8 @@ export const loadProject = async (id: string) => {
 		newSource.name = source.name;
 
 		if (source.type === 'video' || source.type === 'image') {
-			const blob = await projectManager.getThumbnail(source.id);
-			if (blob) setSourceThumbnail(source.id, blob);
+			const thumbnailData = await projectManager.getThumbnail(source.id);
+			if (thumbnailData) setSourceThumbnail(source.id, thumbnailData.image);
 		}
 
 		if (source.type === 'video' || source.type === 'audio') {
@@ -141,7 +147,6 @@ export const loadProject = async (id: string) => {
 			}
 		}
 
-		appState.progress.message = 'loading files...';
 		appState.progress.percentage = (i / projectSources.length) * 100;
 		i++;
 	}
@@ -170,18 +175,23 @@ export const loadProject = async (id: string) => {
 	}
 	workerManager.sendClip(timelineState.clips);
 	setAllJoins();
-	//setAllTrackTypes();
-	//setTrackLocks();
 	timelineState.invalidate = true;
 
 	historyManager.reset();
 	appState.progress.percentage = 100;
 };
 
+export const deleteProject = async () => {
+	await projectManager.deleteProject(appState.project.id);
+	appState.projectCount--;
+	const lastProject = await projectManager.getLastModifiedProject();
+	if (lastProject) await loadProject(lastProject.id);
+};
+
 export const createProjectThumbnail = async () => {
 	const { bitmap } = await workerManager.getThumbnail();
 	const blob = await createThumbnailBlob(bitmap, bitmap.width, bitmap.height);
-	projectManager.createThumbnail(blob, appState.project.id.toString());
+	projectManager.createThumbnail(blob, appState.project.id, appState.project.id);
 	bitmap.close();
 	return blob;
 };

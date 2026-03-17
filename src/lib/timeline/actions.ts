@@ -296,7 +296,6 @@ export const addTrack = (trackNumber: number) => {
 		type: 'none'
 	});
 	historyManager.pushAction({ action: 'addTrack', data: { number: trackNumber, type: 'none' } });
-	// TODO: do we need to update worker here?
 	const movedClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
@@ -314,6 +313,7 @@ export const addTrack = (trackNumber: number) => {
 			});
 		}
 	}
+	workerManager.sendClip(movedClips);
 	projectManager.updateClip(movedClips);
 
 	setTrackPositions();

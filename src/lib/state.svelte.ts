@@ -52,6 +52,7 @@ class AppState {
 		aspect: 0
 	});
 
+	projectCount = 0;
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	exportSuccessCallback: (success: boolean) => void = () => {};

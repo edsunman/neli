@@ -92,7 +92,6 @@ export const deleteClip = (clip: Clip) => {
 	workerManager.sendClip(clip);
 	projectManager.updateClip(clip);
 	appState.propertiesSection = 'outputAudio';
-	console.log(timelineState.clips);
 };
 
 export const deleteClips = (clips: Clip[]) => {

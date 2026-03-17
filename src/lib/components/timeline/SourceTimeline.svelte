@@ -36,7 +36,7 @@
 		}
 	};
 
-	const mouseUp = (e: MouseEvent) => {
+	const mouseUp = () => {
 		appState.mouseIsDown = false;
 		scrubbing = false;
 	};
@@ -81,8 +81,8 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="absolute w-full max-w-200 bottom-10 px-5 bg-[#09090a] rounded-4xl">
-	<div class="h-12" bind:this={canvasContainer} onmousedown={mouseDown}>
+<div class="absolute w-full max-w-200 bottom-0 px-5 bg-zinc-900 rounded-4xl">
+	<div class="h-16 pt-2" bind:this={canvasContainer} onmousedown={mouseDown}>
 		<canvas class="absolute" bind:this={canvas}></canvas>
 	</div>
 </div>

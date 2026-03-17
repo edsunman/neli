@@ -10,11 +10,12 @@
 		folderIcon,
 		presetsIcon,
 		warningIcon,
-		linkIcon
+		linkIcon,
+		deleteIcon
 	} from '../icons/Icons.svelte';
 	import { pause } from '$lib/timeline/actions';
 	import type { Source } from '$lib/source/source.svelte';
-	import { clickToRelinkFile, dropToImportFile } from '$lib/source/actions';
+	import { clickToRelinkFile, deleteSource, dropToImportFile } from '$lib/source/actions';
 	import { showSourceInProgram, showTimelineInProgram } from '$lib/program/actions';
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
@@ -27,12 +28,13 @@
 	let hoverSelected = $state(false);
 	let forceHoverId = $state('');
 
-	let clickedSourceId = '';
+	let clickedSource: Source | undefined;
 
 	let filteredSources = $derived.by(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		appState.sourceFolders;
 		return appState.sources.filter((source) => {
+			if (source.deleted) return false;
 			return source.folderId === appState.selectedSourceFolder;
 		});
 	});
@@ -137,9 +139,16 @@
 				<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 				<button
 					oncontextmenu={(e) => {
-						if (!source.unlinked) return;
+						e.preventDefault();
+						if (source.type === 'test' || source.type === 'text') return;
+						const sourceClips = timelineState.clips.filter((clip) => {
+							if (clip.deleted) return false;
+							if (clip.source.id === source.id) return true;
+							return false;
+						});
+						if (sourceClips.length > 0) return;
 						forceHoverId = source.id;
-						clickedSourceId = source.id;
+						clickedSource = source;
 						contextMenu.openContextMenu(e);
 					}}
 					onmouseover={() => {
@@ -169,9 +178,11 @@
 							'bg-hover',
 
 						'group h-14 lg:w-full pl-20 select-none text-left relative',
+						'focus-visible:ring-2 ring-zinc-300 focus-visible:outline-none',
 						'rounded-lg'
 					]}
 					onmousedown={(e) => {
+						if (e.button > 0) return;
 						pause();
 						appState.mouseIsDown = true;
 
@@ -264,12 +275,22 @@
 	bind:this={contextMenu}
 	buttons={[
 		{
+			text: 'delete source',
+			icon: deleteIcon,
+			onClick: () => {
+				if (clickedSource) deleteSource(clickedSource);
+			}
+		},
+		{
 			text: 'relink file',
 			icon: linkIcon,
 			onClick: () => {
-				clickToRelinkFile(clickedSourceId);
+				clickToRelinkFile(clickedSource?.id || '');
 			},
-			shortcuts: []
+			hideCondition: () => {
+				if (clickedSource) return !clickedSource.unlinked;
+				return false;
+			}
 		}
 	]}
 	onClose={() => {

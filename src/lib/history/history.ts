@@ -1,5 +1,6 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
+import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
 import { projectManager, timelineState, workerManager } from '$lib/state.svelte';
 import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { Command, TrackType } from '$lib/types';
@@ -113,6 +114,8 @@ export class HistoryManager {
 				return new AddTrackCommand(command.data.number, command.data.type);
 			case 'removeTrack':
 				return new RemoveTrackCommand(command.data.number, command.data.type);
+			case 'deleteSource':
+				return new DeleteSourceCommand(command.data.sourceId);
 		}
 	}
 }
@@ -165,6 +168,24 @@ class DeleteClipCommand implements ICommand {
 				updatedClips.add(clip);
 			}
 		}
+	}
+}
+
+class DeleteSourceCommand implements ICommand {
+	constructor(private sourceId: string) {}
+	redo() {
+		const source = getSourceFromId(this.sourceId);
+		if (!source) return;
+		source.deleted = true;
+		projectManager.updateSource(source.id, { deleted: true });
+		assignSourcesToFolders();
+	}
+	undo() {
+		const source = getSourceFromId(this.sourceId);
+		if (!source) return;
+		source.deleted = false;
+		projectManager.updateSource(source.id, { deleted: false });
+		assignSourcesToFolders(source.id);
 	}
 }
 
