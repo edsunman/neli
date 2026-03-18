@@ -36,7 +36,7 @@
 		}
 	};
 
-	const mouseUp = (e: MouseEvent) => {
+	const mouseUp = () => {
 		appState.mouseIsDown = false;
 		scrubbing = false;
 	};
@@ -81,8 +81,8 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="absolute w-full max-w-200 bottom-10 px-5 bg-[#09090a] rounded-4xl">
-	<div class="h-12" bind:this={canvasContainer} onmousedown={mouseDown}>
+<div class="absolute w-full max-w-200 bottom-0 px-3 bg-zinc-900 rounded-xl">
+	<div class="h-14 pt-1" bind:this={canvasContainer} onmousedown={mouseDown}>
 		<canvas class="absolute" bind:this={canvas}></canvas>
 	</div>
 </div>
@@ -100,7 +100,7 @@
 	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.showPalette) return;
+		if (appState.palette.open) return;
 		switch (event.code) {
 			case 'KeyI':
 				setInPoint();

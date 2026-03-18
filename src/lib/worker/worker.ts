@@ -13,6 +13,7 @@ let playing = false;
 let seeking = false;
 let encoding = false;
 let latestSeekFrame = 0;
+let latestRequestId = 0;
 let cancelEncode = false;
 let selectedSource: WorkerVideoSource | null = null;
 let programTimelineActive = false;
@@ -22,67 +23,87 @@ const sources: WorkerVideoSource[] = [];
 
 self.addEventListener('message', async function (event) {
 	switch (event.data.command) {
-		case 'init':
-			{
-				decoderPool = new DecoderPool();
-				encoder = new Encoder();
-				canvas = event.data.canvas;
-				renderer = new WebGPURenderer(canvas);
-			}
+		case 'init': {
+			decoderPool = new DecoderPool();
+			encoder = new Encoder();
+			canvas = event.data.canvas;
+			renderer = new WebGPURenderer(canvas);
+			await renderer.start();
+			requestSeek();
+			self.postMessage({ command: 'init-done', requestId: event.data.requestId });
 			break;
-		case 'load-file':
-			{
-				if (event.data.type === 'video') {
-					const newSource = await loadFile(event.data.file, event.data.id);
-					if (!newSource) return;
-					sources.push(newSource);
-					sendFrameForThumbnail(newSource);
-				} else if (event.data.type === 'image') {
-					const bitmap = await createImageBitmap(event.data.file);
-					renderer.loadTexture(bitmap, event.data.id);
-					self.postMessage({ command: 'thumbnail', sourceId: event.data.id, gap: 0, bitmap }, [
+		}
+		case 'reset': {
+			clips.length = 0;
+			sources.length = 0;
+			selectedSource = null;
+			programTimelineActive = false;
+			latestSeekFrame = 0;
+			requestSeek();
+			break;
+		}
+		case 'load-file': {
+			if (event.data.type === 'video') {
+				const newSource = await loadFile(event.data.file, event.data.id);
+				if (!newSource) return;
+				sources.push(newSource);
+				sendFrameForThumbnail(newSource, event.data.requestId);
+			} else if (event.data.type === 'image') {
+				const bitmap = await createImageBitmap(event.data.file);
+				renderer.loadTexture(bitmap, event.data.id);
+				await saveFileToOPFS(event.data.file, event.data.id);
+				self.postMessage(
+					{
+						command: 'thumbnail',
+						requestId: event.data.requestId,
+						sourceId: event.data.id,
+						gap: 0,
 						bitmap
-					]);
-				}
-			}
-			break;
-		case 'encode':
-			{
-				encodeAndCreateFile(
-					event.data.audioBuffer,
-					event.data.fileName,
-					event.data.startFrame,
-					event.data.endFrame
+					},
+					[bitmap]
 				);
 			}
 			break;
-		case 'cancelEncode':
-			{
-				cancelEncode = true;
-			}
+		}
+		case 'encode': {
+			encodeAndCreateFile(
+				event.data.audioBuffer,
+				event.data.fileName,
+				event.data.startFrame,
+				event.data.endFrame
+			);
 			break;
-		case 'play':
-			{
-				if (seeking) break;
-				self.postMessage({ command: 'ready-to-play' });
-				playing = true;
-				seeking = false;
-				startPlayLoop(event.data.frame);
-			}
+		}
+		case 'cancelEncode': {
+			cancelEncode = true;
 			break;
-		case 'pause':
-			{
-				playing = false;
-				decoderPool.pauseAll();
-				latestSeekFrame = event.data.frame;
-				if (seeking) break;
-				processSeekFrame();
+		}
+		case 'play': {
+			if (seeking) {
+				self.postMessage({
+					command: 'ready-to-play',
+					requestId: event.data.requestId,
+					workerStarted: false
+				});
+				break;
 			}
+			self.postMessage({
+				command: 'ready-to-play',
+				requestId: event.data.requestId,
+				workerStarted: true
+			});
+			playing = true;
+			startPlayLoop(event.data.frame);
 			break;
+		}
+		case 'pause': {
+			playing = false;
+			decoderPool.pauseAll();
+			requestSeek(event.data.frame);
+			break;
+		}
 		case 'seek': {
-			latestSeekFrame = event.data.frame;
-			if (seeking) break;
-			processSeekFrame();
+			requestSeek(event.data.frame);
 			break;
 		}
 		case 'clip': {
@@ -94,18 +115,14 @@ self.addEventListener('message', async function (event) {
 					clips.push(clip);
 				}
 			}
-
 			if (!programTimelineActive) {
-				latestSeekFrame = event.data.frame;
-				if (seeking) break;
-				processSeekFrame();
+				requestSeek();
 			}
 			break;
 		}
 		case 'resizeCanvas': {
-			if (seeking) break;
 			renderer.resizeCanvas(event.data.width, event.data.height);
-			processSeekFrame();
+			requestSeek();
 			break;
 		}
 		case 'showSource': {
@@ -129,13 +146,12 @@ self.addEventListener('message', async function (event) {
 				const source = sources.find((source) => source.id === event.data.sourceId);
 				if (!source) break;
 				selectedSource = source;
-
 				renderer.resizeCanvas(source.width, source.height);
-
-				if (seeking) break;
+				requestSeek(event.data.frame);
+				/* if (seeking) break;
 				seeking = true;
 				await drawSourceFrame(event.data.frame, false, selectedSource);
-				seeking = false;
+				seeking = false; */
 			}
 			break;
 		}
@@ -143,9 +159,7 @@ self.addEventListener('message', async function (event) {
 			programTimelineActive = false;
 			selectedSource = null;
 			renderer.resizeCanvas(event.data.width, event.data.height);
-			latestSeekFrame = event.data.frame;
-			if (seeking) break;
-			processSeekFrame();
+			requestSeek(event.data.frame);
 			break;
 		}
 		case 'showAudioSource': {
@@ -159,39 +173,62 @@ self.addEventListener('message', async function (event) {
 			seeking = false;
 			break;
 		}
+		case 'project-thumbnail': {
+			sendBitmapForThumbnail(event.data.requestId);
+		}
 	}
 });
 
-const sendFrameForThumbnail = async (source: WorkerVideoSource) => {
+const sendFrameForThumbnail = async (source: WorkerVideoSource, requestId: string) => {
 	const decoder = decoderPool.assignDecoder('thumbnail');
 	if (!decoder) return;
 	decoder.setup(source.videoConfig, source.encodedPacketSink);
+
 	const videoFrame = await decoder?.decodeFrame(60);
 	if (!videoFrame) return;
-	self.postMessage({ command: 'thumbnail', sourceId: source.id, gap: source.gap, videoFrame }, [
-		videoFrame
-	]);
+	self.postMessage(
+		{ command: 'import-done', requestId, sourceId: source.id, gap: source.gap, videoFrame },
+		[videoFrame]
+	);
+};
+
+const sendBitmapForThumbnail = async (requestId: string) => {
+	encoding = true;
+	await buildAndDrawFrame(latestSeekFrame);
+	encoding = false;
+	if (!renderer || !renderer.bitmap) return;
+	const bitmap = await createImageBitmap(renderer.bitmap);
+	self.postMessage({ command: 'project-thumbnail', requestId, bitmap }, [bitmap]);
+};
+
+const requestSeek = (frame: number = latestSeekFrame) => {
+	latestSeekFrame = frame;
+	latestRequestId++;
+
+	if (!seeking) {
+		processSeekFrame();
+	}
 };
 
 const processSeekFrame = async () => {
 	seeking = true;
 	while (true) {
-		const frameToProcess = latestSeekFrame;
-
+		const versionToProcess = latestRequestId;
 		decoderPool.pauseAll();
+
 		if (selectedSource) {
-			await drawSourceFrame(frameToProcess, false, selectedSource);
+			await drawSourceFrame(latestSeekFrame, false, selectedSource);
 		} else {
-			await buildAndDrawFrame(frameToProcess);
+			await buildAndDrawFrame(latestSeekFrame);
 		}
-		if (latestSeekFrame === frameToProcess) {
+		if (latestRequestId === versionToProcess) {
 			break;
 		}
 	}
 	seeking = false;
 };
 
-const setupFrame = async (frameNumber: number) => {
+const setupFrame = async (frameNumber: number, useSavedFrame: boolean) => {
 	for (const clip of clips) {
 		if (clip.type !== 'video' || clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
@@ -200,7 +237,7 @@ const setupFrame = async (frameNumber: number) => {
 			const clipFrame = frameNumber - clip.start + clip.sourceOffset;
 			const frameDurationMs = 1000 / 30;
 			const frameTimeMs = clipFrame * frameDurationMs;
-			decoderPool.decoders.get(clip.id)?.play(frameTimeMs, true);
+			decoderPool.decoders.get(clip.id)?.play(frameTimeMs, useSavedFrame);
 		}
 	}
 };
@@ -218,7 +255,7 @@ const startPlayLoop = async (startingFrame: number) => {
 		fps = selectedSource.frameRate;
 		await setupSourceFrame(startingFrame, selectedSource);
 	} else {
-		await setupFrame(startingFrame);
+		await setupFrame(startingFrame, true);
 	}
 
 	const msPerFrame = 1000 / fps;
@@ -356,23 +393,27 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 	renderer.startPaint();
 
-	let i = 0;
 	for (const clip of activeClips) {
-		i++;
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
-			renderer.videoPass(i, frame, clip.params, clip.sourceHeight, clip.sourceWidth);
+			renderer.videoPass(clip.track, frame, clip.params, clip.sourceHeight, clip.sourceWidth);
 		}
 		if (clip.type === 'image') {
-			renderer.imagePass(i, clip.sourceId, clip.params, clip.sourceHeight, clip.sourceWidth);
+			renderer.imagePass(
+				clip.track,
+				clip.sourceId,
+				clip.params,
+				clip.sourceHeight,
+				clip.sourceWidth
+			);
 		}
 		if (clip.type === 'text') {
 			if (!clip.text) clip.text = '_';
-			renderer.textPass(i, clip.params, clip.text);
+			renderer.textPass(clip.track, clip.params, clip.text);
 		}
 		if (clip.type === 'test') {
-			renderer.testPass(i, frameNumber - clip.start, clip.params);
+			renderer.testPass(clip.track, frameNumber - clip.start, clip.params);
 		}
 	}
 
@@ -405,7 +446,7 @@ const encodeAndCreateFile = async (
 
 	encodeAudio(audioBuffer, durationInFrames);
 
-	await setupFrame(startFrame);
+	await setupFrame(startFrame, false);
 
 	try {
 		for await (const { frame, index } of frameGenerator(durationInFrames, startFrame)) {
@@ -451,18 +492,18 @@ const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
 	const numberOfChannels = 2;
 
 	const durationInSeconds = durationInFrames / 30;
-	const totalInputFrames = 48000 * durationInSeconds;
+	const totalInputFrames = Math.floor(48000 * durationInSeconds);
 
 	const chunkFrameSize = 1024; // Number of frames per AudioData chunk
 
 	// Split buffer into seperate arrays for each channel
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
 		const startOffset = c * totalInputFrames;
-		return new Float32Array(
-			audioBuffer.buffer,
-			startOffset * Float32Array.BYTES_PER_ELEMENT,
-			totalInputFrames
+		const startByteOffest = startOffset * Float32Array.BYTES_PER_ELEMENT;
+		console.log(
+			`trying with startOffset: ${startOffset}, byteOffset:${startByteOffest}, input frames: ${totalInputFrames}`
 		);
+		return new Float32Array(audioBuffer.buffer, startByteOffest, totalInputFrames);
 	});
 
 	let encodeTimestamp = 0;
@@ -526,3 +567,27 @@ async function drawFrameAndEnsureFrameIsReady(frameIndex: number, maxRetries = 3
 		`Frame Timeout: Frame ${frameIndex} failed to render after ${maxRetries} attempts.`
 	);
 }
+
+const saveFileToOPFS = async (file: File, fileName: string) => {
+	const root = await navigator.storage.getDirectory();
+	const originalExt = file.name.split('.').pop() || '';
+	const finalFileName = `${fileName}.${originalExt}`;
+
+	const existingHandle = await root
+		.getFileHandle(finalFileName, { create: false })
+		.catch(() => null);
+	if (existingHandle) return;
+
+	const fileHandle = await root.getFileHandle(finalFileName, { create: true });
+	const accessHandle = await fileHandle.createSyncAccessHandle();
+
+	try {
+		const buffer = await file.arrayBuffer();
+		accessHandle.write(new Uint8Array(buffer));
+		accessHandle.flush();
+	} catch (err) {
+		console.error('Failed to save to OPFS:', err);
+	} finally {
+		accessHandle.close();
+	}
+};

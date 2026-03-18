@@ -8,8 +8,11 @@
 		backIcon,
 		backArrowIcon,
 		copyIcon,
+		deleteIcon,
 		exportIcon,
 		fileIcon,
+		fileNewIcon,
+		fileOpenIcon,
 		filmIcon,
 		folderIcon,
 		forwardIcon,
@@ -22,6 +25,7 @@
 		justifyLeftIcon,
 		justifyCenterIcon,
 		justifyRightIcon,
+		linkIcon,
 		logoIcon,
 		mouseIcon,
 		moveIcon,
@@ -32,6 +36,8 @@
 		pointerIcon,
 		presetsIcon,
 		redoIcon,
+		scaleToFitIcon,
+		scaleToFillIcon,
 		scissorsIcon,
 		seekIcon,
 		settingsIcon,
@@ -40,6 +46,7 @@
 		testIcon,
 		textIcon,
 		undoIcon,
+		warningIcon,
 		zoomInIcon,
 		zoomOutIcon
 	};
@@ -175,6 +182,21 @@
 	</svg>
 {/snippet}
 
+{#snippet deleteIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet exportIcon(className: string)}
 	<svg
 		class={className}
@@ -204,6 +226,34 @@
 		fill="none"
 	>
 		<path stroke-linecap="round" d="M13 3v6h6" /> <path d="M13 3l6 6v12H5V3z" />
+	</svg>
+{/snippet}
+
+{#snippet fileNewIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"
+		/>
+	</svg>
+{/snippet}
+
+{#snippet fileOpenIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v240h-80v-200H520v-200H240v640h360v80H240Zm638 15L760-183v89h-80v-226h226v80h-90l118 118-56 57Zm-638-95v-640 640Z"
+		/>
 	</svg>
 {/snippet}
 
@@ -406,6 +456,29 @@
 	</svg>
 {/snippet}
 
+{#snippet linkIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path
+			d="M10.5,15.5 C10.5,14.1666667 10.5,13.5 10.5,13.5 C10.5,10.7385763 8.26142375,8.5 5.5,8.5 C2.73857625,8.5 0.5,10.7385763 0.5,13.5 C0.5,13.5 0.5,14.1666667 0.5,15.5"
+			transform="rotate(-90 5.5 12)"
+		/> <path d="M8,12 L16,12" />
+		<path
+			d="M23.5,15.5 C23.5,14.1666667 23.5,13.5 23.5,13.5 C23.5,10.7385763 21.2614237,8.5 18.5,8.5 C15.7385763,8.5 13.5,10.7385763 13.5,13.5 C13.5,13.5 13.5,14.1666667 13.5,15.5"
+			transform="rotate(90 18.5 12)"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet logoIcon(className: string)}
 	<svg
 		class={className}
@@ -588,6 +661,76 @@
 	</svg>
 {/snippet}
 
+{#snippet scaleToFillIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		<path
+			class="cls-2"
+			d="M12.7,2.98v13.97h-5.27V2.98h5.27M12.7.98h-5.27c-1.1,0-2,.9-2,2v13.97c0,1.1.9,2,2,2h5.27c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2h0Z"
+		/><path class="cls-2" d="M4.61.98v2h-1.52v1.43H1.08s0-.38,0-1.43S1.88.98,3.08.98h1.52Z" /><path
+			class="cls-2"
+			d="M19.05,4.5h-2v-1.52h-1.43V.97s.38,0,1.43,0,2,.79,2,2v1.52Z"
+		/><path class="cls-2" d="M15.53,18.94v-2h1.52v-1.43h2s0,.38,0,1.43-.79,2-2,2h-1.52Z" /><path
+			class="cls-2"
+			d="M1.08,15.42h2v1.52h1.43v2s-.38,0-1.43,0-2-.79-2-2v-1.52Z"
+		/><polygon class="cls-1" points="3.08 8.72 1.08 8.72 1.08 6.55 3.08 6.55 3.08 8.72" /><rect
+			class="cls-1"
+			x="1.08"
+			y="11.05"
+			width="2"
+			height="2.23"
+		/><polygon class="cls-1" points="19.05 8.8 17.05 8.8 17.05 6.63 19.05 6.63 19.05 8.8" /><rect
+			class="cls-1"
+			x="17.06"
+			y="11.13"
+			width="2"
+			height="2.23"
+		/>
+	</svg>
+{/snippet}
+
+{#snippet scaleToFitIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		id="Layer_1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		<path
+			d="M17.05.98H3.08C1.98.98,1.08,1.88,1.08,2.98v13.97c0,1.1.9,2,2,2h13.97c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2ZM17.05,16.95H3.08V2.92h13.97v14.02Z"
+		/><rect class="cls-1" x="5.43" y="6.92" width="2" height="2.22" /><rect
+			class="cls-1"
+			x="5.43"
+			y="2.92"
+			width="2"
+			height="2.24"
+		/><rect x="5.43" y="14.92" width="2" height="2" /><rect
+			x="5.43"
+			y="10.92"
+			width="2"
+			height="2.24"
+		/><rect x="12.7" y="14.92" width="2" height="2" /><rect
+			x="12.7"
+			y="6.92"
+			width="2"
+			height="2.22"
+		/><polyline points="14.7 2.92 14.7 5.17 12.7 5.17 12.7 2.92" /><rect
+			x="12.7"
+			y="10.92"
+			width="2"
+			height="2.24"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet scissorsIcon(className: string)}
 	<svg
 		class={className}
@@ -737,6 +880,23 @@
 	>
 		<path d="M5,17 L5,15 C5,10.0294373 8.80557963,6 13.5,6 C18.1944204,6 22,10.0294373 22,15" />
 		<polyline points="8 15 5 18 2 15" />
+	</svg>
+{/snippet}
+
+{#snippet warningIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path d="M12 8L12 13" /> <line x1="12" y1="16" x2="12" y2="16" />
+		<circle cx="12" cy="12" r="10" />
 	</svg>
 {/snippet}
 

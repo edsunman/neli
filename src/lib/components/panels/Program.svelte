@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
-	import { setupWorker, updateWorkerClip } from '$lib/worker/actions.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 
 	import ClipBox from '../program/ClipBox.svelte';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
@@ -9,6 +15,8 @@
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
 	import { pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
+	import { startApp } from '$lib/app/actions';
+	import { deselectAllClips } from '$lib/clip/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -32,10 +40,7 @@
 		appState.mouseIsDown = true;
 		pause();
 
-		timelineState.selectedClips.clear();
-		timelineState.selectedClip = null;
-		programState.selectedClip = null;
-		appState.propertiesSection = 'outputAudio';
+		deselectAllClips();
 
 		if (!canvasContainer || !canvas) return;
 		const rect = canvas.getBoundingClientRect();
@@ -67,16 +72,16 @@
 			savedClipPosition.y - (draggedOffset.y / (scale / 100) / programState.canvasHeight) * 2;
 		programState.selectedClip.params[3] = Math.round(newY * 100) / 100;
 
-		updateWorkerClip(timelineState.selectedClip);
+		if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 	};
 
-	const mouseUp = () => {
+	const mouseUp = async () => {
 		appState.mouseMoveOwner = 'timeline';
 		if (dragging) {
 			dragging = false;
 			const clip = timelineState.selectedClip;
 			if (!clip) return;
-			historyManager.pushAction({
+			historyManager.newCommand({
 				action: 'clipParam',
 				data: {
 					clipId: clip.id,
@@ -85,7 +90,7 @@
 					newValue: [clip.params[2], clip.params[3]]
 				}
 			});
-			historyManager.finishCommand();
+			projectManager.updateClip(clip);
 		}
 	};
 
@@ -101,12 +106,12 @@
 
 	onMount(async () => {
 		if (!canvas) return;
-		setupWorker(canvas);
+		startApp(canvas);
+		//console.log('setup done');
 	});
 </script>
 
 <div class="h-full" style="container-type: size">
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		onmousedown={mouseDown}

@@ -31,7 +31,6 @@ export class WebGPURenderer {
 
 	constructor(canvas: OffscreenCanvas) {
 		this.canvas = canvas;
-		this.start();
 	}
 
 	async start() {
@@ -71,8 +70,8 @@ export class WebGPURenderer {
 			this.uniformBuffers.push(uniformBuffer);
 		}
 
-		this.startPaint();
-		this.endPaint();
+		//this.startPaint();
+		//await this.endPaint();
 	}
 
 	startPaint() {
@@ -201,6 +200,7 @@ export class WebGPURenderer {
 
 	loadTexture(image: ImageBitmap, soruceId: string) {
 		if (!this.device) return;
+
 		const texture = this.device.createTexture({
 			label: 'test-texture',
 			format: 'rgba8unorm',

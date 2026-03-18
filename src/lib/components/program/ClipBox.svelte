@@ -4,9 +4,16 @@
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { transformClip } from '$lib/program/actions';
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 	import { measureText } from '$lib/text/utils';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { scaleToFillIcon, scaleToFitIcon } from '../icons/Icons.svelte';
 
 	type Props = {
 		clip: Clip;
@@ -63,7 +70,7 @@
 			const newScale = currentDistance / initialDistance;
 			timelineState.selectedClip.params[0] = Math.round(savedClipScale.x * newScale * 100) / 100;
 			timelineState.selectedClip.params[1] = Math.round(savedClipScale.y * newScale * 100) / 100;
-			updateWorkerClip(timelineState.selectedClip);
+			workerManager.sendClip(timelineState.selectedClip);
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		}
 	};
@@ -83,6 +90,7 @@
 				}
 			});
 			historyManager.finishCommand();
+			projectManager.updateClip(clip);
 		}
 	};
 
@@ -115,34 +123,10 @@
 		const y = measurements.height * scaleFactor + 10;
 		return { x, y };
 	};
-
-	const buttons = $state([
-		{
-			text: 'scale to fit',
-			onclick: () => {
-				const clip = timelineState.selectedClip;
-				if (!clip) return;
-				const scaleFactor = getClipFitScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
-			},
-			shortcuts: []
-		},
-		{
-			text: 'scale to fill',
-			onclick: () => {
-				const clip = timelineState.selectedClip;
-				if (!clip) return;
-				const scaleFactor = getClipFillScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
-			},
-			shortcuts: []
-		}
-	]);
 </script>
 
 {#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
 	<div
 		style:top={`${position.top}px`}
 		style:left={`${position.left}px`}
@@ -192,10 +176,36 @@
 		class="border-2 border-white absolute top-0 left-0"
 		oncontextmenu={(e) => {
 			e.preventDefault();
-			contextMenu.openContextMenu(e);
+			//contextMenu.openContextMenu(e);
 		}}
 	></div>
 {/if}
 
-<ContextMenu bind:this={contextMenu} {buttons} />
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: 'scale to fit',
+			onClick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				const scaleFactor = getClipFitScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+			},
+			icon: scaleToFitIcon,
+			shortcuts: []
+		},
+		{
+			text: 'scale to fill',
+			onClick: () => {
+				const clip = timelineState.selectedClip;
+				if (!clip) return;
+				const scaleFactor = getClipFillScaleFactor(clip);
+				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+			},
+			icon: scaleToFillIcon,
+			shortcuts: []
+		}
+	]}
+/>
 <svelte:window onmousemove={mouseMove} onmouseup={mouseUp} />

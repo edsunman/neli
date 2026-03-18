@@ -3,12 +3,23 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLInputAttributes {
-		value: any;
+		value: string | number;
 		fallback?: number | string;
-		type?: string;
+		type?: 'text' | 'number';
+		onBlur?: () => void;
+		extention?: string;
+		selectOnMount?: boolean;
 	}
 
-	let { value = $bindable(), ...others }: Props = $props();
+	let {
+		value = $bindable(),
+		fallback,
+		onBlur = () => {},
+		type = 'text',
+		extention,
+		selectOnMount = false,
+		...others
+	}: Props = $props();
 </script>
 
 <div
@@ -23,9 +34,18 @@
 		"after:content-[''] after:transition-opacity focus-within:after:opacity-200 focus-within:after:duration-0 after:duration-500"
 	]}
 >
-	<!-- svelte-ignore a11y_autofocus -->
+	{#if extention}
+		<span class="pl-3 py-2 z-2 absolute text-zinc-400">
+			<span class="text-hover">{value}</span>{extention}
+		</span>
+	{/if}
 	<input
-		autofocus
+		{@attach (ref) => {
+			if (selectOnMount) {
+				ref.focus();
+				ref.select();
+			}
+		}}
 		bind:value
 		type="text"
 		class={['relative w-full px-3 py-2 z-2 text-zinc-100 outline-0']}
@@ -34,6 +54,12 @@
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
+			if (fallback) {
+				if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
+					value = fallback;
+				}
+			}
+			onBlur();
 		}}
 		{...others}
 	/>

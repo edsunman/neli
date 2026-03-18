@@ -10,7 +10,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": ["@webgpu/types"],
+		"types": ["@webgpu/types","wicg-file-system-access"],
 		"lib": ["esnext", "webworker"]
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

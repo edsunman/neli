@@ -4,7 +4,7 @@ self.addEventListener('message', async function (event) {
 	switch (event.data.command) {
 		case 'load-file':
 			{
-				if (!event.data.file) return;
+				if (!event.data.file) throw new Error('No file passed to worker');
 
 				const input = new Input({
 					formats: ALL_FORMATS,
@@ -14,12 +14,21 @@ self.addEventListener('message', async function (event) {
 				const audioTrack = await input.getPrimaryAudioTrack();
 				const audioConfig = await audioTrack?.getDecoderConfig();
 
-				if (!audioTrack || !audioConfig) return;
+				if (!audioTrack || !audioConfig)
+					throw new Error('File passed to worker has no audio track');
 
 				const duration = await audioTrack.computeDuration();
 				const sampleSink = new AudioSampleSink(audioTrack);
 
-				generateWaveformData(sampleSink, audioConfig, duration, event.data.sourceId);
+				const data = await generateWaveformData(sampleSink, audioConfig, duration);
+				self.postMessage(
+					{
+						command: 'waveform-complete',
+						requestId: event.data.requestId,
+						waveform: data
+					},
+					[data.buffer]
+				);
 			}
 			break;
 	}
@@ -28,10 +37,9 @@ self.addEventListener('message', async function (event) {
 export const generateWaveformData = async (
 	sampleSink: AudioSampleSink,
 	audioConfig: AudioDecoderConfig,
-	duration: number,
-	sourceId: string
+	duration: number
 ) => {
-	// We are going to store 300 values per second to draw waveform
+	// Store 300 values per second to draw waveform
 	// Step is how many samples we need per value
 	const step = audioConfig.sampleRate / 300;
 	const data = new Float32Array(duration * 300);
@@ -55,7 +63,7 @@ export const generateWaveformData = async (
 		sample.close();
 	}
 
-	self.postMessage({ command: 'waveform-complete', sourceId, data }, [data.buffer]);
+	return data;
 };
 
 const processAudioChunk = (

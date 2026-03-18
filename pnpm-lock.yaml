@@ -32,6 +32,9 @@ importers:
       '@types/node':
         specifier: ^24.2.1
         version: 24.2.1
+      '@types/wicg-file-system-access':
+        specifier: ^2023.10.7
+        version: 2023.10.7
       '@webgpu/types':
         specifier: ^0.1.61
         version: 0.1.61
@@ -50,6 +53,9 @@ importers:
       globals:
         specifier: ^16.0.0
         version: 16.1.0
+      idb:
+        specifier: ^8.0.3
+        version: 8.0.3
       mediabunny:
         specifier: ^1.27.4
         version: 1.27.4
@@ -783,6 +789,9 @@ packages:
   '@types/node@24.2.1':
     resolution: {integrity: sha512-DRh5K+ka5eJic8CjH7td8QpYEV6Zo10gfRkjHCO3weqZHWDtAaSTFtl4+VMqOJ4N5jcuhZ9/l+yy8rVgw7BQeQ==}
 
+  '@types/wicg-file-system-access@2023.10.7':
+    resolution: {integrity: sha512-g49ijasEJvCd7ifmAY2D0wdEtt1xRjBbA33PJTiv8mKBr7DoMsPeISoJ8oQOTopSRi+FBWPpPW5ouDj2QPKtGA==}
+
   '@typescript-eslint/eslint-plugin@8.32.1':
     resolution: {integrity: sha512-6u6Plg9nP/J1GRpe/vcjjabo6Uc5YQPAMxsgQyGC/I0RuukiG1wIe3+Vtg3IrSCVJDmqK3j8adrtzXSENRtFgg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -1220,6 +1229,9 @@ packages:
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
+
+  idb@8.0.3:
+    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
@@ -2404,6 +2416,8 @@ snapshots:
     dependencies:
       undici-types: 7.10.0
 
+  '@types/wicg-file-system-access@2023.10.7': {}
+
   '@typescript-eslint/eslint-plugin@8.32.1(@typescript-eslint/parser@8.32.1(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.27.0(jiti@2.4.2))(typescript@5.8.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.1
@@ -2890,6 +2904,8 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  idb@8.0.3: {}
 
   ignore@5.3.2: {}
 

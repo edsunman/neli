@@ -1,12 +1,17 @@
-import { sendFileToWavefromWorker, sendFileToWorker } from '$lib/worker/actions.svelte';
-import { appState } from '$lib/state.svelte';
+import {
+	appState,
+	historyManager,
+	projectManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import { Source } from './source.svelte';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
+import { showTimelineInProgram } from '$lib/program/actions';
 
 export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	const newSource = new Source(type, info);
-	newSource.id = Math.random().toString(16).slice(2);
 
 	if (type === 'text') newSource.name = 'Text';
 	if (type === 'test') newSource.name = 'Test video';
@@ -26,10 +31,13 @@ export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	return newSource;
 };
 
-export const assignSourcesToFolders = () => {
+export const assignSourcesToFolders = (sourceId = '') => {
 	appState.sourceFolders.length = 0;
 
-	const sourceCount = appState.sources.filter((source) => !source.preset).length;
+	const sourceCount = appState.sources.filter((source) => {
+		if (source.deleted) return false;
+		return source.type !== 'text' && source.type !== 'test';
+	}).length;
 
 	let folderId = 0;
 	for (let i = 0; i < sourceCount / 7; i++) {
@@ -38,20 +46,29 @@ export const assignSourcesToFolders = () => {
 	}
 
 	let i = 0;
+	let folderToShow = folderId;
 	for (const source of appState.sources) {
-		if (source.preset) {
+		if (source.type === 'text' || source.type === 'test' || source.deleted) {
 			source.folderId = 0;
 			continue;
 		}
 		source.folderId = Math.floor(i / 7) + 1;
+		if (sourceId === source.id) folderToShow = source.folderId;
 		i++;
 	}
 
-	appState.selectedSourceFolder = folderId;
+	appState.selectedSourceFolder = folderToShow;
 };
 
-export const createVideoSource = async (file: File, info: FileInfo) => {
-	const newSource = createSource('video', info, file);
+export const createVideoSource = async (file: File, info: FileInfo, existingSource?: Source) => {
+	let newSource;
+
+	if (existingSource) {
+		newSource = existingSource;
+		newSource.file = file;
+	} else {
+		newSource = createSource('video', info, file);
+	}
 
 	const input = new Input({
 		formats: ALL_FORMATS,
@@ -66,21 +83,59 @@ export const createVideoSource = async (file: File, info: FileInfo) => {
 		newSource.sink = new EncodedPacketSink(audioTrack);
 		newSource.sampleSink = new AudioSampleSink(audioTrack);
 		newSource.audioConfig = audioConfig;
+		generateWaveform(newSource);
 	}
 
-	sendFileToWorker(newSource);
-	sendFileToWavefromWorker(newSource);
-	return newSource.id;
+	const data = await workerManager.sendFile(newSource);
+	if (!newSource.thumbnail && data.videoFrame) {
+		const videoFrame = data.videoFrame as VideoFrame;
+		const blob = await createThumbnailBlob(
+			videoFrame,
+			videoFrame.codedWidth,
+			videoFrame.codedHeight
+		);
+		setSourceThumbnail(data.sourceId, blob);
+		projectManager.createThumbnail(blob, newSource.id, 'source');
+		appState.import.thumbnail = newSource.thumbnail;
+	} else {
+		data.videoFrame?.close();
+	}
+
+	return newSource;
 };
 
-export const createImageSource = async (file: File, info: FileInfo) => {
-	const newSource = createSource('image', info, file);
+export const createImageSource = async (file: File, info: FileInfo, existingSource?: Source) => {
+	let newSource;
+
+	if (existingSource) {
+		newSource = existingSource;
+		newSource.file = file;
+	} else {
+		newSource = createSource('image', info, file);
+	}
+
 	newSource.info = info;
-	sendFileToWorker(newSource);
+	const data = await workerManager.sendFile(newSource);
+	if (!newSource.thumbnail && data.bitmap) {
+		const blob = await createThumbnailBlob(data.bitmap, data.bitmap.width, data.bitmap.height);
+		setSourceThumbnail(data.sourceId, blob);
+		projectManager.createThumbnail(blob, newSource.id, 'source');
+		appState.import.thumbnail = newSource.thumbnail;
+	} else {
+		data.bitmap?.close();
+	}
+	return newSource;
 };
 
-export const createAudioSource = async (file: File, info: FileInfo) => {
-	const newSource = createSource('audio', info, file);
+export const createAudioSource = async (file: File, info: FileInfo, existingSource?: Source) => {
+	let newSource;
+
+	if (existingSource) {
+		newSource = existingSource;
+		newSource.file = file;
+	} else {
+		newSource = createSource('audio', info, file);
+	}
 
 	newSource.info = info;
 
@@ -92,14 +147,14 @@ export const createAudioSource = async (file: File, info: FileInfo) => {
 	const audioTrack = await input.getPrimaryAudioTrack();
 	const audioConfig = await audioTrack?.getDecoderConfig();
 
-	if (!audioTrack || !audioConfig) return;
+	if (!audioTrack || !audioConfig) throw new Error('No audio track');
 
 	newSource.sink = new EncodedPacketSink(audioTrack);
 	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
+	generateWaveform(newSource);
 
-	sendFileToWavefromWorker(newSource);
-	return newSource.id;
+	return newSource;
 };
 
 export const createSrtSource = async (file: File, info: FileInfo) => {
@@ -107,9 +162,10 @@ export const createSrtSource = async (file: File, info: FileInfo) => {
 	const srtEntries = parseSrt(result);
 	const newSource = createSource('srt', info, file); //new Source('srt', file);
 	newSource.srtEntries = srtEntries;
+	return newSource;
 };
 
-export const processFile = async (file: File) => {
+export const processFile = async (file: File, handle?: FileSystemHandle) => {
 	appState.import.importStarted = true;
 	appState.import.warningMessage = '';
 	appState.import.thumbnail = '';
@@ -137,18 +193,10 @@ export const processFile = async (file: File) => {
 	) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = 'file type not supported';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
+		appState.palette.page = 'import';
+		appState.palette.open = true;
 		return;
 	}
-
-	/* if (file.size > 1e9) {
-		appState.import.fileDetails.type = 'unknown';
-		appState.import.warningMessage = 'file exceeds 1GB size limit';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
-		return;
-	} */
 
 	const info = await checkDroppedSource(file, appState.import.fileDetails.type);
 	if (!info) return;
@@ -156,40 +204,39 @@ export const processFile = async (file: File) => {
 	if ('error' in info) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = info.error ?? '';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
+		appState.palette.page = 'import';
+		appState.palette.open = true;
 		return;
 	}
 
 	appState.import.fileDetails.info = info;
 
-	/* 	if (info.type === 'video' && info.duration > 120) {
-		appState.import.warningMessage = 'File duration is currently limited to 2 minutes';
-		appState.palettePage = 'import';
-		appState.showPalette = true;
-	} */
+	let newSource;
+	if (info.type === 'video') newSource = await createVideoSource(file, info);
+	if (info.type === 'image') newSource = await createImageSource(file, info);
+	if (info.type === 'audio') newSource = await createAudioSource(file, info);
+	if (info.type === 'srt') newSource = await createSrtSource(file, info);
+	if (!newSource) return;
 
-	appState.importSuccessCallback = (source: Source, gap: number) => {
-		appState.import.thumbnail = source.thumbnail;
-		if (gap > 70 && appState.import.warningMessage === '') {
-			appState.import.warningMessage = `this video has a large gap between keyframes (${gap}) which may result in poor playback performance`;
-			appState.palettePage = 'import';
-			appState.showPalette = true;
-		}
-	};
+	if (handle) newSource.handle = handle;
+	await projectManager.createSource(newSource);
+};
 
-	if (info.type === 'video') await createVideoSource(file, info);
-	if (info.type === 'image') await createImageSource(file, info);
-	if (info.type === 'audio') await createAudioSource(file, info);
-	if (info.type === 'srt') await createSrtSource(file, info);
+export const relinkFile = async (file: File, source: Source, handle?: FileSystemHandle) => {
+	if (source.type === 'video') await createVideoSource(file, source.info, source);
+	if (source.type === 'audio') await createAudioSource(file, source.info, source);
+
+	source.unlinked = false;
+	if (handle) {
+		source.handle = handle;
+		projectManager.updateSource(source.id, { handle });
+	}
 };
 
 export const checkDroppedSource = async (
 	file: File,
 	fileType: string
 ): Promise<FileInfo | { error: string }> => {
-	//console.log(`Processing file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-
 	if (fileType === 'video/mp4') {
 		const input = new Input({
 			formats: ALL_FORMATS,
@@ -252,7 +299,8 @@ export const checkDroppedSource = async (
 		return {
 			type: 'image',
 			format: fileType === 'image/jpeg' ? 'jpeg' : 'png',
-			resolution: { width: width, height: height }
+			resolution: { width: width, height: height },
+			extention: file.name.split('.').pop() || ''
 		};
 	}
 	return { error: 'File format is not supported' };
@@ -321,11 +369,11 @@ const readFileAsText = (file: File) => {
 	});
 };
 
-export const setSourceThumbnail = (sourceId: string, image: string, gap: number) => {
+export const setSourceThumbnail = (sourceId: string, blob: Blob) => {
+	const image = URL.createObjectURL(blob);
 	for (const source of appState.sources) {
 		if (source.id === sourceId) {
 			source.thumbnail = image;
-			appState.importSuccessCallback(source, gap);
 		}
 	}
 };
@@ -338,4 +386,160 @@ export const getSourceFromId = (id: string) => {
 		}
 	}
 	return foundSource;
+};
+
+export const createThumbnailBlob = async (
+	image: ImageBitmap | VideoFrame,
+	imageWidth: number,
+	imageHeight: number
+) => {
+	const targetWidth = 192;
+	const targetHeight = 108;
+
+	const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+	const context = canvas.getContext('2d');
+	if (!context) {
+		throw new Error('Could not get 2D context from canvas');
+	}
+
+	const inputRatio = imageWidth / imageHeight;
+	const targetRatio = targetWidth / targetHeight;
+	let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+	if (inputRatio > targetRatio) {
+		drawHeight = targetHeight;
+		drawWidth = imageWidth * (targetHeight / imageHeight);
+		offsetX = (targetWidth - drawWidth) / 2;
+		offsetY = 0;
+	} else {
+		drawWidth = targetWidth;
+		drawHeight = imageHeight * (targetWidth / imageWidth);
+		offsetX = 0;
+		offsetY = (targetHeight - drawHeight) / 2;
+	}
+
+	context.clearRect(0, 0, targetWidth, targetHeight);
+	context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+	image.close();
+	return await canvas.convertToBlob({ type: 'image/png' });
+};
+
+export const clickToImportFile = async () => {
+	if ('showOpenFilePicker' in window) {
+		// chrome spesific api
+		try {
+			const [fileHandle] = await window.showOpenFilePicker();
+			const file = await fileHandle.getFile();
+			appState.palette.lock = true;
+			await processFile(file, fileHandle);
+			appState.palette.lock = false;
+		} catch {
+			// file picker cancelled
+			return;
+		}
+	} else {
+		// safari/firefox api
+		console.log('old');
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.style.display = 'none';
+		input.onchange = async (e: Event) => {
+			const target = e.currentTarget as HTMLInputElement;
+			if (!target.files) return;
+			const file = target.files[0];
+			appState.palette.lock = true;
+			await processFile(file);
+			appState.palette.lock = false;
+		};
+		input.oncancel = () => {
+			input.remove();
+		};
+
+		document.body.appendChild(input);
+		input.click();
+	}
+};
+
+export const dropToImportFile = async (e: DragEvent) => {
+	appState.palette.lock = true;
+	const files = e.dataTransfer?.files;
+	const items = e.dataTransfer?.items;
+	if (!files || !items) return;
+
+	if (items[0] && typeof items[0].getAsFileSystemHandle === 'function') {
+		const fileHandle = await items[0].getAsFileSystemHandle();
+		if (fileHandle) processFile(files[0], fileHandle);
+	} else {
+		await processFile(files[0]);
+	}
+	appState.palette.lock = false;
+};
+
+export const clickToRelinkFile = async (sourceId: string) => {
+	const source = getSourceFromId(sourceId);
+	if (!source) return;
+	if (source.handle && source.handle.kind === 'file') {
+		// Already had a handle
+		const fileHandle = source.handle as FileSystemFileHandle;
+		let permission = await fileHandle.queryPermission({ mode: 'read' });
+		if (permission !== 'granted') {
+			permission = await fileHandle.requestPermission({ mode: 'read' });
+		}
+		try {
+			const file = await fileHandle.getFile();
+			relinkFile(file, source, fileHandle);
+			return;
+		} catch {
+			console.log(`Unable to load file from handle: ${fileHandle.name}`);
+		}
+	}
+	// no handle or can't get file
+	if ('showOpenFilePicker' in window) {
+		try {
+			const [fileHandle] = await window.showOpenFilePicker();
+			const file = await fileHandle.getFile();
+			relinkFile(file, source, fileHandle);
+		} catch {
+			// file picker cancelled
+			return;
+		}
+	} else {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.style.display = 'none';
+		input.onchange = async (e: Event) => {
+			const target = e.currentTarget as HTMLInputElement;
+			if (!target.files) return;
+			const file = target.files[0];
+			relinkFile(file, source);
+		};
+		input.oncancel = () => {
+			input.remove();
+		};
+
+		document.body.appendChild(input);
+		input.click();
+	}
+};
+
+export const deleteSource = (source: Source) => {
+	if (appState.selectedSource && appState.selectedSource.id === source.id) {
+		showTimelineInProgram();
+	}
+	const sourceClips = timelineState.clips.filter((clip) => {
+		if (clip.deleted) return false;
+		if (clip.source.id === source.id) return true;
+		return false;
+	});
+	if (sourceClips.length > 0) return;
+	source.deleted = true;
+	historyManager.newCommand({ action: 'deleteSource', data: { sourceId: source.id } });
+	projectManager.updateSource(source.id, { deleted: true });
+	assignSourcesToFolders();
+};
+
+const generateWaveform = async (source: Source) => {
+	const { waveform } = await workerManager.sendFileToWaveformWorker(source);
+	source.audioWaveform = waveform;
+	timelineState.invalidateWaveform = true;
 };

@@ -2,20 +2,32 @@ import { Source } from './source/source.svelte';
 import type { Clip } from './clip/clip.svelte';
 import { HistoryManager } from './history/history';
 import { AudioState } from './audio/audio.svelte';
-import type { DragAndDropState, Font, PropertiesSection, ImportState, Track } from './types';
+import { ProjectManager } from './project/manager.svelte';
+import type {
+	DragAndDropState,
+	Font,
+	PropertiesSection,
+	ImportState,
+	Track,
+	PaletteState
+} from './types';
+import { WorkerManager } from './worker/manager.svelte';
 
 class AppState {
-	mediaWorker?: Worker;
-	waveformWorker?: Worker;
 	sources = $state<Source[]>([]);
 	selectedSource = $state<Source | null>();
 	selectedSourceFolder = $state(0);
 	sourceFolders: { id: number }[] = $state([]);
 	propertiesSection = $state<PropertiesSection>('project');
-	showPalette = $state(false);
-	palettePage = $state<'search' | 'export' | 'import' | 'about'>('search');
-	encoderProgress = $state({ message: 'starting', percentage: 0, fail: false });
+	progress = $state({ started: false, message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
+
+	palette = $state<PaletteState>({
+		open: false,
+		page: 'search',
+		shrink: '',
+		lock: false
+	});
 
 	dragAndDrop = $state<DragAndDropState>({
 		currentCursor: { x: 0, y: 0 },
@@ -34,15 +46,15 @@ class AppState {
 	});
 
 	project = $state({
-		name: 'untitled project',
+		id: '',
+		name: '',
 		resolution: { height: 1080, width: 1920 },
 		aspect: 0
 	});
 
+	projectCount = 0;
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
-	lockPalette = false;
-	importSuccessCallback: (source: Source, gap: number) => void = () => {};
 	exportSuccessCallback: (success: boolean) => void = () => {};
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
 }
@@ -88,4 +100,7 @@ export const appState = new AppState();
 export const timelineState = new TimelineState();
 export const programState = new ProgramState();
 export const audioState = new AudioState();
+
 export const historyManager = new HistoryManager();
+export const projectManager = new ProjectManager();
+export const workerManager = new WorkerManager();

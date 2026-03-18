@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { Portal } from 'bits-ui';
-	import { onMount, tick, type Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 
 	type Props = {
 		buttons: {
 			text: string;
 			icon?: Snippet<[string]>;
-			onclick: () => void;
-			shortcuts: (string | Snippet<[string]>)[];
+			onClick: () => void;
+			shortcuts?: (string | Snippet<[string]>)[];
+			disableCondition?: () => boolean;
 		}[];
+		onClose?: () => void;
 	};
 
-	let { buttons }: Props = $props();
+	let { buttons, onClose }: Props = $props();
 
 	let container = $state<HTMLDivElement>();
 	let contextMenu = $state<HTMLDivElement>();
@@ -19,6 +21,7 @@
 	const contextMenuPosition = $state({ x: 0, y: 0 });
 
 	export const openContextMenu = async (e: MouseEvent) => {
+		e.preventDefault();
 		showContextMenu = true;
 		contextMenuPosition.x = e.clientX;
 		contextMenuPosition.y = e.clientY;
@@ -41,6 +44,7 @@
 			bind:this={container}
 			class="h-dvh w-dvw absolute top-0 left-0 z-10"
 			onmousedown={() => {
+				if (onClose) onClose();
 				showContextMenu = false;
 			}}
 		>
@@ -53,31 +57,36 @@
 					e.stopPropagation();
 				}}
 			>
-				{#each buttons as button}
+				{#each buttons as button (button.text)}
+					{@const disabled = button.disableCondition && button.disableCondition()}
 					<button
-						class="px-2 py-1.5 rounded-lg text-left hover:bg-zinc-350 group flex items-center justify-between whitespace-nowrap"
+						{disabled}
+						class={[
+							disabled ? 'text-zinc-400' : 'hover:bg-zinc-350',
+							'px-2 py-1.5 rounded-lg text-left  group flex items-center justify-between whitespace-nowrap'
+						]}
 						onclick={() => {
-							button.onclick();
+							button.onClick();
+							if (onClose) onClose();
 							showContextMenu = false;
 						}}
 					>
-						<span>
+						<span class="mr-4">
 							{#if button.icon}
-								{@render button.icon('size-4 inline mr-2')}
+								{@render button.icon('size-4 inline mr-3')}
 							{/if}
 							{button.text}
 						</span>
-						{#if button.shortcuts.length > 0}
-							<span class="ml-10 text-xs text-zinc-500">
-								{#each button.shortcuts as shortcut, i}
-									<span class="px-1.5 py-0.5 rounded-sm border border-zinc-400">
+						{#if button.shortcuts && button.shortcuts.length > 0}
+							<span class="ml-3 text-xs text-zinc-500">
+								{#each button.shortcuts as shortcut (shortcut)}
+									<span class="px-1.5 py-0.5 ml-1 rounded-sm border border-zinc-400">
 										{#if typeof shortcut === 'string'}
 											{shortcut}
 										{:else}
 											{@render shortcut('size-3 inline relative -top-[1px]')}
 										{/if}
 									</span>
-									{i + 1 < button.shortcuts.length ? '+ ' : ''}
 								{/each}
 							</span>
 						{/if}

@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { appState, historyManager, programState, timelineState } from '$lib/state.svelte';
+	import {
+		appState,
+		historyManager,
+		programState,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 	import {
 		setCurrentFrame,
 		setCurrentFrameFromOffset,
@@ -33,22 +40,23 @@
 		multiSelectClipsInRange,
 		finaliseClip,
 		splitHoveredClip,
-		deleteClips
+		deleteClips,
+		deselectAllClips
 	} from '$lib/clip/actions';
-	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
+	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
 		calculateMaxZoomLevel,
 		canvasPixelToFrame,
 		frameToCanvasPixel
 	} from '$lib/timeline/utils';
 	import { onMount, tick } from 'svelte';
-
-	import Controls from './Controls.svelte';
-	import ContextMenu from '../ui/ContextMenu.svelte';
 	import { pauseProgram, playProgram, showTimelineInProgram } from '$lib/program/actions';
 	import { useAnimationFrame } from '$lib/hooks/useAnimationFrame';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+
+	import Controls from './Controls.svelte';
+	import ContextMenu from '../ui/ContextMenu.svelte';
+	import { scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -69,25 +77,6 @@
 	let mainScrollDirection: 'x' | 'y' = 'y';
 	let invalidateScrub = false;
 	let latestScrubPosition = 0;
-
-	const buttons = $state([
-		{
-			text: 'cut clip',
-			onclick: () => {
-				if (timelineState.selectedClip) {
-					splitClip(timelineState.selectedClip.id, clickedFrame);
-					historyManager.finishCommand();
-					timelineState.invalidateWaveform = true;
-				}
-			},
-			shortcuts: []
-		},
-		{
-			text: 'focus clip',
-			onclick: () => focusClip(),
-			shortcuts: ['shift', 'F']
-		}
-	]);
 
 	let cursorStyle = $derived.by(() => {
 		if (timelineState.selectedTool === 'hand') {
@@ -191,6 +180,7 @@
 		programState.selectedClip = null;
 		timelineState.mouseDownPosition.x = e.offsetX;
 		timelineState.mouseDownPosition.y = e.offsetY;
+		timelineState.trackDropZone = -1;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
@@ -271,8 +261,7 @@
 		} else {
 			//if (appState.selectedSource) return;
 			pause();
-			timelineState.selectedClip = null;
-			timelineState.selectedClips.clear();
+			deselectAllClips();
 			timelineState.action = 'selecting';
 			appState.propertiesSection = 'outputAudio';
 		}
@@ -292,7 +281,7 @@
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
 					if (appState.selectedSource) {
-						timelineState.selectedClip = null;
+						deselectAllClips();
 					} else {
 						showClipPropertiesSection(clip);
 					}
@@ -309,7 +298,8 @@
 					if (end > endPoint) endPoint = end;
 					finaliseClip(multiSelectClip, 'moveClip', false);
 				}
-				updateWorkerClip(Array.from(timelineState.selectedClips));
+				workerManager.sendClip(Array.from(timelineState.selectedClips));
+				projectManager.updateClip(Array.from(timelineState.selectedClips));
 				extendTimeline(endPoint);
 			}
 		}
@@ -423,36 +413,20 @@
 		if (!canvas || !canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
 		timelineState.height = canvasContainer.clientHeight;
-		waveCanvas = new OffscreenCanvas(timelineState.width, 100);
+		waveCanvas = new OffscreenCanvas(timelineState.width, 80);
 		waveContext = waveCanvas.getContext('2d');
 
 		context = canvas.getContext('2d', { alpha: false });
 
-		const img = new Image();
+		/* const img = new Image();
 		img.src = 'pattern.png';
 		img.onload = () => {
 			if (!context) return;
 			const pattern = context.createPattern(img, 'repeat');
 			if (!pattern) return;
 			setPattern(pattern);
-		};
+		}; */
 
-		timelineState.tracks.push({
-			height: 35,
-			top: 0,
-			lock: true,
-			lockBottom: true,
-			lockTop: true,
-			type: 'none'
-		});
-		timelineState.tracks.push({
-			height: 35,
-			top: 0,
-			lock: true,
-			lockBottom: true,
-			lockTop: true,
-			type: 'none'
-		});
 		setCanvasSize();
 
 		document.fonts.ready.then(() => {
@@ -464,7 +438,7 @@
 
 <div class="flex flex-col h-full">
 	<Controls />
-	<!-- svelte-ignore a11y_mouse_events_have_key_events -->
+
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		style:cursor={cursorStyle}
@@ -490,7 +464,29 @@
 	</div>
 </div>
 
-<ContextMenu bind:this={contextMenu} {buttons} />
+<ContextMenu
+	bind:this={contextMenu}
+	buttons={[
+		{
+			text: 'cut clip',
+			onClick: () => {
+				if (timelineState.selectedClip) {
+					splitClip(timelineState.selectedClip.id, clickedFrame);
+					historyManager.finishCommand();
+					timelineState.invalidateWaveform = true;
+				}
+			},
+			icon: scissorsIcon,
+			shortcuts: []
+		},
+		{
+			text: 'focus clip',
+			onClick: () => focusClip(),
+			icon: zoomInIcon,
+			shortcuts: ['shift', 'F']
+		}
+	]}
+/>
 
 <svelte:window
 	onmousemove={mouseMove}
@@ -506,8 +502,11 @@
 	}}
 	onkeydown={(event) => {
 		if (appState.disableKeyboardShortcuts) return;
-		if (appState.showPalette) return;
+		if (appState.palette.open) return;
 		switch (event.code) {
+			case 'Escape':
+				if (timelineState.focusedTrack > 0) focusTrack(0);
+				break;
 			case 'Home':
 				if (timelineState.playing) pause();
 				setCurrentFrame(0);
@@ -532,19 +531,29 @@
 				zoomIn();
 				break;
 			case 'Digit0':
-				const maxZoom = calculateMaxZoomLevel();
-				if (timelineState.zoom < maxZoom) {
-					setZoom(maxZoom);
-				} else {
-					zoomToFit();
+				{
+					const maxZoom = calculateMaxZoomLevel();
+					if (timelineState.zoom < maxZoom) {
+						setZoom(maxZoom);
+					} else {
+						zoomToFit();
+					}
 				}
 				break;
 			case 'Space':
 				event.preventDefault();
 				if (timelineState.playing || programState.playing) {
-					appState.selectedSource ? pauseProgram() : pause();
+					if (appState.selectedSource) {
+						pauseProgram();
+					} else {
+						pause();
+					}
 				} else if (!appState.mouseIsDown) {
-					appState.selectedSource ? playProgram() : play();
+					if (appState.selectedSource) {
+						playProgram();
+					} else {
+						play();
+					}
 				}
 				break;
 			case 'Backspace':

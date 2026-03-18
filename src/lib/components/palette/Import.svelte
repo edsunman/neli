@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
-	import { processFile } from '$lib/source/actions';
-	import { infoIcon, audioIcon, helpIcon, backArrowIcon } from '../icons/Icons.svelte';
+	import { clickToImportFile, dropToImportFile } from '$lib/source/actions';
+	import { infoIcon, audioIcon, helpIcon } from '../icons/Icons.svelte';
+	import { closePalette } from '$lib/app/actions';
 
 	import Button from '../ui/Button.svelte';
 
-	let fileInput = $state<HTMLInputElement>();
 	let dragHover = $state(false);
-	let disableButton = $state(false);
 
 	const formatDuration = (seconds: number) => {
 		seconds = Math.floor(seconds);
@@ -18,15 +17,6 @@
 		return `${formattedMinutes}:${formattedSeconds}`;
 	};
 
-	const fileDropped = async (file: File) => {
-		appState.lockPalette = true;
-		disableButton = true;
-
-		await processFile(file);
-
-		appState.lockPalette = false;
-		disableButton = false;
-	};
 	const truncateString = (str: string, maxLength: number) => {
 		if (!str || str.length <= maxLength) {
 			return str;
@@ -40,59 +30,29 @@
 	};
 </script>
 
-<div class="mx-8 flex-none flex py-5 items-center text-zinc-50">
-	<button
-		onclick={() => {
-			appState.palettePage = 'search';
-			appState.import.importStarted = false;
-		}}
-		class="mr-2 opacity-100 pt-[2px] starting:opacity-0 transition-opacity delay-100 text-zinc-500 hover:text-zinc-50"
-	>
-		{@render backArrowIcon('size-4')}
-	</button>
-
-	<h1 class="text-xl starting:transform-[translateX(-24px)] transition-transform">import</h1>
-</div>
-
 <div class="flex-1 px-8 bg-zinc-900 rounded-2xl grow flex flex-col">
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	{#if !appState.import.importStarted}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
 			class={[
-				dragHover ? 'border-zinc-400' : 'border-zinc-600',
-				'hover:border-zinc-400 rounded-xl border-2 text-zinc-200 flex-1',
+				dragHover ? 'border-zinc-400 text-zinc-200' : 'border-zinc-600 text-zinc-400',
+				'hover:border-zinc-400 rounded-xl border-2 hover:text-zinc-200 flex-1',
 				'grow mt-8 mx-12 mb-12 border-dashed items-center justify-center flex'
 			]}
-			ondrop={(e: DragEvent) => {
+			ondrop={(e) => {
 				e.preventDefault();
-				dragHover = false;
-				const files = e.dataTransfer?.files;
-				if (!files) return;
-				fileDropped(files[0]);
+				dropToImportFile(e);
 			}}
 			ondragover={(e) => e.preventDefault()}
 			ondragenter={() => (dragHover = true)}
 			ondragleave={() => (dragHover = false)}
-			onclick={() => {
-				if (!fileInput) return;
-				fileInput.click();
-			}}
+			onclick={() => clickToImportFile()}
 		>
 			<p class="text-center">
 				drop files to import<br /><small>(.mp4, .mp3, .wav, .srt, .jpg, .png)</small>
 			</p>
 		</div>
-		<input
-			onchange={(e) => {
-				if (!e.currentTarget.files) return;
-				const file = e.currentTarget.files[0];
-				fileDropped(file);
-			}}
-			bind:this={fileInput}
-			type="file"
-			class="hidden"
-		/>
 	{:else if appState.import.fileDetails}
 		{@const fileDetails = appState.import.fileDetails}
 		<div class="flex-1">
@@ -178,12 +138,10 @@
 		<div class="flex-none pt-5 pb-7 text-right">
 			<Button
 				onclick={() => {
-					appState.showPalette = false;
-					appState.palettePage = 'search';
-					appState.import.importStarted = false;
+					closePalette();
 				}}
-				text={'Done'}
-				disabled={disableButton}
+				text="done"
+				disabled={appState.palette.lock}
 			/>
 		</div>
 	{/if}
@@ -197,15 +155,3 @@
 		</span>
 	</div>
 {/snippet}
-
-<svelte:window
-	onkeydown={(event) => {
-		switch (event.code) {
-			case 'Backspace':
-				if (appState.disableKeyboardShortcuts) break;
-				appState.import.importStarted = false;
-				appState.palettePage = 'search';
-				break;
-		}
-	}}
-/>

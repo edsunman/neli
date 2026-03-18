@@ -9,7 +9,6 @@
 		zoomIn,
 		zoomOut
 	} from '$lib/timeline/actions';
-	import { onMount } from 'svelte';
 	import { stringToFramesAndSynopsis } from '$lib/timeline/utils';
 
 	import {
@@ -21,15 +20,19 @@
 		helpIcon,
 		seekIcon,
 		playIcon,
-		folderIcon,
 		backIcon,
 		undoIcon,
 		redoIcon,
-		forwardIcon
+		forwardIcon,
+		fileOpenIcon,
+		fileNewIcon,
+		deleteIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
+	import { createNewProject, createProjectThumbnail } from '$lib/project/actions';
 
-	let searchInput = $state<HTMLInputElement>();
+	let { onSelect } = $props();
+
 	let inputValue = $state<string>();
 	let selectedIndex = 0;
 	let showSeekOptions = $state(false);
@@ -50,7 +53,7 @@
 					shortcuts: ['N'],
 					action: () => {
 						appState.import.importStarted = false;
-						appState.palettePage = 'import';
+						appState.palette.page = 'import';
 					}
 				},
 				{
@@ -59,7 +62,7 @@
 					selected: false,
 					icon: exportIcon,
 					shortcuts: ['M'],
-					action: () => (appState.palettePage = 'export')
+					action: () => (appState.palette.page = 'export')
 				},
 				/* {
 					id: 103,
@@ -75,7 +78,7 @@
 					selected: false,
 					icon: infoIcon,
 					shortcuts: [],
-					action: () => (appState.palettePage = 'about')
+					action: () => (appState.palette.page = 'about')
 				},
 				{
 					id: 105,
@@ -85,7 +88,7 @@
 					shortcuts: [],
 					action: () => {
 						window.open('https://neli.video/docs/getting-started', '_blank');
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -97,7 +100,7 @@
 					action: () => {
 						focusTrack(0);
 						historyManager.undo();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -109,7 +112,7 @@
 					action: () => {
 						focusTrack(0);
 						historyManager.redo();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				}
 			]
@@ -126,11 +129,19 @@
 					shortcuts: ['space'],
 					action: () => {
 						if (timelineState.playing || programState.playing) {
-							appState.selectedSource ? pauseProgram() : pause();
+							if (appState.selectedSource) {
+								pauseProgram();
+							} else {
+								pause();
+							}
 						} else {
-							appState.selectedSource ? playProgram() : play();
+							if (appState.selectedSource) {
+								playProgram();
+							} else {
+								play();
+							}
 						}
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -141,7 +152,7 @@
 					shortcuts: ['='],
 					action: () => {
 						zoomIn();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -152,7 +163,7 @@
 					shortcuts: ['-'],
 					action: () => {
 						zoomOut();
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -163,7 +174,7 @@
 					shortcuts: ['right arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame + 1);
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
 				},
 				{
@@ -174,8 +185,49 @@
 					shortcuts: ['left arrow'],
 					action: () => {
 						setCurrentFrame(timelineState.currentFrame - 1);
-						appState.showPalette = false;
+						appState.palette.open = false;
 					}
+				}
+			]
+		},
+		{
+			id: 3,
+			name: 'Project',
+			commands: [
+				{
+					id: 301,
+					text: 'new project',
+					selected: false,
+					icon: fileNewIcon,
+					shortcuts: [],
+					action: async () => {
+						await createProjectThumbnail();
+						createNewProject();
+						appState.palette.open = false;
+					}
+				},
+				{
+					id: 302,
+					text: 'load project',
+					selected: false,
+					icon: fileOpenIcon,
+					shortcuts: [],
+					action: () => {
+						appState.palette.page = 'projects';
+					},
+					hide: () => appState.projectCount < 2
+				},
+				{
+					id: 303,
+					text: 'delete project',
+					selected: false,
+					icon: deleteIcon,
+					shortcuts: [],
+					action: async () => {
+						appState.palette.page = 'delete';
+						appState.palette.shrink = 'h-45';
+					},
+					hide: () => appState.projectCount < 2
 				}
 			]
 		}
@@ -185,11 +237,14 @@
 			return {
 				...category,
 				commands: category.commands.filter((command) => {
+					if ('hide' in command && typeof command.hide === 'function' && command.hide())
+						return false;
 					return command.text.toLowerCase().includes(inputValue?.toLowerCase() ?? '');
 				})
 			};
 		});
 	});
+	let allCategoriesEmpty = $derived(filtered.every((category) => category.commands.length === 0));
 
 	const parseInputNumbers = (inputString: string) => {
 		const { frames, synopsis } = stringToFramesAndSynopsis(inputString);
@@ -197,8 +252,25 @@
 		targetFrameFormatted = synopsis;
 	};
 
-	const onInputChange = () => {
-		if (typeof inputValue === 'undefined') return;
+	export const chooseSelected = () => {
+		if (showSeekOptions) {
+			seekEvent();
+			return true;
+		}
+		if (allCategoriesEmpty) return false;
+		for (const category of filtered) {
+			for (const command of category.commands) {
+				if (command.selected && command.action) {
+					command.action();
+					break;
+				}
+			}
+		}
+		return true;
+	};
+
+	export const onInputChange = (input: string) => {
+		inputValue = input;
 		if (/^\d/.test(inputValue)) {
 			showSeekOptions = true;
 			parseInputNumbers(inputValue);
@@ -210,11 +282,11 @@
 			filteredCount += category.commands.length;
 		});
 		if (inputValue.length < 1) {
-			selectDataByIndex(0);
-		} else if (filteredCount > 0) selectDataByIndex(0);
+			selectByIndex(0);
+		} else if (filteredCount > 0) selectByIndex(0);
 	};
 
-	const selectDataByIndex = (index: number) => {
+	const selectByIndex = (index: number) => {
 		let filteredCount = 0;
 		filtered.forEach((category) => {
 			filteredCount += category.commands.length;
@@ -252,7 +324,7 @@
 		}
 	};
 
-	const selectDataById = (id: number) => {
+	const selectById = (id: number) => {
 		let i = -1;
 		filtered.forEach((category) => {
 			category.commands.forEach((command) => {
@@ -269,7 +341,7 @@
 
 	const seekEvent = () => {
 		setCurrentFrame(targetFrame);
-		appState.showPalette = false;
+		appState.palette.open = false;
 		centerViewOnPlayhead();
 	};
 
@@ -279,111 +351,85 @@
 			return '<span class="underline">' + str + '</span>';
 		});
 	};
-
-	onMount(() => {
-		searchInput?.focus();
-	});
 </script>
 
-<div class="mx-8 flex-none">
-	<!-- svelte-ignore a11y_autofocus -->
-	<form
-		onsubmit={() => {
-			if (showSeekOptions) {
-				seekEvent();
-			}
-			for (const category of filtered) {
-				for (const command of category.commands) {
-					if (command.selected && command.action) {
-						command.action();
-						break;
-					}
-				}
-			}
-		}}
-	>
-		<input
-			bind:this={searchInput}
-			bind:value={inputValue}
-			oninput={onInputChange}
-			class="placeholder-zinc-500 placeholder:text-lg w-full py-5 text-zinc-50 focus:outline-hidden text-xl"
-			type="text"
-			placeholder="Search (or type number to seek)"
-		/>
-	</form>
-</div>
-<div class="flex-1 bg-zinc-900 rounded-2xl overflow-y-hidden">
-	<div
-		bind:this={scrollDiv}
-		class="px-8 overflow-y-scroll h-full"
-		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
-	>
-		{#each filtered as category}
-			{#if category.commands.length > 0}
-				<div class="mb-4">
-					<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">{category.name}</div>
-
-					{#each category.commands as command}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							id={`command-${command.id}`}
-							onmousemove={() => {
-								if (!command.selected) selectDataById(command.id);
-							}}
-							onclick={() => {
-								command.action();
-							}}
-							class={[
-								'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
-								command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
-							]}
-						>
-							{@render command.icon('size-5 inline mr-3')}
-							<p class="flex-1">{@html formatString(command.text)}</p>
-							{#each command.shortcuts as key, i}
-								<!-- {#if i > 0}<span class="text-zinc-400 mx-1">+</span>{/if} -->
-								<div
-									class={[
-										'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
-										command.selected
-											? 'border-zinc-500 text-zinc-400'
-											: 'border-zinc-700 text-zinc-600'
-									]}
-								>
-									{key}
-								</div>
-							{/each}
-						</div>
-					{/each}
+<div
+	bind:this={scrollDiv}
+	class="px-8 overflow-y-scroll h-full"
+	style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
+>
+	{#each filtered as category (category.id)}
+		{#if category.commands.length > 0}
+			<div class="mb-4">
+				<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">
+					{category.name}
 				</div>
-			{/if}
-		{/each}
-		{#if showSeekOptions}
-			<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">Timeline</div>
-			<button
-				class={[
-					'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center',
-					'text-zinc-200 bg-hover'
-				]}
-				onclick={seekEvent}
-			>
-				{@render seekIcon('size-5 inline mr-2')}
-				<p>{targetFrameFormatted}</p>
-			</button>
+
+				{#each category.commands as command (command.id)}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						id={`command-${command.id}`}
+						onmousemove={() => {
+							if (!command.selected) selectById(command.id);
+						}}
+						onclick={() => {
+							command.action();
+							onSelect();
+						}}
+						class={[
+							'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
+							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
+						]}
+					>
+						{@render command.icon('size-5 inline mr-3')}
+						<!--  eslint-disable-next-line svelte/no-at-html-tags -->
+						<p class="flex-1">{@html formatString(command.text)}</p>
+						{#each command.shortcuts as key (key)}
+							<div
+								class={[
+									'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
+									command.selected
+										? 'border-zinc-500 text-zinc-400'
+										: 'border-zinc-700 text-zinc-600'
+								]}
+							>
+								{key}
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
 		{/if}
-	</div>
+	{/each}
+	{#if showSeekOptions}
+		<div class="text-zinc-200 select-none text-sm mb-2 first:mt-4">Timeline</div>
+		<button
+			class={[
+				'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center',
+				'text-zinc-200 bg-hover'
+			]}
+			onclick={seekEvent}
+		>
+			{@render seekIcon('size-5 inline mr-2')}
+			<p>{targetFrameFormatted}</p>
+		</button>
+	{/if}
+	{#if allCategoriesEmpty && !showSeekOptions}
+		<div class="text-zinc-200 select-none text-sm mt-6 mb-2">No results</div>
+	{/if}
 </div>
+
 <svelte:window
 	onkeydown={(event) => {
 		switch (event.code) {
 			case 'ArrowDown':
 				event.preventDefault();
-				selectDataByIndex(selectedIndex + 1);
+				selectByIndex(selectedIndex + 1);
 				break;
 			case 'ArrowUp':
 				event.preventDefault();
-				selectDataByIndex(selectedIndex - 1);
+				selectByIndex(selectedIndex - 1);
 				break;
 		}
 	}}

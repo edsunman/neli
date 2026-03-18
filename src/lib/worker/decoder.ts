@@ -47,7 +47,7 @@ export class VDecoder {
 		if (!this.decoder || !this.ready || !this.packetSink) return;
 		this.bestChunkTimestamp = -1;
 
-		// We need to close this.savedFrame here as we replace it below
+		// We need to close savedFrame here as we replace it below
 		if (this.savedFrame) {
 			if (this.savedFrameNumber === frameNumber) {
 				return this.savedFrame;
@@ -113,7 +113,9 @@ export class VDecoder {
 		this.startToQueueFrames = false;
 		this.clearFrameQueue();
 
-		// If this is not the first clip played, savedFrame will be stale
+		// If we are confident we are starting playback from the same frame we just
+		// stopped at we can return the saved frame while waiting for decoder to get going.
+		// If not we get rid of it here so it does not get chosen in run loop below.
 		if (!useSavedFrame) {
 			this.savedFrame?.close();
 			this.savedFrame = null;
@@ -157,7 +159,7 @@ export class VDecoder {
 		}
 
 		// If we are encoding make sure we have enought frames in queue
-		if (encoding && this.frameQueue.length < 5) return;
+		//if (encoding && this.frameQueue.length < 5) return;
 
 		// Nothing in frame queue so return saved frame if we have it
 		if (this.frameQueue.length < 1 && !encoding) {
@@ -206,11 +208,6 @@ export class VDecoder {
 				);
 			return chosenFrame;
 		}
-
-		/* if (this.savedFrame && !encoding) {
-			console.log('returning an old frame');
-			return this.savedFrame;
-		} */
 	}
 
 	async pause() {

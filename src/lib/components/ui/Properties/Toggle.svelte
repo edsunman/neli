@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { timelineState } from '$lib/state.svelte';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { timelineState, workerManager } from '$lib/state.svelte';
 	import type { Snippet } from 'svelte';
 
 	type Props = {
@@ -29,7 +28,9 @@
 			onclick={() => {
 				value = item.value;
 				if (item.onClick) item.onClick();
-				if (updateWorker) updateWorkerClip(timelineState.selectedClip);
+				if (updateWorker && timelineState.selectedClip) {
+					workerManager.sendClip(timelineState.selectedClip);
+				}
 			}}>{@render item.icon('size-6')}</button
 		>
 	{/each}

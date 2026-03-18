@@ -1,14 +1,20 @@
 <script lang="ts">
-	import { appState, timelineState } from '$lib/state.svelte';
-	import { updateWorkerClip } from '$lib/worker/actions.svelte';
+	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
 
 	type Props = {
-		value: any;
+		value: number | string;
 		fallback?: number | string;
 		type?: 'text' | 'number';
 		fullWidth?: boolean;
+		onBlur?: () => void;
 	};
-	let { value = $bindable(), fallback = 0, type = 'number', fullWidth = false }: Props = $props();
+	let {
+		value = $bindable(),
+		fallback = 0,
+		type = 'number',
+		fullWidth = false,
+		onBlur = () => {}
+	}: Props = $props();
 </script>
 
 <div
@@ -37,11 +43,15 @@
 			appState.disableKeyboardShortcuts = false;
 			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
-				updateWorkerClip(timelineState.selectedClip);
+				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 			}
+			if (timelineState.selectedClip) {
+				projectManager.updateClip(timelineState.selectedClip);
+			}
+			onBlur();
 		}}
 		oninput={() => {
-			updateWorkerClip(timelineState.selectedClip);
+			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
 		step=".01"
 		bind:value

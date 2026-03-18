@@ -1,13 +1,20 @@
-import { pauseWorker, playWorker, seekWorker } from '$lib/worker/actions.svelte';
-import { appState, historyManager, timelineState } from '$lib/state.svelte';
+import {
+	appState,
+	historyManager,
+	projectManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-import { removeHoverAllClips } from '$lib/clip/actions';
+import { deselectAllClips, removeHoverAllClips } from '$lib/clip/actions';
+import type { Clip } from '$lib/clip/clip.svelte';
+import { startProgramPlayLoop } from '$lib/program/actions';
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
-	if (updateWorker) seekWorker(frame);
+	if (updateWorker) workerManager.seek(frame);
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
 };
@@ -18,14 +25,21 @@ export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = t
 	setCurrentFrame(frame, updateWorker);
 };
 
-export const play = () => {
-	playWorker(timelineState.currentFrame);
-	appState.propertiesSection = 'outputAudio';
+export const play = async () => {
+	const data = await workerManager.play(timelineState.currentFrame);
+	if (data.workerStarted) {
+		if (appState.selectedSource) {
+			startProgramPlayLoop();
+		} else {
+			startPlayLoop();
+		}
+		appState.propertiesSection = 'outputAudio';
+	}
 };
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
-	timelineState.selectedClip = null;
+	deselectAllClips();
 
 	const msPerFrame = 1000 / 30;
 	const epsilon = 1; // Tolerance for smoother playback
@@ -64,7 +78,7 @@ export const startPlayLoop = () => {
 export const pause = () => {
 	if (!timelineState.playing) return;
 	timelineState.playing = false;
-	pauseWorker(timelineState.currentFrame);
+	workerManager.pause(timelineState.currentFrame);
 	pauseAudio();
 };
 
@@ -168,9 +182,9 @@ export const focusTrack = (trackNumber: number) => {
 		if (trackNumber === 0) {
 			timelineState.tracks[i].height = 35;
 		} else if (i === trackNumber - 1) {
-			timelineState.tracks[i].height = 110;
+			timelineState.tracks[i].height = 125;
 		} else {
-			timelineState.tracks[i].height = 20;
+			timelineState.tracks[i].height = 10;
 		}
 	}
 
@@ -183,7 +197,7 @@ export const setTrackPositions = () => {
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;
 	const rulerContainerHeight = flexHeight * 0.2;
-	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 5;
+	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 10;
 	if (trackContainerHeight < 220) trackPadding = 5;
 
 	let totalTrackHeight = 0;
@@ -209,6 +223,8 @@ export const setTrackPositions = () => {
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		timelineState.tracks[i].top += Math.floor(topOfAllTracks + rulerContainerHeight);
 	}
+
+	projectManager.updateProject({ tracks: timelineState.tracks });
 };
 
 export const setTrackLocks = () => {
@@ -280,9 +296,11 @@ export const addTrack = (trackNumber: number) => {
 		type: 'none'
 	});
 	historyManager.pushAction({ action: 'addTrack', data: { number: trackNumber, type: 'none' } });
+	const movedClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
 			clip.track++;
+			movedClips.push(clip);
 			historyManager.pushAction({
 				action: 'moveClip',
 				data: {
@@ -295,6 +313,8 @@ export const addTrack = (trackNumber: number) => {
 			});
 		}
 	}
+	workerManager.sendClip(movedClips);
+	projectManager.updateClip(movedClips);
 
 	setTrackPositions();
 };
@@ -305,9 +325,11 @@ export const removeTrack = (trackNumber: number) => {
 		action: 'removeTrack',
 		data: { number: trackNumber, type: trackType }
 	});
+	const modifiedClips: Clip[] = [];
 	for (const clip of timelineState.clips) {
 		if (clip.track > trackNumber) {
 			clip.track--;
+			modifiedClips.push(clip);
 			historyManager.pushAction({
 				action: 'moveClip',
 				data: {
@@ -319,6 +341,8 @@ export const removeTrack = (trackNumber: number) => {
 				}
 			});
 		}
+		workerManager.sendClip(modifiedClips);
+		projectManager.updateClip(modifiedClips);
 	}
 
 	setTrackPositions();
@@ -347,12 +371,16 @@ export const setAllTrackTypes = () => {
 	}
 
 	// loop backwards and remove unused tracks
-	if (timelineState.tracks.length <= 2) return;
 	for (let i = timelineState.tracks.length - 1; i >= 0; i--) {
-		if (!usedTracks.has(i + 1)) {
-			removeTrack(i + 1);
+		if (timelineState.tracks.length > 2) {
+			if (!usedTracks.has(i + 1)) {
+				removeTrack(i + 1);
+			}
+		} else {
+			break;
 		}
 	}
+
 	setTrackPositions();
 };
 
@@ -388,17 +416,18 @@ export const focusClip = () => {
 	focusTrack(clip.track);
 };
 
-export const extendTimeline = (endPoint: number) => {
+export const extendTimeline = (endPointFrames: number) => {
 	const oldTimlineDuration = timelineState.duration;
 
 	const framesPerMinute = 30 * 60;
-	const roundedMinutes = Math.ceil(endPoint / framesPerMinute);
+	const roundedMinutes = Math.ceil(endPointFrames / framesPerMinute);
 	let roundedFrameNumber = roundedMinutes * framesPerMinute;
 	if (roundedFrameNumber > 9000) roundedFrameNumber = 9000;
 
 	if (roundedFrameNumber <= timelineState.duration) return;
 
 	timelineState.duration = roundedFrameNumber;
+	projectManager.updateProject({ duration: roundedFrameNumber });
 
 	const ratio = timelineState.duration / oldTimlineDuration;
 	timelineState.zoom = timelineState.zoom * ratio;

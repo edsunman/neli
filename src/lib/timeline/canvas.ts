@@ -21,12 +21,6 @@ const MARKER_PATH = new Path2D(
 	'M11.3087 5.9281c0 1.2419-.2987 2.4365-.8712 3.5387l-1.3459 2.5905c-.836 1.6093-3.1389 1.6099-3.9749 0l-1.3448-2.5878c-.5731-1.1022-.8718-2.2973-.8718-3.5393v-.6935c0-1.237 1.0027-2.2396 2.2396-2.2396h3.9292c1.237 0 2.2396 1.0027 2.2396 2.2396v.6908Z '
 );
 
-let pattern: CanvasPattern;
-
-export const setPattern = (p: CanvasPattern) => {
-	pattern = p;
-};
-
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
 	width: number,
@@ -87,9 +81,7 @@ export const drawCanvas = (
 		timelineState.trackDropZone < 0 &&
 		timelineState.selectedClip.track > 0
 	) {
-		if (!timelineState.selectedClip.invalid) {
-			drawBaseShape(context, timelineState.selectedClip, width);
-		}
+		drawBaseShape(context, timelineState.selectedClip, width);
 		drawClip(context, timelineState.selectedClip, width, true);
 	}
 
@@ -98,7 +90,7 @@ export const drawCanvas = (
 	}
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
-		context.drawImage(waveCanvas, 0, timelineState.tracks[timelineState.focusedTrack - 1].top + 25);
+		context.drawImage(waveCanvas, 0, timelineState.tracks[timelineState.focusedTrack - 1].top + 42);
 
 	// select box
 	if (timelineState.action === 'selecting') {
@@ -174,7 +166,7 @@ export const drawSourceCanvas = (
 ) => {
 	if (!appState.selectedSource) return;
 
-	context.fillStyle = '#09090b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(0, 0, width, height);
 
 	context.fillStyle = '#34343c';
@@ -198,7 +190,7 @@ export const drawSourceCanvas = (
 	context.fill();
 	context.restore();
 
-	context.fillStyle = '#09090b';
+	context.fillStyle = ZINC_900;
 	context.fillRect(inPosition - 3, 25, 3, 8);
 	context.fillRect(outPosition, 25, 3, 8);
 
@@ -336,7 +328,12 @@ const drawClip = (
 	}
 	if (clip.invalid) {
 		clipColor = '#2b2d30';
-		clipBaseColor = '#222223';
+		clipBaseColor = '#2b2d30';
+	}
+	if (clip.source.unlinked) {
+		clipColor = '#dc2626';
+		clipBaseColor = '#7f1d1d';
+		clipDarkColor = '#5e1919';
 	}
 
 	const gap = 3;
@@ -367,7 +364,7 @@ const drawClip = (
 	if (clip.track === timelineState.focusedTrack && !clip.invalid) {
 		context.fillStyle = clipDarkColor;
 		context.beginPath();
-		context.roundRect(clipStart, trackTop, clipWidth, clipHeight + 75, 8);
+		context.roundRect(clipStart, trackTop, clipWidth, clipHeight + 90, 8);
 		context.fill();
 	}
 
@@ -400,12 +397,13 @@ const drawClip = (
 		]);
 
 		if (!selected || clip.invalid) context.fillStyle = clipBaseColor;
-		if (clip.invalid && pattern) context.fillStyle = pattern;
+		//if (clip.invalid && pattern) context.fillStyle = pattern;
+		//if (clip.invalid) context.fillStyle = clipBaseColor;
 		context.fill();
 		context.stroke();
 	}
-	if (clipWidth < 32 || clip.invalid) return;
-	if (selected || (clip.hovered && !multiSelected && !appState.selectedSource)) {
+	if (clipWidth < 32) return;
+	if (selected || (clip.hovered && !multiSelected)) {
 		// handles
 		context.save();
 		context.beginPath();
@@ -467,7 +465,7 @@ const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: num
 			? 35
 			: timelineState.tracks[clip.track - 1].height;
 
-	if (clip.track === timelineState.focusedTrack && !clip.invalid) clipHeight += 75;
+	if (clip.track === timelineState.focusedTrack && !clip.invalid) clipHeight += 90;
 
 	const startPercent = clip.start / timelineState.duration - timelineState.offset;
 	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
@@ -485,7 +483,7 @@ const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: num
 
 export const drawWaveforms = (context: OffscreenCanvasRenderingContext2D, width: number) => {
 	if (timelineState.focusedTrack === 0) return;
-	context.clearRect(0, 0, width, 100);
+	context.clearRect(0, 0, width, 80);
 	context.fillStyle = '#131315';
 
 	for (const clip of timelineState.clips) {
@@ -516,7 +514,7 @@ const drawClipWaveform = (
 	const clipWidth = frameToCanvasPixel(clip.duration, false);
 	const clipStartPixel = frameToCanvasPixel(clip.start);
 
-	context.clearRect(clipStartPixel, 0, clipWidth, 100);
+	context.clearRect(clipStartPixel, 0, clipWidth, 80);
 
 	const fps = 30;
 	const startTimeInSeconds = clip.source.type === 'test' ? 0 : clip.sourceOffset / fps;
@@ -529,8 +527,8 @@ const drawClipWaveform = (
 	const scaleFactor = audioDataLength / clipWidth;
 	const lineWidth = scaleFactor < 0.3 ? 5 : scaleFactor < 0.5 ? 3 : scaleFactor < 1 ? 2 : 1;
 
-	const canvasHeight = 100;
-	const waveHeight = 50;
+	const canvasHeight = 80;
+	const waveHeight = 70;
 
 	const testWave = [];
 	for (let i = 0; i <= 20; i++) {
