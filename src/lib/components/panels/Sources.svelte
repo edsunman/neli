@@ -20,6 +20,7 @@
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
+	import { deselectAllClips } from '$lib/clip/actions';
 
 	let dragHover = $state(false);
 	let hoverName = $state('');
@@ -41,6 +42,9 @@
 
 	const onClick = (source: Source) => {
 		if (source.type === 'test' || source.type === 'text' || source.unlinked) return;
+		deselectAllClips();
+		timelineState.selectedTool = 'pointer';
+		timelineState.invalidate = true;
 		hoverSelected = true;
 		showSourceInProgram(source);
 		appState.propertiesSection = 'source';
@@ -185,12 +189,6 @@
 						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.dragFrom = 'sources';
 						appState.dragAndDrop.source = source;
-						appState.propertiesSection = 'outputAudio';
-						programState.selectedClip = null;
-						timelineState.selectedClip = null;
-						timelineState.selectedClips.clear();
-						timelineState.selectedTool = 'pointer';
-						timelineState.invalidate = true;
 					}}
 					onclick={(e) => {
 						onClick(source);

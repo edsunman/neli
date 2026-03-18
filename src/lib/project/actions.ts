@@ -1,4 +1,4 @@
-import { setAllJoins } from '$lib/clip/actions';
+import { deselectAllClips, setAllJoins } from '$lib/clip/actions';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
 import {
@@ -95,7 +95,7 @@ export const createNewProject = async () => {
 	await projectManager.updateProject({ tracks: timelineState.tracks });
 
 	timelineState.clips.length = 0;
-	timelineState.selectedClip = null;
+	deselectAllClips();
 	timelineState.invalidate = true;
 };
 
@@ -172,8 +172,7 @@ export const loadProject = async (id: string) => {
 	setTrackPositions();
 
 	timelineState.clips.length = 0;
-	timelineState.selectedClip = null;
-	programState.selectedClip = null;
+	deselectAllClips();
 	await projectManager.purgeDeletedClips();
 	const projectClips = await projectManager.getProjectClips(id);
 	let lastFrame = 0;

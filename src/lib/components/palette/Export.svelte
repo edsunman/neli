@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, workerManager } from '$lib/state.svelte';
+	import { appState, programState, timelineState, workerManager } from '$lib/state.svelte';
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
@@ -24,6 +24,7 @@
 		appState.progress.message = 'preparing audio...';
 		appState.progress.percentage = 0;
 		appState.exportSuccessCallback = exportCallback;
+		programState.selectedClip = null;
 
 		const audioBuffer = await renderAudioForExport(startFrame, endFrame);
 		appState.progress.message = 'encoding video...';

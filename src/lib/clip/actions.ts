@@ -86,8 +86,7 @@ export const createClip = (
 
 export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
-	timelineState.selectedClip = null;
-	programState.selectedClip = null;
+	deselectAllClips();
 	setAllTrackTypes();
 	setTrackJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
@@ -97,7 +96,7 @@ export const deleteClip = (clip: Clip) => {
 };
 
 export const deleteClips = (clips: Clip[]) => {
-	timelineState.selectedClip = null;
+	deselectAllClips();
 	for (const clip of clips) {
 		clip.deleted = true;
 		setTrackJoins(clip.track);
@@ -112,7 +111,7 @@ export const deleteClips = (clips: Clip[]) => {
 /** Unlike delete this will permanently remove clip and not write to history */
 export const removeClip = (id: string) => {
 	if (timelineState.selectedClip && timelineState.selectedClip.id === id) {
-		timelineState.selectedClip = null;
+		deselectAllClips();
 	}
 	for (let i = timelineState.clips.length - 1; i >= 0; i--) {
 		if (timelineState.clips[i].id === id) {
@@ -550,7 +549,7 @@ export const multiSelectClip = (clipId: string) => {
 
 	if (timelineState.selectedClip) {
 		const selected = timelineState.selectedClip;
-		timelineState.selectedClip = null;
+		deselectAllClips();
 		timelineState.selectedClips.add(selected);
 		timelineState.selectedClips.add(clip);
 	} else {
@@ -668,7 +667,7 @@ export const finaliseClip = (
 export const deselectClipIfTooSmall = () => {
 	if (!timelineState.selectedClip) return;
 	const minimumSize = canvasPixelToFrame(35, false);
-	if (timelineState.selectedClip.duration < minimumSize) timelineState.selectedClip = null;
+	if (timelineState.selectedClip.duration < minimumSize) deselectAllClips();
 };
 
 export const getClip = (id: string) => {
@@ -765,4 +764,11 @@ export const getClipsAtFrame = (frameNumber: number) => {
 	}
 	clips.sort((a, b) => a.track - b.track);
 	return clips;
+};
+
+export const deselectAllClips = (showOutputAudio = true) => {
+	programState.selectedClip = null;
+	timelineState.selectedClip = null;
+	timelineState.selectedClips.clear();
+	if (showOutputAudio) appState.propertiesSection = 'outputAudio';
 };

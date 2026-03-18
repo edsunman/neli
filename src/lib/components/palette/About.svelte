@@ -8,6 +8,7 @@
 	let { onSelect } = $props();
 
 	let errorMessage = $state<'none' | 'webGpu' | 'webCodecs'>('none');
+	let firstVisit = $state(false);
 
 	onMount(() => {
 		if (navigator && !navigator.gpu) {
@@ -16,12 +17,16 @@
 		if (!('VideoEncoder' in window && 'VideoDecoder' in window)) {
 			errorMessage = 'webCodecs';
 		}
+		if (!localStorage.getItem('alreadyVisited')) {
+			firstVisit = true;
+			localStorage.setItem('alreadyVisited', 'true');
+		}
 	});
 </script>
 
 <div class="px-8 bg-zinc-900 rounded-2xl flex-1 grow flex flex-col relative items-center">
 	<svg
-		class="text-white w-40 mt-12 mb-5"
+		class={[firstVisit ? ' mt-12' : 'mt-20', 'text-white w-40 mb-5']}
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 648.87 342.4"
 		fill="currentColor"
@@ -55,16 +60,23 @@
 			</p>
 		</div>
 	{:else}
-		<div class="mt-10">
-			<Button
-				large
-				onclick={() => closePalette()}
-				text="Start new project"
-				icon={fileIcon}
-				className="w-70 text-left"
-			/>
-		</div>
-		<div class="text-zinc-300 mt-18 mb-10 text-center px-10 text-sm">
+		{#if firstVisit}
+			<div class="mt-10">
+				<Button
+					large
+					onclick={() => closePalette()}
+					text="Start new project"
+					icon={fileIcon}
+					className="w-70 text-left"
+				/>
+			</div>
+		{/if}
+		<div
+			class={[
+				firstVisit ? ' mt-18' : 'mt-24',
+				'text-zinc-300 mt-18 mb-10 text-center px-10 text-sm'
+			]}
+		>
 			<p>
 				Press
 				<span class="text-sm mx-1 px-1.5 py-0.5 rounded-sm border border-zinc-500">P</span> at any time

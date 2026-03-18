@@ -11,7 +11,6 @@ export const startApp = async (canvas: HTMLCanvasElement) => {
 	) {
 		appState.palette.open = true;
 		appState.palette.page = 'about';
-		localStorage.setItem('alreadyVisited', 'true');
 		setupWorkerAndProject(canvas);
 		return;
 	}

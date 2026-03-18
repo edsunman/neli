@@ -8,7 +8,7 @@ import {
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-import { removeHoverAllClips } from '$lib/clip/actions';
+import { deselectAllClips, removeHoverAllClips } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
@@ -39,7 +39,7 @@ export const play = async () => {
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
-	timelineState.selectedClip = null;
+	deselectAllClips();
 
 	const msPerFrame = 1000 / 30;
 	const epsilon = 1; // Tolerance for smoother playback

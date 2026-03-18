@@ -8,6 +8,7 @@
 		appState,
 		historyManager,
 		programState,
+		projectManager,
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
@@ -89,6 +90,7 @@
 				}
 			});
 			historyManager.finishCommand();
+			projectManager.updateClip(clip);
 		}
 	};
 

@@ -8,6 +8,7 @@
 	import Properties from '$lib/components/panels/Properties.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
+	import { deselectAllClips } from '$lib/clip/actions';
 </script>
 
 <svelte:head>
@@ -49,8 +50,7 @@
 				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;
 				focusTrack(0);
-				timelineState.selectedClip = null;
-				timelineState.selectedClips.clear();
+				deselectAllClips();
 				if (e.shiftKey) {
 					historyManager.redo();
 				} else {

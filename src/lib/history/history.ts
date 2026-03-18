@@ -139,9 +139,6 @@ class AddClipCommand implements ICommand {
 		for (const clip of timelineState.clips) {
 			if (clip.id === this.clipId) {
 				clip.deleted = true;
-				if (clip.id === timelineState.selectedClip?.id) {
-					timelineState.selectedClip = null;
-				}
 				updatedClips.add(clip);
 			}
 		}
@@ -154,9 +151,6 @@ class DeleteClipCommand implements ICommand {
 		for (const clip of timelineState.clips) {
 			if (clip.id === this.clipId) {
 				clip.deleted = true;
-				if (clip.id === timelineState.selectedClip?.id) {
-					timelineState.selectedClip = null;
-				}
 				updatedClips.add(clip);
 			}
 		}

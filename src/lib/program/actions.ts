@@ -5,6 +5,7 @@ import {
 	appState,
 	historyManager,
 	programState,
+	projectManager,
 	timelineState,
 	workerManager
 } from '$lib/state.svelte';
@@ -207,5 +208,8 @@ export const transformClip = (
 	clip.params[1] = scaleY;
 	clip.params[2] = positionX;
 	clip.params[3] = positionY;
-	if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+	if (timelineState.selectedClip) {
+		workerManager.sendClip(timelineState.selectedClip);
+		projectManager.updateClip(clip);
+	}
 };

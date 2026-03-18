@@ -16,6 +16,7 @@
 	import { pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
 	import { startApp } from '$lib/app/actions';
+	import { deselectAllClips } from '$lib/clip/actions';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
@@ -39,10 +40,7 @@
 		appState.mouseIsDown = true;
 		pause();
 
-		timelineState.selectedClips.clear();
-		timelineState.selectedClip = null;
-		programState.selectedClip = null;
-		appState.propertiesSection = 'outputAudio';
+		deselectAllClips();
 
 		if (!canvasContainer || !canvas) return;
 		const rect = canvas.getBoundingClientRect();

@@ -40,7 +40,8 @@
 		multiSelectClipsInRange,
 		finaliseClip,
 		splitHoveredClip,
-		deleteClips
+		deleteClips,
+		deselectAllClips
 	} from '$lib/clip/actions';
 	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
@@ -260,8 +261,7 @@
 		} else {
 			//if (appState.selectedSource) return;
 			pause();
-			timelineState.selectedClip = null;
-			timelineState.selectedClips.clear();
+			deselectAllClips();
 			timelineState.action = 'selecting';
 			appState.propertiesSection = 'outputAudio';
 		}
@@ -281,7 +281,7 @@
 					// drag and dropped clip
 					finaliseClip(clip, 'addClip');
 					if (appState.selectedSource) {
-						timelineState.selectedClip = null;
+						deselectAllClips();
 					} else {
 						showClipPropertiesSection(clip);
 					}

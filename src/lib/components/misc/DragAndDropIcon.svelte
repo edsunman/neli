@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { appState } from '$lib/state.svelte';
+	import { deselectAllClips } from '$lib/clip/actions';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import { audioIcon, filmIcon, textIcon } from '../icons/Icons.svelte';
 
 	let showIcon = $derived(appState.dragAndDrop.active && appState.dragAndDrop.showIcon);
@@ -15,6 +16,10 @@
 					Math.pow(startingCursor.y - e.clientY, 2) + Math.pow(startingCursor.x - e.clientX, 2)
 				);
 				if (distance > 10) {
+					if (appState.propertiesSection !== 'source') appState.propertiesSection = 'outputAudio';
+					deselectAllClips(false);
+					timelineState.selectedTool = 'pointer';
+					timelineState.invalidate = true;
 					cursorMovedEnough = true;
 					appState.dragAndDrop.active = true;
 					appState.dragAndDrop.showIcon = true;
