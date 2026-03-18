@@ -58,9 +58,9 @@ interface VideoEditorDB extends DBSchema {
 		indexes: { 'by-project': string };
 	};
 	thumbnails: {
-		key: string;
-		value: { image: Blob; projectId: string };
-		indexes: { 'by-project': string };
+		key: number;
+		value: { image: Blob; parentId: string; type: 'project' | 'source' };
+		indexes: { 'by-parentId': string };
 	};
 }
 
@@ -84,8 +84,10 @@ export class ProjectManager {
 				clipStore.createIndex('by-project', 'projectId');
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
-				const thumbnailStore = db.createObjectStore('thumbnails');
-				thumbnailStore.createIndex('by-project', 'projectId');
+				//const thumbnailStore = db.createObjectStore('thumbnails');
+				//thumbnailStore.createIndex('by-project', 'projectId');
+				const store = db.createObjectStore('thumbnails', { keyPath: 'id', autoIncrement: true });
+				store.createIndex('by-parentId', 'parentId');
 			}
 		});
 	}
@@ -130,7 +132,7 @@ export class ProjectManager {
 		const thumbnailStore = tx.objectStore('thumbnails');
 		const clipIndex = clipStore.index('by-project');
 		const sourceIndex = sourceStore.index('by-project');
-		const thumbnailIndex = thumbnailStore.index('by-project');
+		const thumbnailIndex = thumbnailStore.index('by-parentId');
 
 		const clipKeys = await clipIndex.getAllKeys(projectId);
 		const sourceKeys = await sourceIndex.getAllKeys(projectId);
@@ -203,10 +205,15 @@ export class ProjectManager {
 		return id;
 	}
 
-	async getSources(projectId: string) {
+	async getProjectSources(projectId: string) {
 		if (!this.db) return [];
 		const sources = await this.db.getAllFromIndex('sources', 'by-project', projectId);
 		return sources.sort((a, b) => a.createdAt - b.createdAt);
+	}
+
+	async getAllSources() {
+		if (!this.db) return [];
+		return await this.db.getAll('sources');
 	}
 
 	async updateSource(sourceId: string, updates: Partial<SourceTable>) {
@@ -229,12 +236,19 @@ export class ProjectManager {
 	async purgeDeletedSources() {
 		if (!this.db) return;
 
-		const tx = this.db.transaction('sources', 'readwrite');
-		const store = tx.objectStore('sources');
-		let cursor = await store.openCursor();
+		const tx = this.db.transaction(['sources', 'thumbnails'], 'readwrite');
+		const sourceStore = tx.objectStore('sources');
+		const thumbStore = tx.objectStore('thumbnails');
+		const thumbIndex = thumbStore.index('by-parentId');
+
+		let cursor = await sourceStore.openCursor();
 
 		while (cursor) {
-			if (cursor.value.deleted === true) await cursor.delete();
+			if (cursor.value.deleted === true) {
+				const sourceId = cursor.value.id;
+				const thumbKeys = await thumbIndex.getAllKeys(sourceId);
+				await Promise.all([...thumbKeys.map((key) => thumbStore.delete(key)), cursor.delete()]);
+			}
 			cursor = await cursor.continue();
 		}
 
@@ -260,7 +274,7 @@ export class ProjectManager {
 		return id;
 	}
 
-	async getClips(projectId: string) {
+	async getProjectClips(projectId: string) {
 		if (!this.db) return [];
 		return await this.db.getAllFromIndex('clips', 'by-project', projectId);
 	}
@@ -321,14 +335,48 @@ export class ProjectManager {
 		await tx.done;
 	}
 
-	async createThumbnail(thumbnail: Blob, key: string, projectId: string) {
+	/** Creates thumbnail record or updates if already exists */
+	async createThumbnail(thumbnail: Blob, parentId: string, type: 'source' | 'project') {
 		if (!this.db) return;
-		const id = await this.db.put('thumbnails', { image: thumbnail, projectId }, key);
+
+		const tx = this.db.transaction('thumbnails', 'readwrite');
+		const store = tx.objectStore('thumbnails');
+		const index = store.index('by-parentId');
+
+		const existingKey = await index.getKey(parentId);
+
+		const record = {
+			image: thumbnail,
+			parentId,
+			type,
+			...(existingKey !== undefined && { id: existingKey })
+		};
+
+		const id = await store.put(record);
+		await tx.done;
+
 		return id;
 	}
 
-	async getThumbnail(key: string) {
+	async getThumbnail(parentId: string) {
 		if (!this.db) return;
-		return await this.db.get('thumbnails', key);
+		const tx = this.db.transaction('thumbnails', 'readonly');
+		const store = tx.objectStore('thumbnails');
+		const index = store.index('by-parentId');
+		return await index.get(parentId);
+	}
+
+	async returnAll() {
+		if (!this.db) return null;
+
+		// Fetch everything in parallel
+		const [projects, clips, sources, thumbnails] = await Promise.all([
+			this.db.getAll('projects'),
+			this.db.getAll('clips'),
+			this.db.getAll('sources'),
+			this.db.getAll('thumbnails')
+		]);
+
+		return { projects, clips, sources, thumbnails };
 	}
 }

@@ -80,9 +80,14 @@
 			</button>
 			<form
 				class="flex-1"
-				onsubmit={() => {
-					if (searchComponent) searchComponent.chooseSelected();
-					setPageTitle();
+				onsubmit={(e) => {
+					e.preventDefault();
+					if (!searchComponent) return;
+					const chosenSelected = searchComponent.chooseSelected();
+					if (chosenSelected) {
+						setPageTitle();
+						searchInput?.blur();
+					}
 				}}
 			>
 				<input
@@ -111,7 +116,7 @@
 				: appState.palette.shrink
 					? appState.palette.shrink
 					: 'h-[25rem]',
-			'bg-zinc-900 w-lg row-start-1 col-start-1 z-2 rounded-2xl flex flex-col transition-all duration-400 ease-in-out  overflow-y-hidden'
+			'bg-zinc-900 w-lg row-start-1 col-start-1 z-2 rounded-2xl flex flex-col transition-all duration-400 ease-in-out overflow-y-hidden'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
@@ -147,7 +152,12 @@
 				closePalette();
 				break;
 			case 'Backspace':
-				if (appState.disableKeyboardShortcuts || appState.palette.page === 'search') break;
+				if (
+					appState.disableKeyboardShortcuts ||
+					appState.palette.page === 'search' ||
+					appState.palette.page === 'delete'
+				)
+					break;
 				appState.import.importStarted = false;
 				appState.palette.page = 'search';
 				showBackButton = false;

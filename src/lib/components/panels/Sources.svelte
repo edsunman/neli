@@ -141,12 +141,6 @@
 					oncontextmenu={(e) => {
 						e.preventDefault();
 						if (source.type === 'test' || source.type === 'text') return;
-						const sourceClips = timelineState.clips.filter((clip) => {
-							if (clip.deleted) return false;
-							if (clip.source.id === source.id) return true;
-							return false;
-						});
-						if (sourceClips.length > 0) return;
 						forceHoverId = source.id;
 						clickedSource = source;
 						contextMenu.openContextMenu(e);
@@ -191,6 +185,7 @@
 						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.dragFrom = 'sources';
 						appState.dragAndDrop.source = source;
+						appState.propertiesSection = 'outputAudio';
 						programState.selectedClip = null;
 						timelineState.selectedClip = null;
 						timelineState.selectedClips.clear();
@@ -275,20 +270,27 @@
 	bind:this={contextMenu}
 	buttons={[
 		{
-			text: 'delete source',
-			icon: deleteIcon,
-			onClick: () => {
-				if (clickedSource) deleteSource(clickedSource);
-			}
-		},
-		{
 			text: 'relink file',
 			icon: linkIcon,
 			onClick: () => {
 				clickToRelinkFile(clickedSource?.id || '');
 			},
-			hideCondition: () => {
+			disableCondition: () => {
 				if (clickedSource) return !clickedSource.unlinked;
+				return false;
+			}
+		},
+		{
+			text: 'delete source',
+			icon: deleteIcon,
+			onClick: () => {
+				if (clickedSource) deleteSource(clickedSource);
+			},
+			disableCondition: () => {
+				for (const clip of timelineState.clips) {
+					if (clip.deleted) continue;
+					if (clickedSource && clip.source.id === clickedSource.id) return true;
+				}
 				return false;
 			}
 		}

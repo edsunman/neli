@@ -42,7 +42,7 @@
 		splitHoveredClip,
 		deleteClips
 	} from '$lib/clip/actions';
-	import { drawCanvas, drawWaveforms, setPattern } from '$lib/timeline/canvas';
+	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
 		calculateMaxZoomLevel,
 		canvasPixelToFrame,
@@ -179,6 +179,7 @@
 		programState.selectedClip = null;
 		timelineState.mouseDownPosition.x = e.offsetX;
 		timelineState.mouseDownPosition.y = e.offsetY;
+		timelineState.trackDropZone = -1;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
@@ -412,21 +413,20 @@
 		if (!canvas || !canvasContainer) return;
 		timelineState.width = document.body.clientWidth;
 		timelineState.height = canvasContainer.clientHeight;
-		waveCanvas = new OffscreenCanvas(timelineState.width, 100);
+		waveCanvas = new OffscreenCanvas(timelineState.width, 80);
 		waveContext = waveCanvas.getContext('2d');
 
 		context = canvas.getContext('2d', { alpha: false });
 
-		const img = new Image();
+		/* const img = new Image();
 		img.src = 'pattern.png';
 		img.onload = () => {
 			if (!context) return;
 			const pattern = context.createPattern(img, 'repeat');
 			if (!pattern) return;
 			setPattern(pattern);
-		};
+		}; */
 
-		// TODO: do we need this if we set on project mount?
 		setCanvasSize();
 
 		document.fonts.ready.then(() => {

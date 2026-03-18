@@ -67,7 +67,7 @@
 
 	<div class="flex-1 flex flex-col gap-5 height-xl:gap-7 mt-2 mr-3">
 		{#if appState.propertiesSection === 'project'}
-			<Properties.Group label={'project name'}>
+			<Properties.Group label="project name">
 				<Properties.Input
 					bind:value={appState.project.name}
 					type="text"
@@ -78,7 +78,7 @@
 					}}
 				/>
 			</Properties.Group>
-			<Properties.Group label={'aspect ratio'}>
+			<Properties.Group label="aspect ratio">
 				<Properties.Toggle
 					bind:value={appState.project.aspect}
 					updateWorker={false}
@@ -110,52 +110,52 @@
 					]}
 				/>
 			</Properties.Group>
-			<Properties.Group label={'resolution'}>
+			<Properties.Group label="resolution">
 				<span class="text-zinc-300">
 					{appState.project.resolution.height} x {appState.project.resolution.width}
 				</span>
 			</Properties.Group>
-			<Properties.Group label={'frame rate'}>
+			<Properties.Group label="frame rate">
 				<span class="text-zinc-300">30 fps</span>
 			</Properties.Group>
 		{/if}
 
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
-			<Properties.Group label={'name'}>
+			<Properties.Group label="name">
 				<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
 			</Properties.Group>
 			{#if source.info.type === 'video'}
-				<Properties.Group label={'duration'}>
+				<Properties.Group label="duration">
 					<span class="text-zinc-300">{secondsToTimecode(source.info.duration)}</span>
 				</Properties.Group>
-				<Properties.Group label={'resolution'}>
+				<Properties.Group label="resolution">
 					<span class="text-zinc-300">
 						{source.info.resolution.height} x {source.info.resolution.width}
 					</span>
 				</Properties.Group>
-				<Properties.Group label={'frame rate'}>
+				<Properties.Group label="frame rate">
 					<span class="text-zinc-300">{Math.round(source.info.frameRate * 100) / 100} fps</span>
 				</Properties.Group>
 			{/if}
 			{#if source.info.type === 'audio'}
-				<Properties.Group label={'duration'}>
+				<Properties.Group label="duration">
 					<span class="text-zinc-300">{secondsToTimecode(source.info.duration)}</span>
 				</Properties.Group>
-				<Properties.Group label={'sampleRate'}>
+				<Properties.Group label="sampleRate">
 					<span class="text-zinc-300">{source.info.sampleRate / 1000} kHz</span>
 				</Properties.Group>
-				<Properties.Group label={'channels'}>
+				<Properties.Group label="channels">
 					<span class="text-zinc-300">{source.info.channelCount}</span>
 				</Properties.Group>
 			{/if}
 			{#if source.info.type === 'image'}
-				<Properties.Group label={'resolution'}>
+				<Properties.Group label="resolution">
 					<span class="text-zinc-300">
 						{source.info.resolution.height} x {source.info.resolution.width}
 					</span>
 				</Properties.Group>
-				<Properties.Group label={'format'}>
+				<Properties.Group label="format">
 					<span class="text-zinc-300">{source.info.format}</span>
 				</Properties.Group>
 			{/if}
@@ -164,25 +164,25 @@
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
-				<Properties.Group label={'size'}>
+				<Properties.Group label="size">
 					<Properties.Input bind:value={clip.params[0]} fallback={1} />
 					<Properties.Input bind:value={clip.params[1]} fallback={1} />
 				</Properties.Group>
 			{/if}
-			<Properties.Group label={'position'}>
+			<Properties.Group label="position">
 				<Properties.Input bind:value={clip.params[2]} />
 				<Properties.Input bind:value={clip.params[3]} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label={'text'}>
+			<Properties.Group label="text">
 				<Properties.Textarea bind:value={clip.text} />
 			</Properties.Group>
-			<Properties.Group label={'font size'}>
+			<Properties.Group label="font size">
 				<Properties.Input bind:value={clip.params[6]} fallback={20} />
 			</Properties.Group>
-			<Properties.Group label={'justify'}>
+			<Properties.Group label="justify">
 				<Properties.Toggle
 					bind:value={clip.params[8]}
 					items={[
@@ -192,16 +192,16 @@
 					]}
 				/>
 			</Properties.Group>
-			<Properties.Group label={'line spacing'}>
+			<Properties.Group label="line spacing">
 				<Properties.Input bind:value={clip.params[7]} fallback={1} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label={'gain'}>
+			<Properties.Group label="gain">
 				<Properties.Input bind:value={clip.params[4]} fallback={1} />
 			</Properties.Group>
-			<Properties.Group label={'pan'}>
+			<Properties.Group label="pan">
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
 			</Properties.Group>
 		{/if}

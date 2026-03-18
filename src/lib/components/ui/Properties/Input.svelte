@@ -2,7 +2,7 @@
 	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
 
 	type Props = {
-		value: any;
+		value: number | string;
 		fallback?: number | string;
 		type?: 'text' | 'number';
 		fullWidth?: boolean;

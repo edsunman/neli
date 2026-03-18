@@ -1,6 +1,7 @@
 import {
 	appState,
 	historyManager,
+	programState,
 	projectManager,
 	timelineState,
 	workerManager
@@ -86,6 +87,7 @@ export const createClip = (
 export const deleteClip = (clip: Clip) => {
 	clip.deleted = true;
 	timelineState.selectedClip = null;
+	programState.selectedClip = null;
 	setAllTrackTypes();
 	setTrackJoins(clip.track);
 	historyManager.pushAction({ action: 'deleteClip', data: { clipId: clip.id } });
@@ -230,8 +232,11 @@ export const moveSelectedClip = (mouseY: number) => {
 		const trackBottom = trackTop + trackHeight + padding * 2;
 
 		// above track 1
-		if (i === 0 && mouseY < trackTop && timelineState.focusedTrack === 0) {
-			if (timelineState.tracks[i].lockTop) {
+		if (i === 0 && mouseY < trackTop) {
+			if (timelineState.focusedTrack > 0) {
+				clip.track = timelineState.focusedTrack;
+				timelineState.trackDropZone = -1;
+			} else if (timelineState.tracks[i].lockTop) {
 				timelineState.trackDropZone = -1;
 				clip.track = 1;
 			} else {
@@ -239,6 +244,7 @@ export const moveSelectedClip = (mouseY: number) => {
 				clip.track = 0;
 			}
 		}
+		if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== i + 1) continue;
 
 		// on track
 		if (mouseY >= trackTop && mouseY < trackBottom) {
@@ -495,12 +501,17 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		if (clip.deleted) continue;
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.tracks.length; i++) {
+			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== i + 1) {
+				continue;
+			}
 			if (
 				offsetY > timelineState.tracks[i].top &&
 				offsetY < timelineState.tracks[i].top + timelineState.tracks[i].height &&
 				clip.track === i + 1
 			) {
+				// hovered over  track
 				if (hoveredFrame < clip.start + clip.duration && hoveredFrame >= clip.start) {
+					// hovered over clip
 					foundClip = clip;
 					clip.hovered = true;
 				}
@@ -508,6 +519,7 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 			}
 		}
 	}
+
 	return foundClip;
 };
 
@@ -561,6 +573,7 @@ export const multiSelectClipsInRange = () => {
 	);
 	const tracks = new Set<number>();
 	for (let i = 0; i < timelineState.tracks.length; i++) {
+		if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== i + 1) continue;
 		if (
 			startTop < timelineState.tracks[i].top + timelineState.tracks[i].height &&
 			endTop > timelineState.tracks[i].top

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { appState } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
-	import { fileIcon, fileNewIcon, infoIcon } from '../icons/Icons.svelte';
+	import { fileIcon, infoIcon } from '../icons/Icons.svelte';
 	import Button from '../ui/Button.svelte';
 	import { closePalette } from '$lib/app/actions';
 

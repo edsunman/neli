@@ -255,7 +255,9 @@
 	export const chooseSelected = () => {
 		if (showSeekOptions) {
 			seekEvent();
+			return true;
 		}
+		if (allCategoriesEmpty) return false;
 		for (const category of filtered) {
 			for (const command of category.commands) {
 				if (command.selected && command.action) {
@@ -264,6 +266,7 @@
 				}
 			}
 		}
+		return true;
 	};
 
 	export const onInputChange = (input: string) => {

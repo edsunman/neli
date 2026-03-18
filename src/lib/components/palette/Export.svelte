@@ -3,14 +3,13 @@
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
-	/* 	import TitleBar from './TitleBar.svelte'; */
 	import { renderAudioForExport } from '$lib/audio/actions';
 	import ProgressBar from './ProgressBar.svelte';
 	import { closePalette } from '$lib/app/actions';
 
-	let inputValue = $state('');
+	let inputValue = $state('my-video');
 	let encodingFinished = $state(false);
 	let startFrame = $state(0);
 	let endFrame = $state(getUsedTimelineDuration());
@@ -50,15 +49,6 @@
 	};
 </script>
 
-<!-- <button onclick={() => (page = 'search')}>Back</button> -->
-<!-- <TitleBar
-	title="export"
-	onclick={() => {
-		appState.palette.page = 'search';
-	}}
-	disabled={appState.progress.started}
-/> -->
-
 <div class="px-8 flex-1 flex flex-col bg-zinc-900 rounded-2xl content-center flex-wrap">
 	<div class="flex-1 content-center flex-wrap w-full">
 		{#if appState.progress.started}
@@ -68,7 +58,7 @@
 				<div class="flex items-center justify-between text-sm font-medium text-white">
 					<span class="text-zinc-400">file name</span>
 				</div>
-				<Input bind:value={inputValue} />
+				<Input bind:value={inputValue} fallback="my-video" extention=".mp4" selectOnMount />
 			</div>
 			<div class="flex gap-6">
 				<div class="flex w-full flex-col gap-2 mt-6">
@@ -84,7 +74,11 @@
 						}}
 						onblur={(e) => {
 							const target = e.target as HTMLInputElement;
-							if (!target.value) target.value = framesToTimecode(0);
+							if (!target.value) {
+								target.value = framesToTimecode(0);
+								const { frames } = stringToFramesAndSynopsis(target.value);
+								startFrame = frames;
+							}
 						}}
 					/>
 				</div>
@@ -101,7 +95,11 @@
 						}}
 						onblur={(e) => {
 							const target = e.target as HTMLInputElement;
-							if (!target.value) target.value = framesToTimecode(getUsedTimelineDuration());
+							if (!target.value) {
+								target.value = framesToTimecode(getUsedTimelineDuration());
+								const { frames } = stringToFramesAndSynopsis(target.value);
+								endFrame = frames;
+							}
 						}}
 					/>
 				</div>

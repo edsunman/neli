@@ -13,11 +13,18 @@ import {
 import {
 	appState,
 	historyManager,
+	programState,
 	projectManager,
 	timelineState,
 	workerManager
 } from '$lib/state.svelte';
-import { focusTrack, pause, setTrackPositions, setZoom } from '$lib/timeline/actions';
+import {
+	extendTimeline,
+	focusTrack,
+	pause,
+	setTrackPositions,
+	setZoom
+} from '$lib/timeline/actions';
 import { getNextProjectName } from './utils';
 
 export const changeProjectResolution = (width: number, height: number) => {
@@ -111,7 +118,8 @@ export const loadProject = async (id: string) => {
 	appState.selectedSource = null;
 	appState.sources.length = 0;
 	await projectManager.purgeDeletedSources();
-	const projectSources = await projectManager.getSources(id);
+	await cleanOPFS();
+	const projectSources = await projectManager.getProjectSources(id);
 	let i = 0;
 	for (const source of projectSources) {
 		const newSource = createSource(source.type, source.info);
@@ -129,8 +137,12 @@ export const loadProject = async (id: string) => {
 				const permission = await source.handle.queryPermission({ mode: 'read' });
 				if (permission == 'granted') {
 					const fileHandle = source.handle as FileSystemFileHandle;
-					const file = await fileHandle.getFile();
-					await relinkFile(file, newSource);
+					try {
+						const file = await fileHandle.getFile();
+						await relinkFile(file, newSource);
+					} catch {
+						console.log(`Unable to load file from handle: ${fileHandle.name}`);
+					}
 				}
 			}
 			if (source.handle) newSource.handle = source.handle;
@@ -153,8 +165,6 @@ export const loadProject = async (id: string) => {
 	assignSourcesToFolders();
 
 	timelineState.currentFrame = 0;
-	timelineState.duration = project.duration;
-	setZoom(0.9);
 	timelineState.tracks.length = 0;
 	timelineState.tracks = Array.from(project.tracks);
 	timelineState.showPlayhead = true;
@@ -163,8 +173,10 @@ export const loadProject = async (id: string) => {
 
 	timelineState.clips.length = 0;
 	timelineState.selectedClip = null;
+	programState.selectedClip = null;
 	await projectManager.purgeDeletedClips();
-	const projectClips = await projectManager.getClips(id);
+	const projectClips = await projectManager.getProjectClips(id);
+	let lastFrame = 0;
 	for (const clip of projectClips) {
 		const source = getSourceFromId(clip.sourceId);
 		if (!source) continue;
@@ -172,9 +184,14 @@ export const loadProject = async (id: string) => {
 		newClip.id = clip.id;
 		newClip.params = clip.params;
 		timelineState.clips.push(newClip);
+		const lastClipFrame = clip.start + clip.duration;
+		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;
 	}
 	workerManager.sendClip(timelineState.clips);
 	setAllJoins();
+	timelineState.duration = 1800;
+	extendTimeline(lastFrame);
+	setZoom(0.9);
 	timelineState.invalidate = true;
 
 	historyManager.reset();
@@ -191,7 +208,7 @@ export const deleteProject = async () => {
 export const createProjectThumbnail = async () => {
 	const { bitmap } = await workerManager.getThumbnail();
 	const blob = await createThumbnailBlob(bitmap, bitmap.width, bitmap.height);
-	projectManager.createThumbnail(blob, appState.project.id, appState.project.id);
+	projectManager.createThumbnail(blob, appState.project.id, 'project');
 	bitmap.close();
 	return blob;
 };
@@ -199,13 +216,27 @@ export const createProjectThumbnail = async () => {
 const getFileFromOPFS = async (fileName: string) => {
 	const root = await navigator.storage.getDirectory();
 	let handle;
-	// We still use try/cahch internally, but your main code stays clean
 	try {
 		handle = await root.getFileHandle(fileName, { create: false });
 	} catch (e) {
 		console.error(e);
 		return;
 	}
-
 	return handle.getFile();
+};
+
+/** Removes files with id that has no matching source in db */
+const cleanOPFS = async () => {
+	const sources = await projectManager.getAllSources();
+	const sourceIds = new Set(sources.map((s) => s.id));
+	const root = await navigator.storage.getDirectory();
+
+	for await (const [name, handle] of root.entries()) {
+		if (handle.kind !== 'file') continue;
+		const idFromFilename = name.substring(0, name.lastIndexOf('.')) || name;
+
+		if (!sourceIds.has(idFromFilename)) {
+			await root.removeEntry(name);
+		}
+	}
 };

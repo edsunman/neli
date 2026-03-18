@@ -104,14 +104,6 @@
 	});
 </script>
 
-<!-- <TitleBar
-	title="load project"
-	onclick={() => {
-		appState.palette.page = 'search';
-	}}
-	disabled={appState.progress.started}
-/> -->
-
 {#if appState.progress.started}
 	<div class="h-full p-8 content-center w-full">
 		<ProgressBar />
@@ -122,25 +114,6 @@
 		class="px-8 overflow-y-scroll h-full gap-1 flex flex-col"
 		style="scrollbar-color: #52525c #18181b; scrollbar-width:thin"
 	>
-		<!-- {#if currentProject}
-				<div
-					class={[
-						'first:mt-4 last:mb-4 w-full px-2 py-2.5 rounded-lg flex items-center group',
-						' text-zinc-400'
-					]}
-				>
-					<span
-						style:background-image={`url(${currentProject.thumbnail})`}
-						class={[
-							currentProject.thumbnail ? 'opacity-100' : 'opacity-0',
-							'h-10 w-14 mr-4 flex flex-wrap justify-center content-center top-2 left-2 rounded-lg ',
-							'bg-cover bg-center transition-opacity duration-200'
-						]}
-					></span>
-					<span class="flex-1 text-left text-sm truncate mr-4">{currentProject.name}</span>
-					<span class={['text-sm ', ' text-zinc-700']}>open</span>
-				</div>
-			{/if} -->
 		{#each projects as project (project.id)}
 			<button
 				id={`project-${project.id}`}
@@ -173,9 +146,6 @@
 				</span>
 			</button>
 		{/each}
-		<!-- {#if projects.length < 1}
-				<div class="text-zinc-400 select-none text-sm mt-6 mb-2">No other projects</div>
-			{/if} -->
 	</div>
 {/if}
 

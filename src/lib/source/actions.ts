@@ -83,6 +83,7 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 		newSource.sink = new EncodedPacketSink(audioTrack);
 		newSource.sampleSink = new AudioSampleSink(audioTrack);
 		newSource.audioConfig = audioConfig;
+		generateWaveform(newSource);
 	}
 
 	const data = await workerManager.sendFile(newSource);
@@ -94,15 +95,12 @@ export const createVideoSource = async (file: File, info: FileInfo, existingSour
 			videoFrame.codedHeight
 		);
 		setSourceThumbnail(data.sourceId, blob);
-		projectManager.createThumbnail(blob, newSource.id, appState.project.id);
+		projectManager.createThumbnail(blob, newSource.id, 'source');
 		appState.import.thumbnail = newSource.thumbnail;
 	} else {
 		data.videoFrame?.close();
 	}
 
-	const { waveform } = await workerManager.sendFileToWaveformWorker(newSource);
-	newSource.audioWaveform = waveform;
-	// timelineState.invalidateWaveform = true;
 	return newSource;
 };
 
@@ -121,7 +119,7 @@ export const createImageSource = async (file: File, info: FileInfo, existingSour
 	if (!newSource.thumbnail && data.bitmap) {
 		const blob = await createThumbnailBlob(data.bitmap, data.bitmap.width, data.bitmap.height);
 		setSourceThumbnail(data.sourceId, blob);
-		projectManager.createThumbnail(blob, newSource.id, appState.project.id);
+		projectManager.createThumbnail(blob, newSource.id, 'source');
 		appState.import.thumbnail = newSource.thumbnail;
 	} else {
 		data.bitmap?.close();
@@ -149,14 +147,13 @@ export const createAudioSource = async (file: File, info: FileInfo, existingSour
 	const audioTrack = await input.getPrimaryAudioTrack();
 	const audioConfig = await audioTrack?.getDecoderConfig();
 
-	if (!audioTrack || !audioConfig) throw new Error('no audio config');
+	if (!audioTrack || !audioConfig) throw new Error('No audio track');
 
 	newSource.sink = new EncodedPacketSink(audioTrack);
 	newSource.sampleSink = new AudioSampleSink(audioTrack);
 	newSource.audioConfig = audioConfig;
+	generateWaveform(newSource);
 
-	const { waveform } = await workerManager.sendFileToWaveformWorker(newSource);
-	newSource.audioWaveform = waveform;
 	return newSource;
 };
 
@@ -430,11 +427,16 @@ export const createThumbnailBlob = async (
 export const clickToImportFile = async () => {
 	if ('showOpenFilePicker' in window) {
 		// chrome spesific api
-		const [fileHandle] = await window.showOpenFilePicker();
-		const file = await fileHandle.getFile();
-		appState.palette.lock = true;
-		await processFile(file, fileHandle);
-		appState.palette.lock = false;
+		try {
+			const [fileHandle] = await window.showOpenFilePicker();
+			const file = await fileHandle.getFile();
+			appState.palette.lock = true;
+			await processFile(file, fileHandle);
+			appState.palette.lock = false;
+		} catch {
+			// file picker cancelled
+			return;
+		}
 	} else {
 		// safari/firefox api
 		console.log('old');
@@ -483,30 +485,40 @@ export const clickToRelinkFile = async (sourceId: string) => {
 		if (permission !== 'granted') {
 			permission = await fileHandle.requestPermission({ mode: 'read' });
 		}
-		const file = await fileHandle.getFile();
-		relinkFile(file, source, fileHandle);
-	} else {
-		if ('showOpenFilePicker' in window) {
+		try {
+			const file = await fileHandle.getFile();
+			relinkFile(file, source, fileHandle);
+			return;
+		} catch {
+			console.log(`Unable to load file from handle: ${fileHandle.name}`);
+		}
+	}
+	// no handle or can't get file
+	if ('showOpenFilePicker' in window) {
+		try {
 			const [fileHandle] = await window.showOpenFilePicker();
 			const file = await fileHandle.getFile();
 			relinkFile(file, source, fileHandle);
-		} else {
-			const input = document.createElement('input');
-			input.type = 'file';
-			input.style.display = 'none';
-			input.onchange = async (e: Event) => {
-				const target = e.currentTarget as HTMLInputElement;
-				if (!target.files) return;
-				const file = target.files[0];
-				relinkFile(file, source);
-			};
-			input.oncancel = () => {
-				input.remove();
-			};
-
-			document.body.appendChild(input);
-			input.click();
+		} catch {
+			// file picker cancelled
+			return;
 		}
+	} else {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.style.display = 'none';
+		input.onchange = async (e: Event) => {
+			const target = e.currentTarget as HTMLInputElement;
+			if (!target.files) return;
+			const file = target.files[0];
+			relinkFile(file, source);
+		};
+		input.oncancel = () => {
+			input.remove();
+		};
+
+		document.body.appendChild(input);
+		input.click();
 	}
 };
 
@@ -524,4 +536,10 @@ export const deleteSource = (source: Source) => {
 	historyManager.newCommand({ action: 'deleteSource', data: { sourceId: source.id } });
 	projectManager.updateSource(source.id, { deleted: true });
 	assignSourcesToFolders();
+};
+
+const generateWaveform = async (source: Source) => {
+	const { waveform } = await workerManager.sendFileToWaveformWorker(source);
+	source.audioWaveform = waveform;
+	timelineState.invalidateWaveform = true;
 };

@@ -4,7 +4,7 @@ self.addEventListener('message', async function (event) {
 	switch (event.data.command) {
 		case 'load-file':
 			{
-				if (!event.data.file) return;
+				if (!event.data.file) throw new Error('No file passed to worker');
 
 				const input = new Input({
 					formats: ALL_FORMATS,
@@ -14,7 +14,8 @@ self.addEventListener('message', async function (event) {
 				const audioTrack = await input.getPrimaryAudioTrack();
 				const audioConfig = await audioTrack?.getDecoderConfig();
 
-				if (!audioTrack || !audioConfig) return;
+				if (!audioTrack || !audioConfig)
+					throw new Error('File passed to worker has no audio track');
 
 				const duration = await audioTrack.computeDuration();
 				const sampleSink = new AudioSampleSink(audioTrack);

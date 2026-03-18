@@ -174,7 +174,7 @@
 		class="border-2 border-white absolute top-0 left-0"
 		oncontextmenu={(e) => {
 			e.preventDefault();
-			contextMenu.openContextMenu(e);
+			//contextMenu.openContextMenu(e);
 		}}
 	></div>
 {/if}

@@ -182,9 +182,9 @@ export const focusTrack = (trackNumber: number) => {
 		if (trackNumber === 0) {
 			timelineState.tracks[i].height = 35;
 		} else if (i === trackNumber - 1) {
-			timelineState.tracks[i].height = 110;
+			timelineState.tracks[i].height = 125;
 		} else {
-			timelineState.tracks[i].height = 20;
+			timelineState.tracks[i].height = 10;
 		}
 	}
 
@@ -197,7 +197,7 @@ export const setTrackPositions = () => {
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;
 	const rulerContainerHeight = flexHeight * 0.2;
-	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 5;
+	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 10;
 	if (trackContainerHeight < 220) trackPadding = 5;
 
 	let totalTrackHeight = 0;
@@ -416,11 +416,11 @@ export const focusClip = () => {
 	focusTrack(clip.track);
 };
 
-export const extendTimeline = (endPoint: number) => {
+export const extendTimeline = (endPointFrames: number) => {
 	const oldTimlineDuration = timelineState.duration;
 
 	const framesPerMinute = 30 * 60;
-	const roundedMinutes = Math.ceil(endPoint / framesPerMinute);
+	const roundedMinutes = Math.ceil(endPointFrames / framesPerMinute);
 	let roundedFrameNumber = roundedMinutes * framesPerMinute;
 	if (roundedFrameNumber > 9000) roundedFrameNumber = 9000;
 
