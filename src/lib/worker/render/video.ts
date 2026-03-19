@@ -20,7 +20,21 @@ export class VideoRenderer {
 					code: videoShader
 				}),
 				entryPoint: 'fragmentMain',
-				targets: [{ format: format }]
+				targets: [
+					{
+						format: format,
+						blend: {
+							color: {
+								srcFactor: 'src-alpha',
+								dstFactor: 'one-minus-src-alpha'
+							},
+							alpha: {
+								srcFactor: 'one',
+								dstFactor: 'one'
+							}
+						}
+					}
+				]
 			},
 			primitive: {
 				topology: 'triangle-list'

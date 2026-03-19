@@ -8,6 +8,7 @@
 		backIcon,
 		backArrowIcon,
 		copyIcon,
+		cropIcon,
 		deleteIcon,
 		exportIcon,
 		fileIcon,
@@ -29,6 +30,7 @@
 		logoIcon,
 		mouseIcon,
 		moveIcon,
+		opacityIcon,
 		outPointIcon,
 		paletteIcon,
 		pauseIcon,
@@ -163,6 +165,20 @@
 		fill="currentColor"
 	>
 		<path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+	</svg>
+{/snippet}
+
+{#snippet cropIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M680-40v-160H280q-33 0-56.5-23.5T200-280v-400H40v-80h160v-160h80v640h640v80H760v160h-80Zm0-320v-320H360v-80h320q33 0 56.5 23.5T760-680v320h-80Z"
+		/>
 	</svg>
 {/snippet}
 
@@ -532,6 +548,20 @@
 	</svg>
 {/snippet}
 
+{#snippet opacityIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M253.5-212Q160-304 160-436q0-65 25-121.5T254-658l226-222 226 222q44 44 69 100.5T800-436q0 132-93.5 224T480-120q-133 0-226.5-92ZM242-400h474q12-72-13.5-123T650-600L480-768 310-600q-27 26-53 77t-15 123Z"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet outPointIcon(className: string)}
 	<svg
 		class={className}
@@ -555,7 +585,6 @@
 	<svg
 		class={className}
 		role="img"
-		id="Layer_1"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 -960 960 960"
 		fill="currentColor"

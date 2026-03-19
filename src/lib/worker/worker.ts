@@ -500,9 +500,6 @@ const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
 		const startOffset = c * totalInputFrames;
 		const startByteOffest = startOffset * Float32Array.BYTES_PER_ELEMENT;
-		console.log(
-			`trying with startOffset: ${startOffset}, byteOffset:${startByteOffest}, input frames: ${totalInputFrames}`
-		);
 		return new Float32Array(audioBuffer.buffer, startByteOffest, totalInputFrames);
 	});
 

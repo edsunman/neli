@@ -24,7 +24,8 @@ export class WebGPURenderer {
 	private imageRenderer?: ImageRenderer;
 	private solidColorRenderer?: SolidColorRenderer;
 
-	private uniformArray = new Float32Array([0, 0, 0, 0, 0, 0]);
+	// Current frame in [0] then mapped 1:1 with clip params
+	private uniformArray = new Float32Array(28);
 	private uniformBuffers: GPUBuffer[] = [];
 
 	private loadedTextures = new Map<string, GPUTexture>();
@@ -161,9 +162,12 @@ export class WebGPURenderer {
 		sourceWidth: number
 	) {
 		if (!this.passEncoder || !this.canvas) return;
-		const height = params[0] * (sourceWidth / this.canvas.width);
-		const width = params[1] * (sourceHeight / this.canvas.height);
-		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
+		this.updateUniforms(0, params, sourceWidth, sourceHeight);
+		//this.uniformArray.set([params[0] * (sourceWidth / this.canvas.width)], 2);
+		//this.uniformArray.set([params[1] * (sourceHeight / this.canvas.height)], 3);
+		//const height = params[0] * (sourceWidth / this.canvas.width);
+		//const width = params[1] * (sourceHeight / this.canvas.height);
+		//this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.videoRenderer?.draw(
 			this.passEncoder,
 			frame,
@@ -222,5 +226,32 @@ export class WebGPURenderer {
 		if (!this.canvas) return;
 		this.canvas.height = height;
 		this.canvas.width = width;
+	}
+
+	updateUniforms(frameNumber: number, params: number[], sourceWidth: number, sourceHeight: number) {
+		if (!this.canvas) return;
+
+		// Block 1: Meta & Canvas
+		this.uniformArray[0] = frameNumber;
+		this.uniformArray[1] = params[17] * (Math.PI / 180); // Rotation -> Radians
+		this.uniformArray.set([this.canvas.width, this.canvas.height], 2);
+
+		// Block 2: Transform (Scale [0,1] and Pos [2,3])
+		this.uniformArray.set(params.slice(0, 4), 4);
+
+		// Block 3: Text & Opacity (Font [6], Spacing [7], Justify [8], Opacity [18])
+		this.uniformArray.set([...params.slice(6, 9), params[18]], 8);
+
+		// Block 4: Source & Quick Effects (Source W/H, Corners [16], Exposure [19])
+		this.uniformArray.set([sourceWidth, sourceHeight, params[16], params[19]], 12);
+
+		// Block 5: Crop (Left [15], Top [12], Right [13], Bottom [14])
+		this.uniformArray.set([params[15], params[12], params[13], params[14]], 16);
+
+		// Block 6: Color Grading (Contrast [20], Saturation [21])
+		this.uniformArray.set(params.slice(20, 22), 20);
+
+		// Block 7: Color (RGB [9,10,11])
+		this.uniformArray.set(params.slice(9, 12), 24);
 	}
 }

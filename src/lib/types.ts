@@ -24,7 +24,15 @@ export type PaletteState = {
 	lock: boolean;
 };
 
-export type PropertiesSection = 'outputAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
+export type PropertiesSection =
+	| 'outputAudio'
+	| 'project'
+	| 'layout'
+	| 'audio'
+	| 'text'
+	| 'source'
+	| 'crop'
+	| 'colour';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 export type Track = {

@@ -13,7 +13,9 @@
 		aspectLandscape,
 		aspectSquare,
 		aspectPortrait,
-		imageIcon
+		imageIcon,
+		opacityIcon,
+		cropIcon
 	} from '../icons/Icons.svelte';
 	import { changeProjectResolution } from '$lib/project/actions';
 	import { secondsToTimecode } from '$lib/timeline/utils';
@@ -26,9 +28,7 @@
 	import Properties from '../ui/Properties';
 </script>
 
-<div
-	class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative"
->
+<div class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative">
 	<div class="absolute -right-13 z-10">
 		<BitsTooltip.Provider delayDuration={500}>
 			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
@@ -57,6 +57,10 @@
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
 					{/if}
+					{#if source.type === 'video' || source.type === 'test' || source.type === 'image'}
+						{@render sideButton('crop', 'crop settings', cropIcon)}
+						{@render sideButton('colour', 'colour settings', opacityIcon)}
+					{/if}
 					{#if source.type === 'audio' || source.type === 'video' || source.type === 'test'}
 						{@render sideButton('audio', 'audio settings', audioIcon)}
 					{/if}
@@ -65,7 +69,7 @@
 		</BitsTooltip.Provider>
 	</div>
 
-	<div class="flex-1 flex flex-col gap-5 height-xl:gap-7 mt-2 mr-3">
+	<div class="flex-1 flex flex-col gap-5 height-xl:gap-6 mt-2 mr-3">
 		{#if appState.propertiesSection === 'project'}
 			<Properties.Group label="project name">
 				<Properties.Input
@@ -164,6 +168,7 @@
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
+				<input bind:value={clip.params[1]} />
 				<Properties.Group label="size">
 					<Properties.Input bind:value={clip.params[0]} fallback={1} />
 					<Properties.Input bind:value={clip.params[1]} fallback={1} />
@@ -172,6 +177,9 @@
 			<Properties.Group label="position">
 				<Properties.Input bind:value={clip.params[2]} />
 				<Properties.Input bind:value={clip.params[3]} />
+			</Properties.Group>
+			<Properties.Group label="rotate">
+				<Properties.Input bind:value={clip.params[17]} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
@@ -196,6 +204,33 @@
 				<Properties.Input bind:value={clip.params[7]} fallback={1} />
 			</Properties.Group>
 		{/if}
+		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="crop" className={['w-30']}>
+				<Properties.Input bind:value={clip.params[12]} />
+				<Properties.Input bind:value={clip.params[13]} />
+				<Properties.Input bind:value={clip.params[14]} />
+				<Properties.Input bind:value={clip.params[15]} />
+			</Properties.Group>
+			<Properties.Group label="round corners">
+				<Properties.Input bind:value={clip.params[16]} />
+			</Properties.Group>
+		{/if}
+		{#if appState.propertiesSection === 'colour' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="opacity">
+				<Properties.Input bind:value={clip.params[18]} fallback={1} />
+			</Properties.Group>
+			<Properties.Group label="exposure">
+				<Properties.Input bind:value={clip.params[19]} fallback={0} />
+			</Properties.Group>
+			<Properties.Group label="contrast">
+				<Properties.Input bind:value={clip.params[20]} fallback={0} />
+			</Properties.Group>
+			<Properties.Group label="saturation">
+				<Properties.Input bind:value={clip.params[21]} fallback={0} />
+			</Properties.Group>
+		{/if}
 		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="gain">
@@ -205,6 +240,7 @@
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
 			</Properties.Group>
 		{/if}
+
 		{#if appState.propertiesSection === 'outputAudio'}
 			<div class="flex h-full w-full justify-end pr-3">
 				<Slider

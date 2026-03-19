@@ -15,9 +15,16 @@ export class Clip {
 	joinLeft = false;
 	joinRight = false;
 
-	// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan,
-	// 6 font size, 7 line spacing, 8 justify (l,c,r), 9 red, 10 green, 11 blue
-	params = $state([1, 1, 0, 0, 1, 0, 25, 1, 1, 1, 1, 1]);
+	params = $state([
+		// 0 size x, 1 size y, 2 pos x, 3 pos y, 4 gain, 5 pan,
+		1, 1, 0, 0, 1, 0,
+		// 6 font size, 7 line spacing, 8 justify (l,c,r), 9 red, 10 green, 11 blue
+		25, 1, 1, 1, 1, 1,
+		// 12 crop t, 13 crop r, 14 crop b, 15 crop l, 16 rounded corners, 17 rotation
+		0, 0, 0, 0, 0, 0,
+		// 18 opacity, 19 exposure, 20 contrast, 21 saturation
+		1, 0, 1, 1
+	]);
 	text = $state('text');
 
 	deleted = false;

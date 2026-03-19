@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, historyManager, timelineState } from '$lib/state.svelte';
+	import { appState, historyManager } from '$lib/state.svelte';
 	import { focusTrack } from '$lib/timeline/actions';
 
 	import Sources from '$lib/components/panels/Sources.svelte';
@@ -47,8 +47,8 @@
 	onkeydown={(e) => {
 		switch (e.code) {
 			case 'KeyZ':
-				e.preventDefault();
 				if (!e.ctrlKey && !e.metaKey) break;
+				e.preventDefault();
 				focusTrack(0);
 				deselectAllClips();
 				if (e.shiftKey) {

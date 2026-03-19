@@ -13,7 +13,6 @@ import {
 import {
 	appState,
 	historyManager,
-	programState,
 	projectManager,
 	timelineState,
 	workerManager
@@ -100,6 +99,8 @@ export const createNewProject = async () => {
 };
 
 export const loadProject = async (id: string) => {
+	pause();
+
 	const project = await projectManager.getProject(id);
 	if (!project) return;
 
