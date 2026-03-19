@@ -26,6 +26,7 @@
 	import Slider from '../ui/Slider.svelte';
 	import Tooltip from '../ui/Tooltip.svelte';
 	import Properties from '../ui/Properties';
+	import CustomSlider from '../ui/CustomSlider.svelte';
 </script>
 
 <div class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative">
@@ -168,7 +169,6 @@
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
-				<input bind:value={clip.params[1]} />
 				<Properties.Group label="size">
 					<Properties.Input bind:value={clip.params[0]} fallback={1} />
 					<Properties.Input bind:value={clip.params[1]} fallback={1} />
@@ -220,10 +220,13 @@
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="opacity">
 				<Properties.Input bind:value={clip.params[18]} fallback={1} />
+				<CustomSlider bind:value={clip.params[18]} />
 			</Properties.Group>
+
 			<Properties.Group label="exposure">
 				<Properties.Input bind:value={clip.params[19]} fallback={0} />
 			</Properties.Group>
+			<!-- 	<CustomSlider bind:value={clip.params[19]} max={2} min={-2} barStart={0} /> -->
 			<Properties.Group label="contrast">
 				<Properties.Input bind:value={clip.params[20]} fallback={0} />
 			</Properties.Group>
@@ -239,11 +242,13 @@
 			<Properties.Group label="pan">
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
 			</Properties.Group>
+			<CustomSlider bind:value={clip.params[5]} min={-1} max={1} barStart={0} />
 		{/if}
 
 		{#if appState.propertiesSection === 'outputAudio'}
 			<div class="flex h-full w-full justify-end pr-3">
-				<Slider
+				<CustomSlider
+					vertical
 					bind:value={audioState.masterGain}
 					onValueChange={(g: number) => {
 						audioState.masterGainNode.gain.value = g;

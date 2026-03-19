@@ -2,7 +2,7 @@
 	import { appState, timelineState, workerManager } from '$lib/state.svelte';
 
 	type Props = {
-		value: any;
+		value: string;
 		fallback?: number | string;
 	};
 	let { value = $bindable() }: Props = $props();

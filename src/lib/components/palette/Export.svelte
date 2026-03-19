@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { appState, programState, timelineState, workerManager } from '$lib/state.svelte';
+	import { appState, programState, workerManager } from '$lib/state.svelte';
 	import Button from '../ui/Button.svelte';
 	import Input from '../ui/Input.svelte';
 	import { getUsedTimelineDuration } from '$lib/timeline/actions';
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import { framesToTimecode, stringToFramesAndSynopsis } from '$lib/timeline/utils';
 	import { renderAudioForExport } from '$lib/audio/actions';
 	import ProgressBar from './ProgressBar.svelte';

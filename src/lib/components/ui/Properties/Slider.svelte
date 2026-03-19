@@ -5,10 +5,10 @@
 	type Props = {
 		value: number;
 		orientation?: 'horizontal' | 'vertical';
-		onValueChange?: (v: number) => void;
+		onValueChange: (n: number) => void;
 	};
 
-	let { value = $bindable(), orientation = 'horizontal', onValueChange }: Props = $props();
+	let { value = $bindable(), orientation = 'horizontal' }: Props = $props();
 </script>
 
 <Slider.Root
@@ -17,11 +17,7 @@
 	max={1}
 	step={0.01}
 	bind:value
-	onValueChange={(v) => {
-		if (onValueChange) {
-			onValueChange(v);
-			return;
-		}
+	onValueChange={() => {
 		if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 	}}
 	{orientation}

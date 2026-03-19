@@ -7,13 +7,15 @@
 		type?: 'text' | 'number';
 		fullWidth?: boolean;
 		onBlur?: () => void;
+		step?: string;
 	};
 	let {
 		value = $bindable(),
 		fallback = 0,
 		type = 'number',
 		fullWidth = false,
-		onBlur = () => {}
+		onBlur = () => {},
+		step = '.01'
 	}: Props = $props();
 </script>
 
@@ -32,6 +34,7 @@
 >
 	<input
 		{type}
+		{step}
 		class={[
 			'relative w-full text-right px-1 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
@@ -41,19 +44,17 @@
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
+			if (!timelineState.selectedClip) return;
 			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
-				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+				workerManager.sendClip(timelineState.selectedClip);
 			}
-			if (timelineState.selectedClip) {
-				projectManager.updateClip(timelineState.selectedClip);
-			}
+			projectManager.updateClip(timelineState.selectedClip);
 			onBlur();
 		}}
 		oninput={() => {
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
-		step=".01"
 		bind:value
 	/>
 </div>
