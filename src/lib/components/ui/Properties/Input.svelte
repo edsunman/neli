@@ -18,10 +18,9 @@
 		step = '.01'
 	}: Props = $props();
 </script>
-
 <div
 	class={[
-		fullWidth ? '' : 'w-12',
+		fullWidth ? '' : 'w-10',
 		'rounded-sm relative overflow-hidden z-0',
 		// before
 		'before:transition-all before:duration-200',
@@ -36,7 +35,8 @@
 		{type}
 		{step}
 		class={[
-			'relative w-full text-right px-1 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
+			type === 'number' ? 'py-0.5' : 'py-1',
+			'relative w-full text-sm text-right px-1  z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {

@@ -26,10 +26,9 @@
 	import Slider from '../ui/Slider.svelte';
 	import Tooltip from '../ui/Tooltip.svelte';
 	import Properties from '../ui/Properties';
-	import CustomSlider from '../ui/CustomSlider.svelte';
 </script>
 
-<div class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative">
+<div class="flex justify-end mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative">
 	<div class="absolute -right-13 z-10">
 		<BitsTooltip.Provider delayDuration={500}>
 			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
@@ -70,7 +69,7 @@
 		</BitsTooltip.Provider>
 	</div>
 
-	<div class="flex-1 flex flex-col gap-5 height-xl:gap-6 mt-2 mr-3">
+	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-40 justify-end">
 		{#if appState.propertiesSection === 'project'}
 			<Properties.Group label="project name">
 				<Properties.Input
@@ -170,16 +169,20 @@
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
 				<Properties.Group label="size">
-					<Properties.Input bind:value={clip.params[0]} fallback={1} />
-					<Properties.Input bind:value={clip.params[1]} fallback={1} />
+					<Properties.Grid>
+						<Properties.Input bind:value={clip.params[0]} fallback={1} />
+						<Properties.Input bind:value={clip.params[1]} fallback={1} />
+					</Properties.Grid>
 				</Properties.Group>
 			{/if}
 			<Properties.Group label="position">
-				<Properties.Input bind:value={clip.params[2]} />
-				<Properties.Input bind:value={clip.params[3]} />
+				<Properties.Grid>
+					<Properties.Input bind:value={clip.params[2]} />
+					<Properties.Input bind:value={clip.params[3]} />
+				</Properties.Grid>
 			</Properties.Group>
 			<Properties.Group label="rotate">
-				<Properties.Input bind:value={clip.params[17]} />
+				<Properties.Input bind:value={clip.params[17]} step="1"/>
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
@@ -188,7 +191,8 @@
 				<Properties.Textarea bind:value={clip.text} />
 			</Properties.Group>
 			<Properties.Group label="font size">
-				<Properties.Input bind:value={clip.params[6]} fallback={20} />
+				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />
+				<Slider bind:value={clip.params[6]} min={1} max={50} step />
 			</Properties.Group>
 			<Properties.Group label="justify">
 				<Properties.Toggle
@@ -207,47 +211,52 @@
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="crop" className={['w-30']}>
-				<Properties.Input bind:value={clip.params[12]} />
-				<Properties.Input bind:value={clip.params[13]} />
-				<Properties.Input bind:value={clip.params[14]} />
-				<Properties.Input bind:value={clip.params[15]} />
+				<Properties.Grid>
+						<Properties.Input bind:value={clip.params[12]} />
+						<Properties.Input bind:value={clip.params[13]} />
+						<Properties.Input bind:value={clip.params[14]} />
+						<Properties.Input bind:value={clip.params[15]} />
+				</Properties.Grid>
 			</Properties.Group>
 			<Properties.Group label="round corners">
-				<Properties.Input bind:value={clip.params[16]} />
+				<Properties.Input bind:value={clip.params[16]} step="1" />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'colour' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="opacity">
 				<Properties.Input bind:value={clip.params[18]} fallback={1} />
-				<CustomSlider bind:value={clip.params[18]} />
+				<Slider bind:value={clip.params[18]} />
 			</Properties.Group>
 
 			<Properties.Group label="exposure">
 				<Properties.Input bind:value={clip.params[19]} fallback={0} />
+				<Slider bind:value={clip.params[19]} max={2} min={-2}  />
 			</Properties.Group>
-			<!-- 	<CustomSlider bind:value={clip.params[19]} max={2} min={-2} barStart={0} /> -->
 			<Properties.Group label="contrast">
-				<Properties.Input bind:value={clip.params[20]} fallback={0} />
+				<Properties.Input bind:value={clip.params[20]} fallback={1} />
+				<Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
 			</Properties.Group>
 			<Properties.Group label="saturation">
-				<Properties.Input bind:value={clip.params[21]} fallback={0} />
+				<Properties.Input bind:value={clip.params[21]} fallback={1} />
+				<Slider bind:value={clip.params[21]} max={2} min={0} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="gain">
 				<Properties.Input bind:value={clip.params[4]} fallback={1} />
+				<Slider bind:value={clip.params[4]} min={0} max={1.5} />
 			</Properties.Group>
 			<Properties.Group label="pan">
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
+				<Slider bind:value={clip.params[5]} min={-1} max={1} />
 			</Properties.Group>
-			<CustomSlider bind:value={clip.params[5]} min={-1} max={1} barStart={0} />
 		{/if}
 
 		{#if appState.propertiesSection === 'outputAudio'}
-			<div class="flex h-full w-full justify-end pr-3">
-				<CustomSlider
+			<div class="flex h-full w-full justify-end">
+				<Slider
 					vertical
 					bind:value={audioState.masterGain}
 					onValueChange={(g: number) => {

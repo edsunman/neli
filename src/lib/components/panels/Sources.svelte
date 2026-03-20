@@ -257,7 +257,8 @@
 					appState.palette.open = true;
 				}}
 			>
-				{@render addIcon('size-5 mr-2 pointer-events-none')} import
+				{@render addIcon('size-5 pointer-events-none')}
+				<span class="hidden lg:ml-2 ml-1 md:block">import</span>
 				<span class="hidden lg:block">&nbsp;file</span>
 			</button>
 		</div>

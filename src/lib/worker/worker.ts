@@ -320,7 +320,12 @@ const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerV
 
 	if (!frame) return;
 
-	const params = [1, 1, 0, 0];
+	const params = new Array(22).fill(0);
+	params[0] = 1;
+	params[1] = 1;
+	params[18] = 1;
+	params[20] = 1;
+	params[21] = 1;
 	renderer.startPaint();
 	renderer.videoPass(1, frame, params, source.height, source.width);
 	await renderer.endPaint(encoding);
