@@ -1,6 +1,7 @@
 import {
 	appState,
 	historyManager,
+	programState,
 	projectManager,
 	timelineState,
 	workerManager
@@ -11,12 +12,16 @@ import type { SourceType, TrackType } from '$lib/types';
 import { deselectAllClips, removeHoverAllClips } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
+
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
+	// TODO: debounce this - if same frame is called twice return early
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
 	if (updateWorker) workerManager.seek(frame);
+	setParamsFromKeyframes(frame)
 	timelineState.currentFrame = frame;
 	timelineState.invalidate = true;
+	
 };
 
 export const setCurrentFrameFromOffset = (canvasOffset: number, updateWorker = true) => {
@@ -33,13 +38,14 @@ export const play = async () => {
 		} else {
 			startPlayLoop();
 		}
-		appState.propertiesSection = 'outputAudio';
+		//appState.propertiesSection = 'outputAudio';
 	}
 };
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
-	deselectAllClips();
+	//deselectAllClips();
+	programState.selectedClip = null;
 
 	const msPerFrame = 1000 / 30;
 	const epsilon = 1; // Tolerance for smoother playback
@@ -69,6 +75,8 @@ export const startPlayLoop = () => {
 
 		const elapsedTimeMs = timestamp - firstTimestamp;
 		runAudio(timelineState.currentFrame, elapsedTimeMs);
+		// TODO: I think we only need to update selected clip here
+		setParamsFromKeyframes(timelineState.currentFrame);
 
 		if (timelineState.playing) requestAnimationFrame(loop);
 	};
@@ -451,3 +459,38 @@ export const setTimelineTool = (tool: typeof timelineState.selectedTool) => {
 	timelineState.invalidate = true;
 	timelineState.selectedTool = tool;
 };
+
+const setParamsFromKeyframes = (frameNumber:number) => {
+	for (const clip of timelineState.clips) {
+		if (clip.deleted) continue;
+		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
+	const clipFrame = frameNumber - clip.start + clip.sourceOffset;
+	for (const param of clip.useKeyframes) {
+		const track = clip.keyframeTracks.get(param);
+		if (!track) continue;
+		const count = track.values.length;
+	
+		if (clipFrame <= track.frames[0]){
+			clip.params[param] = track.values[0];
+			continue;
+		}
+		if (clipFrame >= track.frames[count - 1]) {
+			clip.params[param] = track.values[count - 1];
+			continue
+		};
+
+		// 2. Simple Loop: Find the first keyframe that is AFTER our current time
+		let i = 1; 
+		for (; i < count; i++) {
+			if (track.frames[i] > clipFrame) break;
+		}
+
+		const t0 = track.frames[i - 1];
+		const t1 = track.frames[i];
+		const v0 = track.values[i - 1];
+		const v1 = track.values[i];
+
+		const alpha = (clipFrame - t0) / (t1 - t0);
+		clip.params[param] =  v0 + (v1 - v0) * alpha;
+	}}}
+}

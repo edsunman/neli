@@ -399,6 +399,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	renderer.startPaint();
 
 	for (const clip of activeClips) {
+		calculateKeyframes(clip, frameNumber);
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
@@ -425,6 +426,38 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	await renderer.endPaint(encoding);
 	return true;
 };
+
+const calculateKeyframes = (clip:WorkerClip, frameNumber:number) => {
+	const clipFrame = frameNumber - clip.start + clip.sourceOffset;
+	for (const param of clip.useKeyframes) {
+		const track = clip.keyframeTracks.get(param);
+		if (!track) continue;
+		const count = track.values.length;
+	
+		if (clipFrame <= track.frames[0]){
+			clip.params[param] = track.values[0];
+			continue;
+		}
+		if (clipFrame >= track.frames[count - 1]) {
+			clip.params[param] = track.values[count - 1];
+			continue
+		};
+
+		// 2. Simple Loop: Find the first keyframe that is AFTER our current time
+		let i = 1; 
+		for (; i < count; i++) {
+			if (track.frames[i] > clipFrame) break;
+		}
+
+		const t0 = track.frames[i - 1];
+		const t1 = track.frames[i];
+		const v0 = track.values[i - 1];
+		const v1 = track.values[i];
+
+		const alpha = (clipFrame - t0) / (t1 - t0);
+		clip.params[param] =  v0 + (v1 - v0) * alpha;
+	}
+}
 
 // Gets decoder from pool and assignes to clip
 const setupNewDecoder = (clip: WorkerClip) => {

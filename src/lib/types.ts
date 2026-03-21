@@ -44,6 +44,11 @@ export type Track = {
 	type: TrackType;
 };
 
+export type KeyframeTrack = {
+	frames: number[];
+	values: number[];
+}
+
 export type SrtEntry = {
 	inPoint: number;
 	outPoint: number;
@@ -150,6 +155,8 @@ export type WorkerClip = {
 	text: string;
 	deleted: boolean;
 	type: SourceType;
+	useKeyframes:number[];
+	keyframeTracks: Map<number, KeyframeTrack>
 };
 
 export type WorkerVideoSource = {

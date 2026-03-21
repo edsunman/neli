@@ -66,7 +66,9 @@ export class WorkerManager {
 				params: $state.snapshot(clip.params),
 				text: clip.text,
 				type: clip.source.type,
-				deleted: clip.deleted
+				deleted: clip.deleted,
+				useKeyframes:clip.useKeyframes,
+				keyframeTracks: clip.keyframeTracks
 			};
 		});
 

@@ -1,3 +1,4 @@
+import type { KeyframeTrack } from '$lib/types';
 import type { Source } from '../source/source.svelte';
 
 export class Clip {
@@ -26,6 +27,8 @@ export class Clip {
 		1, 0, 1, 1
 	]);
 	text = $state('text');
+	useKeyframes:number[] = [];
+	keyframeTracks = new Map<number, KeyframeTrack>()
 
 	deleted = false;
 	invalid = false;
