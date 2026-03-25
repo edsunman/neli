@@ -19,7 +19,7 @@
 </script>
 
 <div style:min-width={`${36 * items.length}px`} class="bg-hover rounded-sm relative z-0">
-	{#each items as item}
+	{#each items as item (item.value)}
 		<button
 			class={[
 				item.value === value ? 'text-white' : 'hover:text-zinc-400',

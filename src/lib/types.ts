@@ -46,8 +46,11 @@ export type Track = {
 
 export type KeyframeTrack = {
 	frames: number[];
+	savedFrames: number[];
 	values: number[];
-}
+	easeIn: number[];
+	easeOut: number[];
+};
 
 export type SrtEntry = {
 	inPoint: number;
@@ -140,6 +143,42 @@ export type Command =
 			action: 'clipParam';
 			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
 	  }
+	| {
+			action: 'addKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				value: number;
+				easeIn: number;
+				easeOut: number;
+			};
+	  }
+	| {
+			action: 'deleteKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				value: number;
+				easeIn: number;
+				easeOut: number;
+			};
+	  }
+	| {
+			action: 'updateKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				oldValue: number;
+				oldEaseIn: number;
+				oldEaseOut: number;
+				newValue: number;
+				newEaseIn: number;
+				newEaseOut: number;
+			};
+	  }
 	| { action: 'deleteSource'; data: { sourceId: string } };
 
 export type WorkerClip = {
@@ -155,8 +194,8 @@ export type WorkerClip = {
 	text: string;
 	deleted: boolean;
 	type: SourceType;
-	useKeyframes:number[];
-	keyframeTracks: Map<number, KeyframeTrack>
+	keyframeTracksActive: number[];
+	keyframeTracks: Map<number, KeyframeTrack>;
 };
 
 export type WorkerVideoSource = {

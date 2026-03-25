@@ -49,8 +49,8 @@
 			case 'KeyZ':
 				if (!e.ctrlKey && !e.metaKey) break;
 				e.preventDefault();
-				focusTrack(0);
-				deselectAllClips();
+				//focusTrack(0);
+				//deselectAllClips();
 				if (e.shiftKey) {
 					historyManager.redo();
 				} else {

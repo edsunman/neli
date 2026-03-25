@@ -427,24 +427,24 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	return true;
 };
 
-const calculateKeyframes = (clip:WorkerClip, frameNumber:number) => {
-	const clipFrame = frameNumber - clip.start + clip.sourceOffset;
-	for (const param of clip.useKeyframes) {
+const calculateKeyframes = (clip: WorkerClip, frameNumber: number) => {
+	const clipFrame = frameNumber - clip.start;
+	for (const param of clip.keyframeTracksActive) {
 		const track = clip.keyframeTracks.get(param);
 		if (!track) continue;
 		const count = track.values.length;
-	
-		if (clipFrame <= track.frames[0]){
+
+		if (clipFrame <= track.frames[0]) {
 			clip.params[param] = track.values[0];
 			continue;
 		}
 		if (clipFrame >= track.frames[count - 1]) {
 			clip.params[param] = track.values[count - 1];
-			continue
-		};
+			continue;
+		}
 
-		// 2. Simple Loop: Find the first keyframe that is AFTER our current time
-		let i = 1; 
+		// Find the first keyframe that is AFTER our current time
+		let i = 1;
 		for (; i < count; i++) {
 			if (track.frames[i] > clipFrame) break;
 		}
@@ -454,10 +454,31 @@ const calculateKeyframes = (clip:WorkerClip, frameNumber:number) => {
 		const v0 = track.values[i - 1];
 		const v1 = track.values[i];
 
-		const alpha = (clipFrame - t0) / (t1 - t0);
-		clip.params[param] =  v0 + (v1 - v0) * alpha;
+		if (track.easeOut[i - 1] === 0) {
+			clip.params[param] = v0;
+			continue;
+		}
+
+		const t = (clipFrame - t0) / (t1 - t0);
+		let alpha;
+		const intensity = 0.8;
+		const outEase = track.easeOut[i - 1] === 2;
+		const inEase = track.easeIn[i] === 2;
+
+		if (!outEase && !inEase) {
+			// Linear
+			alpha = t;
+		} else {
+			// Cubic Bezier interpolation
+			// If Ease is false, we set the handle to 0 (start) or 1 (end) for Linear.
+			const cp1 = outEase ? intensity : 0;
+			const cp2 = inEase ? 1 - intensity : 1;
+			alpha =
+				3 * Math.pow(1 - t, 2) * t * cp1 + 3 * (1 - t) * Math.pow(t, 2) * cp2 + Math.pow(t, 3);
+		}
+		clip.params[param] = v0 + (v1 - v0) * alpha;
 	}
-}
+};
 
 // Gets decoder from pool and assignes to clip
 const setupNewDecoder = (clip: WorkerClip) => {

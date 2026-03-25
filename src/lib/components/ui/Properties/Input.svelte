@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
 	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
+	import { getContext } from 'svelte';
 
 	type Props = {
 		value: number | string;
@@ -17,10 +19,16 @@
 		onBlur = () => {},
 		step = '.01'
 	}: Props = $props();
+
+	const keyframeContext = getContext<{
+		params: number[];
+		active: () => boolean;
+	}>('keyframe');
 </script>
+
 <div
 	class={[
-		fullWidth ? '' : 'w-10',
+		fullWidth ? '' : 'w-10 height-xl:w-12',
 		'rounded-sm relative overflow-hidden z-0',
 		// before
 		'before:transition-all before:duration-200',
@@ -36,11 +44,17 @@
 		{step}
 		class={[
 			type === 'number' ? 'py-0.5' : 'py-1',
-			'relative w-full text-sm text-right px-1  z-2 text-zinc-300 focus:text-zinc-100 outline-0',
+			'relative w-full text-sm text-right height-xl:py-1 px-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
+			if (keyframeContext.active()) {
+				appState.selectedKeyframeParam = keyframeContext.params[0];
+			} else {
+				appState.selectedKeyframeParam = -1;
+			}
+			timelineState.invalidate = true;
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
@@ -53,6 +67,8 @@
 			onBlur();
 		}}
 		oninput={() => {
+			if (keyframeContext.params && keyframeContext.active())
+				createOrUpdateKeyframe(keyframeContext.params);
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
 		bind:value

@@ -57,6 +57,7 @@ class AppState {
 	disableKeyboardShortcuts = false;
 	exportSuccessCallback: (success: boolean) => void = () => {};
 	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
+	selectedKeyframeParam = -1;
 }
 
 class TimelineState {

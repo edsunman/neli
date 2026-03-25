@@ -1,12 +1,13 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
+import { addKeyframe, removeKeyframe } from '$lib/clip/keyframes';
 import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
 import { projectManager, timelineState, workerManager } from '$lib/state.svelte';
 import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { Command, TrackType } from '$lib/types';
 
 export class HistoryManager {
-	private debug = false;
+	private debug = true;
 	private undoStack: ICommand[][] = [];
 	private redoStack: ICommand[][] = [];
 	private tempCommand: ICommand[] = [];
@@ -47,11 +48,7 @@ export class HistoryManager {
 			command.undo(updatedClips);
 		}
 
-		workerManager.sendClip(Array.from(updatedClips));
-		projectManager.updateClip(Array.from(updatedClips));
-		setAllJoins();
-		setAllTrackTypes();
-		timelineState.invalidateWaveform = true;
+		this.finishUndoRedo(updatedClips);
 	}
 
 	redo() {
@@ -67,18 +64,26 @@ export class HistoryManager {
 		for (const command of commands) {
 			command.redo(updatedClips);
 		}
-
-		workerManager.sendClip(Array.from(updatedClips));
-		projectManager.updateClip(Array.from(updatedClips));
-		setAllJoins();
-		setAllTrackTypes();
-		timelineState.invalidateWaveform = true;
+		this.finishUndoRedo(updatedClips);
 	}
 
 	reset() {
 		this.undoStack.length = 0;
 		this.redoStack.length = 0;
 		this.tempCommand.length = 0;
+	}
+
+	private finishUndoRedo(updatedClips: Set<Clip>) {
+		for (const clip of updatedClips) {
+			if (timelineState.selectedClip && clip.deleted && clip.id === timelineState.selectedClip.id) {
+				timelineState.selectedClip = null;
+			}
+		}
+		workerManager.sendClip(Array.from(updatedClips));
+		projectManager.updateClip(Array.from(updatedClips));
+		setAllJoins();
+		setAllTrackTypes();
+		timelineState.invalidateWaveform = true;
 	}
 
 	private toCommandObject(command: Command): ICommand {
@@ -114,6 +119,36 @@ export class HistoryManager {
 				return new AddTrackCommand(command.data.number, command.data.type);
 			case 'removeTrack':
 				return new RemoveTrackCommand(command.data.number, command.data.type);
+			case 'addKeyframe':
+				return new AddKeyframeCommand(
+					command.data.clipId,
+					command.data.param,
+					command.data.frame,
+					command.data.value,
+					command.data.easeIn,
+					command.data.easeOut
+				);
+			case 'deleteKeyframe':
+				return new DeleteKeyframeCommand(
+					command.data.clipId,
+					command.data.param,
+					command.data.frame,
+					command.data.value,
+					command.data.easeIn,
+					command.data.easeOut
+				);
+			case 'updateKeyframe':
+				return new UpdateKeyframeCommand(
+					command.data.clipId,
+					command.data.param,
+					command.data.frame,
+					command.data.oldValue,
+					command.data.oldEaseIn,
+					command.data.oldEaseOut,
+					command.data.newValue,
+					command.data.newEaseIn,
+					command.data.newEaseOut
+				);
 			case 'deleteSource':
 				return new DeleteSourceCommand(command.data.sourceId);
 		}
@@ -252,6 +287,86 @@ class ClipParamCommand implements ICommand {
 		for (let i = 0; i < this.paramIndex.length; i++) {
 			clip.params[this.paramIndex[i]] = this.oldValue[i];
 		}
+		updatedClips.add(clip);
+	}
+}
+
+class AddKeyframeCommand implements ICommand {
+	constructor(
+		private clipId: string,
+		private param: number,
+		private frame: number,
+		private value: number,
+		private easeIn: number,
+		private easeOut: number
+	) {}
+	redo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		addKeyframe(clip, this.frame, this.param, this.value);
+		updatedClips.add(clip);
+	}
+	undo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		removeKeyframe(clip, this.frame, this.param);
+		updatedClips.add(clip);
+	}
+}
+
+class UpdateKeyframeCommand implements ICommand {
+	constructor(
+		private clipId: string,
+		private param: number,
+		private frame: number,
+		private oldValue: number,
+		private newValue: number,
+		private oldEaseIn: number,
+		private newEaseIn: number,
+		private oldEaseOut: number,
+		private newEaseOut: number
+	) {}
+	redo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		const track = clip?.keyframeTracks.get(this.param);
+		const index = track?.frames.findIndex((f) => f === this.frame);
+		if (!clip || !track || typeof index === 'undefined' || index < 0) return;
+		track.values[index] = this.newValue;
+		track.easeIn[index] = this.newEaseIn;
+		track.easeOut[index] = this.newEaseOut;
+		updatedClips.add(clip);
+	}
+	undo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		const track = clip?.keyframeTracks.get(this.param);
+		const index = track?.frames.findIndex((f) => f === this.frame);
+		if (!clip || !track || typeof index === 'undefined' || index < 0) return;
+		track.values[index] = this.oldValue;
+		track.easeIn[index] = this.oldEaseIn;
+		track.easeOut[index] = this.oldEaseOut;
+		updatedClips.add(clip);
+	}
+}
+
+class DeleteKeyframeCommand implements ICommand {
+	constructor(
+		private clipId: string,
+		private param: number,
+		private frame: number,
+		private value: number,
+		private easeIn: number,
+		private easeOut: number
+	) {}
+	redo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		removeKeyframe(clip, this.frame, this.param);
+		updatedClips.add(clip);
+	}
+	undo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		addKeyframe(clip, this.frame, this.param, this.value, this.easeIn, this.easeOut);
 		updatedClips.add(clip);
 	}
 }

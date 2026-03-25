@@ -28,7 +28,9 @@
 	import Properties from '../ui/Properties';
 </script>
 
-<div class="flex justify-end mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative">
+<div
+	class="flex justify-end mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative"
+>
 	<div class="absolute -right-13 z-10">
 		<BitsTooltip.Provider delayDuration={500}>
 			<div class=" bg-zinc-950 rounded-lg flex flex-col mb-5">
@@ -168,7 +170,7 @@
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
-				<Properties.Group label="size">
+				<Properties.Group label="size" keyframeParams={[0, 1]}>
 					<Properties.Grid>
 						<Properties.Input bind:value={clip.params[0]} fallback={1} />
 						<Properties.Input bind:value={clip.params[1]} fallback={1} />
@@ -182,7 +184,7 @@
 				</Properties.Grid>
 			</Properties.Group>
 			<Properties.Group label="rotate">
-				<Properties.Input bind:value={clip.params[17]} step="1"/>
+				<Properties.Input bind:value={clip.params[17]} step="1" />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
@@ -210,12 +212,12 @@
 		{/if}
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label="crop" className={['w-30']}>
+			<Properties.Group label="crop" className={['w-30']} keyframeParams={[12, 13, 14, 15]}>
 				<Properties.Grid>
-						<Properties.Input bind:value={clip.params[12]} />
-						<Properties.Input bind:value={clip.params[13]} />
-						<Properties.Input bind:value={clip.params[14]} />
-						<Properties.Input bind:value={clip.params[15]} />
+					<Properties.Input bind:value={clip.params[12]} />
+					<Properties.Input bind:value={clip.params[13]} />
+					<Properties.Input bind:value={clip.params[14]} />
+					<Properties.Input bind:value={clip.params[15]} />
 				</Properties.Grid>
 			</Properties.Group>
 			<Properties.Group label="round corners">
@@ -224,20 +226,19 @@
 		{/if}
 		{#if appState.propertiesSection === 'colour' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label="opacity">
+			<Properties.Group label="opacity" keyframeParams={[18]}>
 				<Properties.Input bind:value={clip.params[18]} fallback={1} />
 				<Slider bind:value={clip.params[18]} />
 			</Properties.Group>
-
-			<Properties.Group label="exposure">
+			<Properties.Group label="exposure" keyframeParams={[19]}>
 				<Properties.Input bind:value={clip.params[19]} fallback={0} />
-				<Slider bind:value={clip.params[19]} max={2} min={-2}  />
+				<Slider bind:value={clip.params[19]} max={2} min={-2} />
 			</Properties.Group>
-			<Properties.Group label="contrast">
+			<Properties.Group label="contrast" keyframeParams={[20]}>
 				<Properties.Input bind:value={clip.params[20]} fallback={1} />
 				<Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
 			</Properties.Group>
-			<Properties.Group label="saturation">
+			<Properties.Group label="saturation" keyframeParams={[21]}>
 				<Properties.Input bind:value={clip.params[21]} fallback={1} />
 				<Slider bind:value={clip.params[21]} max={2} min={0} />
 			</Properties.Group>

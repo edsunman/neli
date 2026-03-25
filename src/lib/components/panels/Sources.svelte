@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appState, programState, timelineState } from '$lib/state.svelte';
+	import { appState, timelineState } from '$lib/state.svelte';
 	import { Tooltip } from 'bits-ui';
 	import {
 		addIcon,

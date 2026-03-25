@@ -27,8 +27,10 @@ export class Clip {
 		1, 0, 1, 1
 	]);
 	text = $state('text');
-	useKeyframes:number[] = [];
-	keyframeTracks = new Map<number, KeyframeTrack>()
+
+	keyframeTracks = new Map<number, KeyframeTrack>();
+	keyframeTracksActive = $state<number[]>([]);
+	keyframesOnThisFrame = $state<number[]>([]);
 
 	deleted = false;
 	invalid = false;

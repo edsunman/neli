@@ -43,6 +43,11 @@
 		deleteClips,
 		deselectAllClips
 	} from '$lib/clip/actions';
+	import {
+		getKeyframeAtMousePosition,
+		deleteKeyframe,
+		updateKeyframeEasing
+	} from '$lib/clip/keyframes';
 	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
 		calculateMaxZoomLevel,
@@ -56,7 +61,7 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import { scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
+	import { deleteIcon, scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -77,6 +82,7 @@
 	let mainScrollDirection: 'x' | 'y' = 'y';
 	let invalidateScrub = false;
 	let latestScrubPosition = 0;
+	let clickedKeyframe = -1;
 
 	let cursorStyle = $derived.by(() => {
 		if (timelineState.selectedTool === 'hand') {
@@ -87,6 +93,7 @@
 	});
 
 	const mouseMove = (e: MouseEvent) => {
+		// TODO: throttle this function?
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
 		let cursor = 'default';
@@ -251,6 +258,11 @@
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
 			clip.savedTrack = clip.track;
+			for (const [, keyframeTrack] of clip.keyframeTracks) {
+				for (let i = 0; i < keyframeTrack.values.length; i++) {
+					keyframeTrack.savedFrames[i] = keyframeTrack.frames[i];
+				}
+			}
 			setTrackLocks();
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
@@ -269,7 +281,7 @@
 		timelineState.invalidate = true;
 	};
 
-	const mouseUp = () => {
+	const mouseUp = (e: MouseEvent) => {
 		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
 		if (scrubbing) scrubbing = false;
@@ -324,6 +336,20 @@
 		if (scrolling) {
 			scrolling = false;
 		}
+
+		if (
+			clip &&
+			clip.keyframeTracksActive.length > 0 &&
+			timelineState.focusedTrack === clip.track &&
+			timelineState.selectedClip &&
+			appState.selectedKeyframeParam > -1 &&
+			canvasContainer
+		) {
+			// check for keyframe hitbox
+			const offsetY = e.clientY - canvasContainer.offsetTop;
+			clickedKeyframe = getKeyframeAtMousePosition(e.offsetX, offsetY, clip);
+		}
+
 		timelineState.action = 'none';
 		timelineState.invalidate = true;
 		historyManager.finishCommand();
@@ -468,6 +494,55 @@
 	bind:this={contextMenu}
 	buttons={[
 		{
+			text: 'ease in',
+			onClick: () => {
+				console.log(clickedKeyframe);
+			},
+			icon: scissorsIcon,
+			hideCondition: () => clickedKeyframe < 0,
+			children: [
+				{
+					text: 'linear',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 1, 'in')
+				},
+				{
+					text: 'ease',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 2, 'in')
+				}
+			]
+		},
+		{
+			text: 'ease out',
+			onClick: () => {
+				console.log(clickedKeyframe);
+			},
+			icon: scissorsIcon,
+			hideCondition: () => clickedKeyframe < 0,
+			children: [
+				{
+					text: 'step',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 0, 'out')
+				},
+				{
+					text: 'linear',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 1, 'out')
+				},
+				{
+					text: 'ease',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 2, 'out')
+				}
+			]
+		},
+		{
+			text: 'delete keyframe',
+			onClick: () => {
+				deleteKeyframe(clickedKeyframe);
+				timelineState.invalidate = true;
+			},
+			icon: deleteIcon,
+			hideCondition: () => clickedKeyframe < 0
+		},
+		{
 			text: 'cut clip',
 			onClick: () => {
 				if (timelineState.selectedClip) {
@@ -477,13 +552,14 @@
 				}
 			},
 			icon: scissorsIcon,
-			shortcuts: []
+			hideCondition: () => clickedKeyframe > -1
 		},
 		{
 			text: 'focus clip',
 			onClick: () => focusClip(),
 			icon: zoomInIcon,
-			shortcuts: ['shift', 'F']
+			shortcuts: ['shift', 'F'],
+			hideCondition: () => clickedKeyframe > -1
 		}
 	]}
 />

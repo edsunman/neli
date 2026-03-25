@@ -2,6 +2,7 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { appState, programState, timelineState } from '$lib/state.svelte';
 import { canvasPixelToFrame, frameToCanvasPixel, secondsToTimecode } from './utils';
 import { programFrameToCanvasPixel } from '$lib/program/utils';
+import { getKeyframePositionHelpers } from '$lib/clip/utils';
 
 const ZINC_900 = '#18181b';
 const GREEN = '#41a088';
@@ -91,6 +92,115 @@ export const drawCanvas = (
 
 	if (waveCanvas && timelineState.focusedTrack > 0)
 		context.drawImage(waveCanvas, 0, timelineState.tracks[timelineState.focusedTrack - 1].top + 42);
+
+	const drawKeyframe = (x: number, y: number) => {
+		context.beginPath();
+		context.moveTo(x + 1, y - 5);
+		context.lineTo(x + 6, y);
+		context.lineTo(x + 1, y + 5);
+		context.lineTo(x - 4, y);
+		context.closePath();
+		context.fillStyle = 'white';
+		context.fill();
+	};
+
+	// keyframes
+	if (
+		timelineState.focusedTrack > 0 &&
+		appState.selectedKeyframeParam > -1 &&
+		timelineState.selectedClip &&
+		timelineState.selectedClip.keyframeTracksActive.length > 0
+	) {
+		const clip = timelineState.selectedClip;
+		const keyframeTrack = clip.keyframeTracks.get(appState.selectedKeyframeParam);
+
+		if (keyframeTrack && keyframeTrack.values.length > 0) {
+			const startPercent = clip.start / timelineState.duration - timelineState.offset;
+			const endPercent =
+				(clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+
+			const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
+			const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
+
+			const { getFrameX, getValY } = getKeyframePositionHelpers(clip, keyframeTrack);
+			context.save();
+
+			context.beginPath();
+			context.rect(0, 0, width, height);
+			for (let i = 0; i < keyframeTrack.frames.length; i++) {
+				const x = getFrameX(keyframeTrack.frames[i]);
+				const y = getValY(keyframeTrack.values[i]);
+				const maskSize = 9;
+
+				context.moveTo(x + maskSize, y);
+				context.arc(x + 1, y, maskSize, 0, Math.PI * 2);
+			}
+			context.clip('evenodd');
+
+			// White line
+			context.beginPath();
+
+			context.strokeStyle = 'white';
+			context.lineWidth = 1.5;
+
+			// 1. Initial Position
+			const firstX = getFrameX(keyframeTrack.frames[0]);
+			const firstY = getValY(keyframeTrack.values[0]);
+			context.moveTo(clipFullStart, firstY);
+			if (keyframeTrack.frames.length > 1) {
+				context.lineTo(firstX, firstY);
+			}
+
+			// 2. The Loop with Adjusted Tension
+			//const tension = 0.4; // 0.33 is the "magic number" for natural-looking curves
+			for (let i = 0; i < keyframeTrack.frames.length - 1; i++) {
+				const x0 = getFrameX(keyframeTrack.frames[i]);
+				const y0 = getValY(keyframeTrack.values[i]);
+				const x1 = getFrameX(keyframeTrack.frames[i + 1]);
+				const y1 = getValY(keyframeTrack.values[i + 1]);
+
+				const distanceX = x1 - x0;
+
+				// 1. Check for Step (Departure from Keyframe A)
+				// If Step, we draw a horizontal line then a vertical jump
+				if (keyframeTrack.easeOut[i] === 0) {
+					context.lineTo(x1, y0); // Horizontal to the next frame's X
+					context.lineTo(x1, y1); // Vertical to the next frame's Y
+					continue; // Move to the next segment
+				}
+
+				// 2. Calculate "Tension" (Influence) for each side
+				// If Ease: 33% influence (standard Bezier curve)
+				// If Linear: 0% influence (straight line)
+				const outTension = keyframeTrack.easeOut[i] === 2 ? 0.4 : 0;
+				const inTension = keyframeTrack.easeIn[i + 1] === 2 ? 0.4 : 0;
+
+				// 3. Position the Control Points
+				const cp1x = x0 + distanceX * outTension;
+				const cp2x = x1 - distanceX * inTension;
+
+				// 4. Draw the Curve
+				// If both tensions are 0, this naturally draws a perfectly straight line!
+				context.bezierCurveTo(cp1x, y0, cp2x, y1, x1, y1);
+			}
+
+			// 3. Final Flat Line
+			const lastY = getValY(keyframeTrack.values[keyframeTrack.frames.length - 1]);
+			context.lineTo(clipFullEnd, lastY);
+
+			context.stroke();
+			context.restore();
+			// 5. Draw the "dots" (keyframes) on top of the line
+			for (let i = 0; i < keyframeTrack.frames.length; i++) {
+				// 1. Get X and Y using the logic we consolidated
+				const x = getFrameX(keyframeTrack.frames[i]);
+				const y = getValY(keyframeTrack.values[i]);
+
+				// 2. Draw the icon
+				drawKeyframe(x, y);
+			}
+		}
+	}
 
 	// select box
 	if (timelineState.action === 'selecting') {
@@ -395,7 +505,6 @@ const drawClip = (
 			clip.joinRight ? 0 : 5,
 			clip.joinLeft ? 0 : 5
 		]);
-
 		if (!selected || clip.invalid) context.fillStyle = clipBaseColor;
 		//if (clip.invalid && pattern) context.fillStyle = pattern;
 		//if (clip.invalid) context.fillStyle = clipBaseColor;

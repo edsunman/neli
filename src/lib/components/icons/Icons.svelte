@@ -26,6 +26,7 @@
 		justifyLeftIcon,
 		justifyCenterIcon,
 		justifyRightIcon,
+		keyframeIcon,
 		linkIcon,
 		logoIcon,
 		mouseIcon,
@@ -469,6 +470,25 @@
 		fill="none"
 	>
 		<path d="M10 10h8M6 6h12M6 14h12m-8 4h8" />
+	</svg>
+{/snippet}
+
+{#snippet keyframeIcon(className: string, active = false)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		{#if active}
+			<path class="cls-1" d="M10,1.54L1.3,10.24l8.7,8.7,8.7-8.7L10,1.54Z" />
+		{:else}
+			<path
+				class="cls-1"
+				d="M10,1.54L1.3,10.24l8.7,8.7,8.7-8.7L10,1.54ZM6.39,10.24l3.61-3.61,3.61,3.61-3.61,3.61-3.61-3.61Z"
+			/>
+		{/if}
 	</svg>
 {/snippet}
 

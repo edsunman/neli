@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
 	import { useThrottle } from '$lib/hooks/useThrottle';
 	import { appState, timelineState, workerManager } from '$lib/state.svelte';
+	import { getContext } from 'svelte';
 
 	type Props = {
 		value: number;
@@ -22,10 +24,15 @@
 		step = false
 	}: Props = $props();
 
+	const keyframeContext = getContext<{
+		params: number[];
+		active: () => boolean;
+	}>('keyframe');
+
 	const throttle = useThrottle();
 	const lerp = (min: number, max: number, value: number) => min + (max - min) * value;
 	const invLerp = (min: number, max: number, value: number) => (value - min) / (max - min);
-	const clamp = (value:number,max = 1, min= 0) => Math.min(Math.max(value, min), max)
+	const clamp = (value: number, max = 1, min = 0) => Math.min(Math.max(value, min), max);
 
 	let dragging = $state(false);
 	let clientStart = 0;
@@ -35,9 +42,9 @@
 
 	let normalisedValue = $derived(invLerp(min, max, value));
 	let barSize = $derived.by(() => {
-		const barStartClamped = clamp(barStart, max,min)
+		const barStartClamped = clamp(barStart, max, min);
 		const barStartNormalised = invLerp(min, max, barStartClamped);
-		const clampedValue = clamp(normalisedValue)
+		const clampedValue = clamp(normalisedValue);
 		const start = Math.min(barStartNormalised, clampedValue);
 		const end = Math.max(barStartNormalised, clampedValue);
 		return { start, width: end - start, handle: clampedValue };
@@ -47,6 +54,8 @@
 		if (onValueChange) {
 			onValueChange(value);
 		} else {
+			if (keyframeContext.params && keyframeContext.active())
+				createOrUpdateKeyframe(keyframeContext.params);
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}
 	};
@@ -79,7 +88,7 @@
 				normalisedSize = 1 - e.offsetY / height;
 			}
 
-			const clamped = clamp(normalisedSize);// Math.min(Math.max(normalisedSize, 0), 1);
+			const clamped = clamp(normalisedSize); // Math.min(Math.max(normalisedSize, 0), 1);
 			const lerped = lerp(min, max, clamped);
 			value = Math.round(lerped * 100) / 100;
 			valueChanged();
@@ -135,9 +144,9 @@
 			const position = offsetStart + moved;
 			let normalised;
 			if (!vertical) {
-				normalised = clamp(position/width);
+				normalised = clamp(position / width);
 			} else {
-				normalised = 1 - clamp(position/height) //Math.min(Math.max(position / height, 0), 1);
+				normalised = 1 - clamp(position / height); //Math.min(Math.max(position / height, 0), 1);
 			}
 			const lerped = lerp(min, max, normalised);
 			if (!step) {
@@ -145,7 +154,7 @@
 			} else {
 				value = Math.round(lerped);
 			}
-			
+
 			valueChanged();
 		});
 	}}
