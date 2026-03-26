@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
+	import { createOrUpdateKeyframe, setParamsFromKeyframes } from '$lib/clip/keyframes';
 
 	import { keyframeIcon } from '$lib/components/icons/Icons.svelte';
 	import { historyManager, timelineState } from '$lib/state.svelte';
@@ -37,6 +37,8 @@
 					if (keyframeParams) {
 						createOrUpdateKeyframe(keyframeParams);
 						historyManager.finishCommand();
+						setParamsFromKeyframes();
+						timelineState.invalidate = true;
 					}
 				}}
 				class={[

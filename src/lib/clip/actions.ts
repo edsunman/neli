@@ -334,10 +334,12 @@ export const resizeSelctedClip = () => {
 		// keyframes
 		const offset = clip.start - clip.savedStart;
 		for (const [param, track] of clip.keyframeTracks) {
-			for (let i = 0; i < track.frames.length; i++) {
-				track.frames[i] = track.savedFrames[i] - offset;
-				if (track.frames[i] < 0) {
-					removeKeyframe(clip, track.frames[i], param);
+			const keyframes = track.keyframes;
+			for (let i = keyframes.length - 1; i >= 0; i--) {
+				const keyframe = keyframes[i];
+				keyframe.frame = keyframe.savedFrame - offset;
+				if (keyframe.frame < 0) {
+					removeKeyframe(clip, keyframe.frame, param);
 				}
 			}
 		}
@@ -375,9 +377,11 @@ export const resizeSelctedClip = () => {
 
 		// keyframes
 		for (const [param, track] of clip.keyframeTracks) {
-			for (let i = track.frames.length - 1; i >= 0; i--) {
-				if (track.frames[i] > clip.duration) {
-					removeKeyframe(clip, track.frames[i], param);
+			const keyframes = track.keyframes;
+			for (let i = keyframes.length - 1; i >= 0; i--) {
+				const keyframe = keyframes[i];
+				if (keyframes[i].frame > clip.duration) {
+					removeKeyframe(clip, keyframe.frame, param);
 				}
 			}
 		}
@@ -499,35 +503,28 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	const moveAmount = frame - clip.start + gapSize;
 	for (const [param, track] of clip.keyframeTracks) {
 		const newTrack: KeyframeTrack = {
-			frames: [],
-			savedFrames: [],
-			values: [],
-			easeIn: [],
-			easeOut: []
+			keyframes: []
 		};
 
-		const framesToMoveCount = track.frames.filter((f) => f > clip.duration).length;
+		const framesToMoveCount = track.keyframes.filter((k) => k.frame > clip.duration).length;
 		let newFrameIndex = framesToMoveCount - 1;
-		for (let i = track.frames.length - 1; i >= 0; i--) {
-			if (track.frames[i] > clip.duration) {
-				newTrack.frames[newFrameIndex] = track.frames[i] - moveAmount;
-				newTrack.savedFrames[newFrameIndex] = track.savedFrames[i];
-				newTrack.values[newFrameIndex] = track.values[i];
-				newTrack.easeIn[newFrameIndex] = track.easeIn[i];
-				newTrack.easeOut[newFrameIndex] = track.easeOut[i];
-
+		for (const keyframe of track.keyframes) {
+			if (keyframe.frame > clip.duration) {
+				const newKeyframe = structuredClone(keyframe);
+				newKeyframe.frame = keyframe.frame - moveAmount;
+				newTrack.keyframes[newFrameIndex] = newKeyframe;
 				historyManager.pushAction({
 					action: 'deleteKeyframe',
 					data: {
 						clipId: clip.id,
-						frame: track.frames[i],
+						frame: keyframe.frame,
 						param: param,
-						value: track.values[i],
-						easeIn: track.easeIn[i],
-						easeOut: track.easeOut[i]
+						value: keyframe.value,
+						easeIn: keyframe.easeIn,
+						easeOut: keyframe.easeOut
 					}
 				});
-				removeKeyframe(clip, track.frames[i], param);
+				removeKeyframe(clip, keyframe.frame, param);
 				newFrameIndex--;
 			}
 		}

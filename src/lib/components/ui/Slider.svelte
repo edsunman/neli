@@ -1,7 +1,11 @@
 <script lang="ts">
-	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
+	import {
+		createOrUpdateKeyframe,
+		finaliseKeyframe,
+		setParamsFromKeyframes
+	} from '$lib/clip/keyframes';
 	import { useThrottle } from '$lib/hooks/useThrottle';
-	import { appState, timelineState, workerManager } from '$lib/state.svelte';
+	import { appState, historyManager, timelineState, workerManager } from '$lib/state.svelte';
 	import { getContext } from 'svelte';
 
 	type Props = {
@@ -57,6 +61,15 @@
 			if (keyframeContext.params && keyframeContext.active())
 				createOrUpdateKeyframe(keyframeContext.params);
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+		}
+	};
+
+	const valueFinalised = () => {
+		if (keyframeContext.params && keyframeContext.active()) {
+			finaliseKeyframe();
+			historyManager.finishCommand();
+			setParamsFromKeyframes();
+			timelineState.invalidate = true;
 		}
 	};
 </script>
@@ -159,6 +172,7 @@
 		});
 	}}
 	onmouseup={() => {
+		if (dragging) valueFinalised();
 		dragging = false;
 	}}
 />

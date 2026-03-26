@@ -44,12 +44,24 @@ export type Track = {
 	type: TrackType;
 };
 
+export type Keyframe = {
+	frame: number;
+	savedFrame: number;
+	value: number;
+	savedValue: number;
+	easeIn: number;
+	savedEaseIn: number;
+	easeOut: number;
+	savedEaseOut: number;
+};
+
 export type KeyframeTrack = {
-	frames: number[];
+	keyframes: Keyframe[];
+	/* 	frames: number[];
 	savedFrames: number[];
 	values: number[];
 	easeIn: number[];
-	easeOut: number[];
+	easeOut: number[]; */
 };
 
 export type SrtEntry = {

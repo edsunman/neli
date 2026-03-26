@@ -429,54 +429,49 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 const calculateKeyframes = (clip: WorkerClip, frameNumber: number) => {
 	const clipFrame = frameNumber - clip.start;
-	for (const param of clip.keyframeTracksActive) {
-		const track = clip.keyframeTracks.get(param);
-		if (!track) continue;
-		const count = track.values.length;
+	for (const [param, track] of clip.keyframeTracks) {
+		const keyframes = track.keyframes;
+		if (!keyframes || keyframes.length === 0) continue;
 
-		if (clipFrame <= track.frames[0]) {
-			clip.params[param] = track.values[0];
+		const count = keyframes.length;
+		if (clipFrame <= keyframes[0].frame) {
+			clip.params[param] = keyframes[0].value;
 			continue;
 		}
-		if (clipFrame >= track.frames[count - 1]) {
-			clip.params[param] = track.values[count - 1];
+		if (clipFrame >= keyframes[count - 1].frame) {
+			clip.params[param] = keyframes[count - 1].value;
 			continue;
 		}
 
-		// Find the first keyframe that is AFTER our current time
 		let i = 1;
 		for (; i < count; i++) {
-			if (track.frames[i] > clipFrame) break;
+			if (keyframes[i].frame > clipFrame) break;
 		}
 
-		const t0 = track.frames[i - 1];
-		const t1 = track.frames[i];
-		const v0 = track.values[i - 1];
-		const v1 = track.values[i];
-
-		if (track.easeOut[i - 1] === 0) {
-			clip.params[param] = v0;
+		const k0 = keyframes[i - 1];
+		const k1 = keyframes[i];
+		if (k0.easeOut === 0) {
+			clip.params[param] = k0.value;
 			continue;
 		}
 
-		const t = (clipFrame - t0) / (t1 - t0);
+		const t = (clipFrame - k0.frame) / (k1.frame - k0.frame);
 		let alpha;
-		const intensity = 0.8;
-		const outEase = track.easeOut[i - 1] === 2;
-		const inEase = track.easeIn[i] === 2;
+		const outEase = k0.easeOut === 2;
+		const inEase = k1.easeIn === 2;
 
 		if (!outEase && !inEase) {
-			// Linear
 			alpha = t;
 		} else {
-			// Cubic Bezier interpolation
-			// If Ease is false, we set the handle to 0 (start) or 1 (end) for Linear.
+			// Cubic Bezier
+			const intensity = 0.8;
 			const cp1 = outEase ? intensity : 0;
 			const cp2 = inEase ? 1 - intensity : 1;
-			alpha =
-				3 * Math.pow(1 - t, 2) * t * cp1 + 3 * (1 - t) * Math.pow(t, 2) * cp2 + Math.pow(t, 3);
+			const mt = 1 - t;
+			alpha = 3 * (mt * mt) * t * cp1 + 3 * mt * (t * t) * cp2 + t * t * t;
 		}
-		clip.params[param] = v0 + (v1 - v0) * alpha;
+
+		clip.params[param] = k0.value + (k1.value - k0.value) * alpha;
 	}
 };
 

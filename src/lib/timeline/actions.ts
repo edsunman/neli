@@ -19,8 +19,8 @@ export const setCurrentFrame = (frame: number, updateWorker = true) => {
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
 	if (updateWorker) workerManager.seek(frame);
-	setParamsFromKeyframes(frame);
 	timelineState.currentFrame = frame;
+	setParamsFromKeyframes();
 	timelineState.invalidate = true;
 };
 
@@ -71,7 +71,7 @@ export const startPlayLoop = () => {
 			timelineState.currentFrame++;
 			accumulator -= msPerFrame;
 			timelineState.invalidate = true;
-			setParamsFromKeyframes(timelineState.currentFrame);
+			setParamsFromKeyframes();
 		}
 
 		const elapsedTimeMs = timestamp - firstTimestamp;

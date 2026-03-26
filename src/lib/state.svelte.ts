@@ -56,7 +56,7 @@ class AppState {
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	exportSuccessCallback: (success: boolean) => void = () => {};
-	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
+	mouseMoveOwner: 'timeline' | 'program' | 'properties' = 'timeline';
 	selectedKeyframeParam = -1;
 }
 

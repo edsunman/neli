@@ -39,7 +39,10 @@ export const getKeyframePositionHelpers = (clip: Clip, track: KeyframeTrack) => 
 	// 1. Calculate Min/Max (O(n))
 	let minVal = Infinity;
 	let maxVal = -Infinity;
-	for (const v of track.values) {
+
+	const keyframes = track.keyframes;
+	for (let i = 0; i < keyframes.length; i++) {
+		const v = keyframes[i].value;
 		if (v < minVal) minVal = v;
 		if (v > maxVal) maxVal = v;
 	}

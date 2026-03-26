@@ -1,6 +1,11 @@
 import { getClip, setAllJoins } from '$lib/clip/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
-import { addKeyframe, removeKeyframe } from '$lib/clip/keyframes';
+import {
+	addKeyframe,
+	getKeyframeByFrameNumber,
+	removeKeyframe,
+	setParamsFromKeyframes
+} from '$lib/clip/keyframes';
 import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
 import { projectManager, timelineState, workerManager } from '$lib/state.svelte';
 import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
@@ -83,6 +88,7 @@ export class HistoryManager {
 		projectManager.updateClip(Array.from(updatedClips));
 		setAllJoins();
 		setAllTrackTypes();
+		setParamsFromKeyframes();
 		timelineState.invalidateWaveform = true;
 	}
 
@@ -143,10 +149,10 @@ export class HistoryManager {
 					command.data.param,
 					command.data.frame,
 					command.data.oldValue,
-					command.data.oldEaseIn,
-					command.data.oldEaseOut,
 					command.data.newValue,
+					command.data.oldEaseIn,
 					command.data.newEaseIn,
+					command.data.oldEaseOut,
 					command.data.newEaseOut
 				);
 			case 'deleteSource':
@@ -303,7 +309,7 @@ class AddKeyframeCommand implements ICommand {
 	redo(updatedClips: Set<Clip>) {
 		const clip = getClip(this.clipId);
 		if (!clip) return;
-		addKeyframe(clip, this.frame, this.param, this.value);
+		addKeyframe(clip, this.frame, this.param, this.value, this.easeIn, this.easeOut);
 		updatedClips.add(clip);
 	}
 	undo(updatedClips: Set<Clip>) {
@@ -328,22 +334,20 @@ class UpdateKeyframeCommand implements ICommand {
 	) {}
 	redo(updatedClips: Set<Clip>) {
 		const clip = getClip(this.clipId);
-		const track = clip?.keyframeTracks.get(this.param);
-		const index = track?.frames.findIndex((f) => f === this.frame);
-		if (!clip || !track || typeof index === 'undefined' || index < 0) return;
-		track.values[index] = this.newValue;
-		track.easeIn[index] = this.newEaseIn;
-		track.easeOut[index] = this.newEaseOut;
+		const keyframe = getKeyframeByFrameNumber(clip, this.param, this.frame);
+		if (!clip || !keyframe) return;
+		keyframe.value = this.newValue;
+		keyframe.easeIn = this.newEaseIn;
+		keyframe.easeOut = this.newEaseOut;
 		updatedClips.add(clip);
 	}
 	undo(updatedClips: Set<Clip>) {
 		const clip = getClip(this.clipId);
-		const track = clip?.keyframeTracks.get(this.param);
-		const index = track?.frames.findIndex((f) => f === this.frame);
-		if (!clip || !track || typeof index === 'undefined' || index < 0) return;
-		track.values[index] = this.oldValue;
-		track.easeIn[index] = this.oldEaseIn;
-		track.easeOut[index] = this.oldEaseOut;
+		const keyframe = getKeyframeByFrameNumber(clip, this.param, this.frame);
+		if (!clip || !keyframe) return;
+		keyframe.value = this.oldValue;
+		keyframe.easeIn = this.oldEaseIn;
+		keyframe.easeOut = this.oldEaseOut;
 		updatedClips.add(clip);
 	}
 }

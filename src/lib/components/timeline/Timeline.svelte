@@ -70,6 +70,7 @@
 	let waveCanvas: OffscreenCanvas;
 	let waveContext: OffscreenCanvasRenderingContext2D | null;
 	let canvasContainer = $state<HTMLDivElement>();
+	let mouseIsDown = false;
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
@@ -182,6 +183,7 @@
 
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
+		mouseIsDown = true;
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
 		programState.selectedClip = null;
@@ -259,8 +261,8 @@
 			clip.savedSourceOffset = clip.sourceOffset;
 			clip.savedTrack = clip.track;
 			for (const [, keyframeTrack] of clip.keyframeTracks) {
-				for (let i = 0; i < keyframeTrack.values.length; i++) {
-					keyframeTrack.savedFrames[i] = keyframeTrack.frames[i];
+				for (const keyframe of keyframeTrack.keyframes) {
+					keyframe.savedFrame = keyframe.frame;
 				}
 			}
 			setTrackLocks();
@@ -282,6 +284,9 @@
 	};
 
 	const mouseUp = (e: MouseEvent) => {
+		if (!mouseIsDown) return;
+		console.log('fired!');
+		mouseIsDown = false;
 		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
 		if (scrubbing) scrubbing = false;
