@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
+	import { getKeyframeContext } from '$lib/context/context';
 	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
-	import { getContext } from 'svelte';
 
 	type Props = {
 		value: number | string;
@@ -20,10 +20,7 @@
 		step = '.01'
 	}: Props = $props();
 
-	const keyframeContext = getContext<{
-		params: number[];
-		active: () => boolean;
-	}>('keyframe');
+	const keyframeContext = getKeyframeContext();
 </script>
 
 <div
@@ -49,7 +46,7 @@
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
-			if (keyframeContext.active()) {
+			if (keyframeContext.active() && keyframeContext.params) {
 				appState.selectedKeyframeParam = keyframeContext.params[0];
 			} else {
 				appState.selectedKeyframeParam = -1;

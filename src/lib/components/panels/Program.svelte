@@ -77,6 +77,7 @@
 
 	const mouseUp = async () => {
 		appState.mouseMoveOwner = 'timeline';
+		appState.mouseIsDown = false;
 		if (dragging) {
 			dragging = false;
 			const clip = timelineState.selectedClip;

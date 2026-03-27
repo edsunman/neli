@@ -12,7 +12,7 @@ import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { Command, TrackType } from '$lib/types';
 
 export class HistoryManager {
-	private debug = true;
+	private debug = false;
 	private undoStack: ICommand[][] = [];
 	private redoStack: ICommand[][] = [];
 	private tempCommand: ICommand[] = [];

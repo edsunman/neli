@@ -2,8 +2,9 @@
 	import { createOrUpdateKeyframe, setParamsFromKeyframes } from '$lib/clip/keyframes';
 
 	import { keyframeIcon } from '$lib/components/icons/Icons.svelte';
+	import { setKeyframeContext } from '$lib/context/context';
 	import { historyManager, timelineState } from '$lib/state.svelte';
-	import { setContext, type Snippet } from 'svelte';
+	import { type Snippet } from 'svelte';
 
 	type Props = {
 		children: Snippet;
@@ -14,8 +15,8 @@
 	let { children, label, className = [], keyframeParams }: Props = $props();
 
 	let keyframeActive = $derived.by(() => {
-		if (!keyframeParams) return false;
-		return timelineState.selectedClip?.keyframeTracksActive.includes(keyframeParams[0]);
+		if (!keyframeParams || !timelineState.selectedClip) return false;
+		return timelineState.selectedClip.keyframeTracksActive.includes(keyframeParams[0]);
 	});
 	let keyframeOnThisFrame = $derived.by(() => {
 		if (!keyframeParams) return false;
@@ -24,7 +25,7 @@
 
 	// eslint-disable-next-line svelte/no-unused-svelte-ignore
 	// svelte-ignore state_referenced_locally
-	setContext('keyframe', { params: keyframeParams, active: () => keyframeActive });
+	setKeyframeContext({ params: keyframeParams, active: () => keyframeActive });
 </script>
 
 <div class="text-sm font-medium flex flex-col items-end w-full">
@@ -45,12 +46,12 @@
 					keyframeOnThisFrame
 						? 'text-rose-500 duration-0'
 						: keyframeActive
-							? 'text-zinc-100 duration-200'
-							: 'text-zinc-700 hover:text-zinc-400',
+							? 'text-zinc-300 duration-200'
+							: 'text-zinc-700 hover:text-zinc-300',
 					'transition-colors'
 				]}
 			>
-				{@render keyframeIcon('size-3 mr-2 my-1', keyframeOnThisFrame)}
+				{@render keyframeIcon('size-3 mr-2 my-1', keyframeActive)}
 			</span>
 		{/if}
 		{label}

@@ -1,12 +1,6 @@
 <script lang="ts">
-	import {
-		createOrUpdateKeyframe,
-		finaliseKeyframe,
-		setParamsFromKeyframes
-	} from '$lib/clip/keyframes';
 	import { useThrottle } from '$lib/hooks/useThrottle';
-	import { appState, historyManager, timelineState, workerManager } from '$lib/state.svelte';
-	import { getContext } from 'svelte';
+	import { appState } from '$lib/state.svelte';
 
 	type Props = {
 		value: number;
@@ -15,6 +9,7 @@
 		barStart?: number;
 		vertical?: boolean;
 		onValueChange?: (n: number) => void;
+		onValueFinalised?: () => void;
 		step?: boolean;
 	};
 
@@ -25,13 +20,11 @@
 		max = 1,
 		barStart = 0,
 		onValueChange,
+		onValueFinalised,
 		step = false
 	}: Props = $props();
 
-	const keyframeContext = getContext<{
-		params: number[];
-		active: () => boolean;
-	}>('keyframe');
+	//const keyframeContext = getKeyframeContext();
 
 	const throttle = useThrottle();
 	const lerp = (min: number, max: number, value: number) => min + (max - min) * value;
@@ -57,20 +50,11 @@
 	const valueChanged = () => {
 		if (onValueChange) {
 			onValueChange(value);
-		} else {
-			if (keyframeContext.params && keyframeContext.active())
-				createOrUpdateKeyframe(keyframeContext.params);
-			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}
 	};
 
 	const valueFinalised = () => {
-		if (keyframeContext.params && keyframeContext.active()) {
-			finaliseKeyframe();
-			historyManager.finishCommand();
-			setParamsFromKeyframes();
-			timelineState.invalidate = true;
-		}
+		if (onValueFinalised) onValueFinalised();
 	};
 </script>
 
@@ -129,7 +113,6 @@
 			if (!vertical) {
 				normalised = invLerp(min, max, value);
 			} else {
-				console.log(invLerp(min, max, value));
 				normalised = 1 - invLerp(min, max, value);
 			}
 			offsetStart = normalised * (vertical ? height : width);

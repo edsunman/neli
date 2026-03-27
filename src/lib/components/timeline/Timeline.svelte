@@ -148,6 +148,7 @@
 			if (offsetY > timelineState.height * 0.2) {
 				if (!inDropZone) mouseEnteredDropZone(e);
 				inDropZone = true;
+				mouseIsDown = true;
 			} else {
 				mouseLeftDropZone();
 				inDropZone = false;
@@ -180,7 +181,6 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
-
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		mouseIsDown = true;
@@ -190,6 +190,7 @@
 		timelineState.mouseDownPosition.x = e.offsetX;
 		timelineState.mouseDownPosition.y = e.offsetY;
 		timelineState.trackDropZone = -1;
+		clickedKeyframe = -1;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
@@ -283,9 +284,9 @@
 		timelineState.invalidate = true;
 	};
 
-	const mouseUp = (e: MouseEvent) => {
+	const mouseUp = () => {
 		if (!mouseIsDown) return;
-		console.log('fired!');
+
 		mouseIsDown = false;
 		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
@@ -340,19 +341,6 @@
 		}
 		if (scrolling) {
 			scrolling = false;
-		}
-
-		if (
-			clip &&
-			clip.keyframeTracksActive.length > 0 &&
-			timelineState.focusedTrack === clip.track &&
-			timelineState.selectedClip &&
-			appState.selectedKeyframeParam > -1 &&
-			canvasContainer
-		) {
-			// check for keyframe hitbox
-			const offsetY = e.clientY - canvasContainer.offsetTop;
-			clickedKeyframe = getKeyframeAtMousePosition(e.offsetX, offsetY, clip);
 		}
 
 		timelineState.action = 'none';
@@ -482,6 +470,25 @@
 			const hoveredFrame = canvasPixelToFrame(e.offsetX);
 			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 			if (!clip) return;
+			clickedKeyframe = -1;
+			if (
+				clip &&
+				clip.keyframeTracksActive.length > 0 &&
+				timelineState.focusedTrack === clip.track &&
+				timelineState.selectedClip &&
+				appState.selectedKeyframeParam > -1 &&
+				canvasContainer
+			) {
+				// check for keyframe hitbox
+				const offsetY = e.clientY - canvasContainer.offsetTop;
+				const { keyframe, index } = getKeyframeAtMousePosition(e.offsetX, offsetY, clip);
+				if (keyframe) {
+					clickedKeyframe = index;
+					if (e.button === 0 && timelineState.selectedClip) {
+						setCurrentFrame(keyframe.frame + timelineState.selectedClip.start);
+					}
+				}
+			}
 
 			clickedFrame = hoveredFrame;
 			timelineState.selectedClip = clip;
@@ -500,9 +507,7 @@
 	buttons={[
 		{
 			text: 'ease in',
-			onClick: () => {
-				console.log(clickedKeyframe);
-			},
+			onClick: () => {},
 			icon: scissorsIcon,
 			hideCondition: () => clickedKeyframe < 0,
 			children: [
@@ -518,9 +523,7 @@
 		},
 		{
 			text: 'ease out',
-			onClick: () => {
-				console.log(clickedKeyframe);
-			},
+			onClick: () => {},
 			icon: scissorsIcon,
 			hideCondition: () => clickedKeyframe < 0,
 			children: [

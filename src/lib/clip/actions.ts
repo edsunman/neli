@@ -339,6 +339,17 @@ export const resizeSelctedClip = () => {
 				const keyframe = keyframes[i];
 				keyframe.frame = keyframe.savedFrame - offset;
 				if (keyframe.frame < 0) {
+					historyManager.pushAction({
+						action: 'deleteKeyframe',
+						data: {
+							clipId: clip.id,
+							frame: keyframe.savedFrame,
+							param: param,
+							value: keyframe.value,
+							easeIn: keyframe.easeIn,
+							easeOut: keyframe.easeOut
+						}
+					});
 					removeKeyframe(clip, keyframe.frame, param);
 				}
 			}
@@ -381,6 +392,17 @@ export const resizeSelctedClip = () => {
 			for (let i = keyframes.length - 1; i >= 0; i--) {
 				const keyframe = keyframes[i];
 				if (keyframes[i].frame > clip.duration) {
+					historyManager.pushAction({
+						action: 'deleteKeyframe',
+						data: {
+							clipId: clip.id,
+							frame: keyframe.savedFrame,
+							param: param,
+							value: keyframe.value,
+							easeIn: keyframe.easeIn,
+							easeOut: keyframe.easeOut
+						}
+					});
 					removeKeyframe(clip, keyframe.frame, param);
 				}
 			}

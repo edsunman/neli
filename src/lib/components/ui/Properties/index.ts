@@ -3,7 +3,8 @@ import Grid from './Grid.svelte';
 import Input from './Input.svelte';
 import Textarea from './Textarea.svelte';
 import Toggle from './Toggle.svelte';
+import Slider from './Slider.svelte';
 
-const Properties = { Group, Grid, Input, Textarea, Toggle };
+const Properties = { Group, Grid, Input, Textarea, Toggle, Slider };
 
 export default Properties;

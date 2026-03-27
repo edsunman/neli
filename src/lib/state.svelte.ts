@@ -19,6 +19,7 @@ class AppState {
 	selectedSourceFolder = $state(0);
 	sourceFolders: { id: number }[] = $state([]);
 	propertiesSection = $state<PropertiesSection>('project');
+	propertiesSavedSection = $state<PropertiesSection>('project');
 	progress = $state({ started: false, message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 

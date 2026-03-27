@@ -1,4 +1,10 @@
-import { appState, historyManager, timelineState, workerManager } from '$lib/state.svelte';
+import {
+	appState,
+	audioState,
+	historyManager,
+	timelineState,
+	workerManager
+} from '$lib/state.svelte';
 import type { Keyframe } from '$lib/types';
 import type { Clip } from './clip.svelte';
 import { getKeyframePositionHelpers } from './utils';
@@ -85,7 +91,6 @@ export const updateKeyframeEasing = (
 	const clip = timelineState.selectedClip;
 	const keyframe = getKeyframeByIndex(clip, appState.selectedKeyframeParam, keyframeIndex);
 	if (!clip || !keyframe) return;
-	console.log(keyframe.savedEaseOut);
 	if (inOrOut === 'in') {
 		keyframe.easeIn = easing;
 	} else {
@@ -182,6 +187,8 @@ export const getKeyframeAtMousePosition = (mouseX: number, mouseY: number, clip:
 	const { getFrameX, getValY } = getKeyframePositionHelpers(clip, keyframeTrack);
 	const padding = 8;
 
+	let foundKeyframe;
+	let index = -1;
 	for (let i = 0; i < keyframeTrack.keyframes.length; i++) {
 		const kfX = getFrameX(keyframeTrack.keyframes[i].frame);
 		const kfY = getValY(keyframeTrack.keyframes[i].value);
@@ -192,10 +199,13 @@ export const getKeyframeAtMousePosition = (mouseX: number, mouseY: number, clip:
 			mouseY >= kfY - padding &&
 			mouseY <= kfY + padding
 		) {
-			return i;
+			foundKeyframe = keyframeTrack.keyframes[i];
+			index = i;
+			break;
 		}
 	}
-	return -1;
+
+	return { index, keyframe: foundKeyframe };
 };
 
 export const getKeyframeByIndex = (clip: Clip | null, param: number, index: number) => {
@@ -205,7 +215,6 @@ export const getKeyframeByIndex = (clip: Clip | null, param: number, index: numb
 
 export const getKeyframeByFrameNumber = (clip: Clip | null, param: number, frameNumber: number) => {
 	const track = clip?.keyframeTracks.get(param);
-	console.log(clip, param, frameNumber);
 	return track?.keyframes.find((k) => k.frame === frameNumber);
 };
 
@@ -271,6 +280,19 @@ export const setParamsFromKeyframes = () => {
 
 				const value = k0.value + (k1.value - k0.value) * alpha;
 				clip.params[param] = Math.round(value * 1000) / 1000;
+				/* 				if (param === 4) {
+					const gainNode = audioState.gainNodes.get(clip.id);
+					if (gainNode) gainNode.gain.value = value;
+					
+				} */
+			}
+			if (clip.keyframeTracks.has(4)) {
+				const gainNode = audioState.gainNodes.get(clip.id);
+				if (gainNode) gainNode.gain.value = clip.params[4];
+			}
+			if (clip.keyframeTracks.has(5)) {
+				const panNode = audioState.panNodes.get(clip.id);
+				if (panNode) panNode.pan.value = clip.params[5];
 			}
 
 			clip.keyframesOnThisFrame = keyframesThisFrame;

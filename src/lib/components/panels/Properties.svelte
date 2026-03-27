@@ -194,7 +194,7 @@
 			</Properties.Group>
 			<Properties.Group label="font size">
 				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />
-				<Slider bind:value={clip.params[6]} min={1} max={50} step />
+				<Properties.Slider bind:value={clip.params[6]} min={1} max={50} step />
 			</Properties.Group>
 			<Properties.Group label="justify">
 				<Properties.Toggle
@@ -228,30 +228,30 @@
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="opacity" keyframeParams={[18]}>
 				<Properties.Input bind:value={clip.params[18]} fallback={1} />
-				<Slider bind:value={clip.params[18]} />
+				<Properties.Slider bind:value={clip.params[18]} />
 			</Properties.Group>
 			<Properties.Group label="exposure" keyframeParams={[19]}>
 				<Properties.Input bind:value={clip.params[19]} fallback={0} />
-				<Slider bind:value={clip.params[19]} max={2} min={-2} />
+				<Properties.Slider bind:value={clip.params[19]} max={2} min={-2} />
 			</Properties.Group>
 			<Properties.Group label="contrast" keyframeParams={[20]}>
 				<Properties.Input bind:value={clip.params[20]} fallback={1} />
-				<Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
+				<Properties.Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
 			</Properties.Group>
 			<Properties.Group label="saturation" keyframeParams={[21]}>
 				<Properties.Input bind:value={clip.params[21]} fallback={1} />
-				<Slider bind:value={clip.params[21]} max={2} min={0} />
+				<Properties.Slider bind:value={clip.params[21]} max={2} min={0} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label="gain">
+			<Properties.Group label="gain" keyframeParams={[4]}>
 				<Properties.Input bind:value={clip.params[4]} fallback={1} />
-				<Slider bind:value={clip.params[4]} min={0} max={1.5} />
+				<Properties.Slider bind:value={clip.params[4]} min={0} max={1.5} />
 			</Properties.Group>
-			<Properties.Group label="pan">
+			<Properties.Group label="pan" keyframeParams={[5]}>
 				<Properties.Input bind:value={clip.params[5]} fallback={0} />
-				<Slider bind:value={clip.params[5]} min={-1} max={1} />
+				<Properties.Slider bind:value={clip.params[5]} min={-1} max={1} />
 			</Properties.Group>
 		{/if}
 
@@ -290,7 +290,13 @@
 {#snippet sideButton(section: PropertiesSection, description: string, icon: Snippet<[string]>)}
 	<Tooltip
 		contentProps={{ side: 'left' }}
-		triggerProps={{ onclick: () => (appState.propertiesSection = section) }}
+		triggerProps={{
+			onclick: () => {
+				appState.propertiesSection = section;
+				appState.propertiesSavedSection = section;
+				console.log('clicked');
+			}
+		}}
 	>
 		{#snippet trigger()}
 			<div
