@@ -158,7 +158,7 @@ export const zoomToFit = () => {
 	const middleFramePercent = middleFrame / timelineState.duration;
 	const percentOfTimelineVisible = 1 / timelineState.zoom;
 	timelineState.offset = middleFramePercent - percentOfTimelineVisible / 2;
-	timelineState.invalidate = true;
+	timelineState.invalidateWaveform = true;
 };
 
 export const updateGrabbedPosition = () => {
@@ -458,4 +458,48 @@ export const setTimelineTool = (tool: typeof timelineState.selectedTool) => {
 	removeHoverAllClips();
 	timelineState.invalidate = true;
 	timelineState.selectedTool = tool;
+};
+
+export const goToNextKeyframe = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const track = clip.keyframeTracks.get(appState.selectedKeyframeParam);
+	if (!track || timelineState.focusedTrack < 1) {
+		setCurrentFrame(clip.start + clip.duration - 1);
+		return;
+	}
+	let nextKeyframe;
+	for (const keyframe of track.keyframes) {
+		if (keyframe.frame + clip.start > timelineState.currentFrame) {
+			nextKeyframe = keyframe;
+			break;
+		}
+	}
+	if (nextKeyframe) {
+		setCurrentFrame(clip.start + nextKeyframe.frame);
+		return;
+	}
+	setCurrentFrame(clip.start + clip.duration - 1);
+};
+
+export const goToPreviousKeyframe = () => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const track = clip.keyframeTracks.get(appState.selectedKeyframeParam);
+	if (!track || timelineState.focusedTrack < 1) {
+		setCurrentFrame(clip.start);
+		return;
+	}
+	let prevKeyframe;
+	for (const keyframe of track.keyframes) {
+		if (keyframe.frame + clip.start >= timelineState.currentFrame) {
+			break;
+		}
+		prevKeyframe = keyframe;
+	}
+	if (prevKeyframe) {
+		setCurrentFrame(clip.start + prevKeyframe.frame);
+		return;
+	}
+	setCurrentFrame(clip.start);
 };

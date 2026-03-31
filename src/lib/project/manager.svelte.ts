@@ -1,7 +1,7 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
 import { appState } from '$lib/state.svelte';
-import type { FileInfo, SourceType, Track } from '$lib/types';
+import type { FileInfo, KeyframeTrack, SourceType, Track } from '$lib/types';
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
 
 type ProjectTable = {
@@ -38,6 +38,7 @@ type ClipTable = {
 	duration: number;
 	sourceOffset: number;
 	params: number[];
+	keyframeTracks: { [param: number]: KeyframeTrack };
 	createdAt: number;
 	lastModified: number;
 };
@@ -84,8 +85,6 @@ export class ProjectManager {
 				clipStore.createIndex('by-project', 'projectId');
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
-				//const thumbnailStore = db.createObjectStore('thumbnails');
-				//thumbnailStore.createIndex('by-project', 'projectId');
 				const store = db.createObjectStore('thumbnails', { keyPath: 'id', autoIncrement: true });
 				store.createIndex('by-parentId', 'parentId');
 			}
@@ -266,6 +265,7 @@ export class ProjectManager {
 			duration: clip.duration,
 			track: clip.track,
 			params: $state.snapshot(clip.params),
+			keyframeTracks: Object.fromEntries(clip.keyframeTracks),
 			deleted: false,
 			createdAt: Date.now(),
 			lastModified: Date.now()
@@ -304,6 +304,7 @@ export class ProjectManager {
 					sourceOffset: clip.sourceOffset,
 					duration: clip.duration,
 					params: $state.snapshot(clip.params),
+					keyframeTracks: Object.fromEntries(clip.keyframeTracks),
 					deleted: clip.deleted,
 					lastModified: Date.now()
 				};

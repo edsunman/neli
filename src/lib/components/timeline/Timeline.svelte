@@ -25,7 +25,9 @@
 		zoomToFit,
 		centerViewOnPlayhead,
 		checkViewBounds,
-		updateGrabbedPosition
+		updateGrabbedPosition,
+		goToNextKeyframe,
+		goToPreviousKeyframe
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -46,7 +48,8 @@
 	import {
 		getKeyframeAtMousePosition,
 		deleteKeyframe,
-		updateKeyframeEasing
+		updateKeyframeEasing,
+		toggleSelectedParam
 	} from '$lib/clip/keyframes';
 	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
@@ -599,12 +602,20 @@
 			case 'ArrowLeft':
 				if (appState.selectedSource) break;
 				if (timelineState.playing) pause();
-				setCurrentFrame(timelineState.currentFrame - 1);
+				if (event.shiftKey) {
+					goToPreviousKeyframe();
+				} else {
+					setCurrentFrame(timelineState.currentFrame - 1);
+				}
 				break;
 			case 'ArrowRight':
 				if (appState.selectedSource) break;
 				if (timelineState.playing) pause();
-				setCurrentFrame(timelineState.currentFrame + 1);
+				if (event.shiftKey) {
+					goToNextKeyframe();
+				} else {
+					setCurrentFrame(timelineState.currentFrame + 1);
+				}
 				break;
 			case 'Minus':
 				if (event.ctrlKey) break;
@@ -659,6 +670,12 @@
 					}
 				} else {
 					focusTrack(0);
+				}
+				break;
+			}
+			case 'KeyK': {
+				if (timelineState.selectedClip) {
+					toggleSelectedParam();
 				}
 			}
 		}

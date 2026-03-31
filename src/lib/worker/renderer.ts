@@ -163,11 +163,6 @@ export class WebGPURenderer {
 	) {
 		if (!this.passEncoder || !this.canvas) return;
 		this.updateUniforms(0, params, sourceWidth, sourceHeight);
-		//this.uniformArray.set([params[0] * (sourceWidth / this.canvas.width)], 2);
-		//this.uniformArray.set([params[1] * (sourceHeight / this.canvas.height)], 3);
-		//const height = params[0] * (sourceWidth / this.canvas.width);
-		//const width = params[1] * (sourceHeight / this.canvas.height);
-		//this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.videoRenderer?.draw(
 			this.passEncoder,
 			frame,
@@ -184,11 +179,12 @@ export class WebGPURenderer {
 		sourceWidth: number
 	) {
 		if (!this.canvas) return;
-		const height = params[0] * (sourceWidth / this.canvas.width);
-		const width = params[1] * (sourceHeight / this.canvas.height);
+		/* 		const height = params[0] * (sourceWidth / this.canvas.width);
+		const width = params[1] * (sourceHeight / this.canvas.height);*/
 		const texture = this.loadedTextures.get(sourceId);
 		if (!this.passEncoder || !texture) return;
-		this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
+		this.updateUniforms(0, params, sourceWidth, sourceHeight);
+		//this.uniformArray.set([0, 0, height, width, params[2], params[3]], 0);
 		this.imageRenderer?.draw(
 			this.passEncoder,
 			texture,

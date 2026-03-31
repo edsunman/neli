@@ -59,7 +59,7 @@
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
 					{/if}
-					{#if source.type === 'video' || source.type === 'test' || source.type === 'image'}
+					{#if source.type === 'video' || source.type === 'image'}
 						{@render sideButton('crop', 'crop settings', cropIcon)}
 						{@render sideButton('colour', 'colour settings', opacityIcon)}
 					{/if}
@@ -177,24 +177,26 @@
 					</Properties.Grid>
 				</Properties.Group>
 			{/if}
-			<Properties.Group label="position">
+			<Properties.Group label="position" keyframeParams={[2, 3]}>
 				<Properties.Grid>
 					<Properties.Input bind:value={clip.params[2]} />
 					<Properties.Input bind:value={clip.params[3]} />
 				</Properties.Grid>
 			</Properties.Group>
-			<Properties.Group label="rotate">
-				<Properties.Input bind:value={clip.params[17]} step="1" />
-			</Properties.Group>
+			{#if clip.source.type !== 'test'}
+				<Properties.Group label="rotate" keyframeParams={[17]}>
+					<Properties.Input bind:value={clip.params[17]} step="1" />
+				</Properties.Group>
+			{/if}
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="text">
 				<Properties.Textarea bind:value={clip.text} />
 			</Properties.Group>
-			<Properties.Group label="font size">
+			<Properties.Group label="font size" keyframeParams={[6]}>
 				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />
-				<Properties.Slider bind:value={clip.params[6]} min={1} max={50} step />
+				<Properties.Slider bind:value={clip.params[6]} min={1} max={75} step />
 			</Properties.Group>
 			<Properties.Group label="justify">
 				<Properties.Toggle
@@ -294,7 +296,6 @@
 			onclick: () => {
 				appState.propertiesSection = section;
 				appState.propertiesSavedSection = section;
-				console.log('clicked');
 			}
 		}}
 	>

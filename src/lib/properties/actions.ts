@@ -2,7 +2,6 @@ import type { Clip } from '$lib/clip/clip.svelte';
 import { appState } from '$lib/state.svelte';
 
 export const showClipPropertiesSection = (clip: Clip) => {
-	console.log(appState.propertiesSavedSection);
 	const type = clip.source.type;
 	if (type === 'audio') {
 		appState.propertiesSection = 'audio';

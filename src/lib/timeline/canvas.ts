@@ -4,16 +4,26 @@ import { canvasPixelToFrame, frameToCanvasPixel, secondsToTimecode } from './uti
 import { programFrameToCanvasPixel } from '$lib/program/utils';
 import { getKeyframePositionHelpers } from '$lib/clip/utils';
 
-const ZINC_900 = '#18181b';
-const GREEN = '#41a088';
-const GREEN_DARK = '#1f4a42';
-const GREEN_LIGHT = '#50cfaf';
-const PURPLE = '#743bb0';
-const PURPLE_DARK = '#361f51';
-const PURPLE_LIGHT = '#9941eb';
-const BLUE = '#018bb8';
-const BLUE_LIGHT = '#1bc7ff';
-const BLUE_DARK = '#1e425b';
+const COLORS = {
+	zinc: {
+		900: '#18181b'
+	},
+	green: {
+		400: '#50cfaf',
+		500: '#41a088',
+		600: '#1f4a42'
+	},
+	purple: {
+		400: '#9941eb',
+		500: '#743bb0',
+		600: '#361f51'
+	},
+	blue: {
+		400: '#1bc7ff',
+		500: '#018bb8',
+		600: '#1e425b'
+	}
+};
 
 const PLAYHEAD_PATH = new Path2D(
 	'M 10.259 0.2125 h -6.3285 C 1.9385 0.2125 0.3235 1.828 0.3235 3.82 v 6.4675 c 0 1.694 0.408 3.3635 1.189 4.8665 l 2.381 4.5815 c 1.347 2.592 5.0555 2.592 6.402 0 l 2.3825 -4.5865 c 0.7805 -1.503 1.1885 -3.1715 1.1885 -4.865 V 3.82 c 0 -1.992 -1.615 -3.6075 -3.6075 -3.6075 Z M 10.917 6.0255 c 0 1.129 -0.2715 2.215 -0.792 3.217 l -1.2235 2.355 c -0.76 1.463 -2.8535 1.4635 -3.6135 0 l -1.2225 -2.3525 c -0.521 -1.002 -0.7925 -2.0885 -0.7925 -3.2175 v -0.6305 c 0 -1.1245 0.9115 -2.036 2.036 -2.036 h 3.572 c 1.1245 0 2.036 0.9115 2.036 2.036 v 0.628 Z'
@@ -22,13 +32,38 @@ const MARKER_PATH = new Path2D(
 	'M11.3087 5.9281c0 1.2419-.2987 2.4365-.8712 3.5387l-1.3459 2.5905c-.836 1.6093-3.1389 1.6099-3.9749 0l-1.3448-2.5878c-.5731-1.1022-.8718-2.2973-.8718-3.5393v-.6935c0-1.237 1.0027-2.2396 2.2396-2.2396h3.9292c1.237 0 2.2396 1.0027 2.2396 2.2396v.6908Z '
 );
 
+const PARAM_NAMES = [
+	'size - width',
+	'size - height',
+	'position - x',
+	'position - y',
+	'gain',
+	'pan',
+	'font size',
+	'line space',
+	'justify',
+	'red',
+	'green',
+	'blue',
+	'crop - top',
+	'crop - right',
+	'crop - bottom',
+	'crop - left',
+	'rounded corners',
+	'rotation',
+	'opacity',
+	'exposure',
+	'contrast',
+	'saturation'
+];
+
 export const drawCanvas = (
 	context: CanvasRenderingContext2D,
 	width: number,
 	height: number,
 	waveCanvas: OffscreenCanvas
 ) => {
-	context.fillStyle = ZINC_900;
+	context.fillStyle = COLORS.zinc[900];
 	context.fillRect(0, 0, width, height);
 
 	const flexHeight = height - 35;
@@ -93,114 +128,14 @@ export const drawCanvas = (
 	if (waveCanvas && timelineState.focusedTrack > 0)
 		context.drawImage(waveCanvas, 0, timelineState.tracks[timelineState.focusedTrack - 1].top + 42);
 
-	const drawKeyframe = (x: number, y: number) => {
-		context.beginPath();
-		context.moveTo(x + 1, y - 5);
-		context.lineTo(x + 6, y);
-		context.lineTo(x + 1, y + 5);
-		context.lineTo(x - 4, y);
-		context.closePath();
-		context.fillStyle = 'white';
-		context.fill();
-	};
-
 	// keyframes
 	if (
 		timelineState.focusedTrack > 0 &&
 		appState.selectedKeyframeParam > -1 &&
 		timelineState.selectedClip &&
-		timelineState.selectedClip.keyframeTracksActive.length > 0
+		timelineState.selectedClip.keyframeTracks.has(appState.selectedKeyframeParam)
 	) {
-		const clip = timelineState.selectedClip;
-		const keyframeTrack = clip.keyframeTracks.get(appState.selectedKeyframeParam);
-
-		if (keyframeTrack && keyframeTrack.keyframes.length > 0) {
-			const startPercent = clip.start / timelineState.duration - timelineState.offset;
-			const endPercent =
-				(clip.start + clip.duration) / timelineState.duration - timelineState.offset;
-			const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
-			const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
-
-			const { getFrameX, getValY } = getKeyframePositionHelpers(clip, keyframeTrack);
-
-			const keyframes = keyframeTrack.keyframes;
-			const count = keyframes.length;
-
-			context.save();
-			context.beginPath();
-			context.rect(0, 0, width, height);
-
-			for (const keyframe of keyframes) {
-				const x = getFrameX(keyframe.frame);
-				const y = getValY(keyframe.value);
-				const maskSize = 9;
-				context.moveTo(x + maskSize, y);
-				context.arc(x + 1, y, maskSize, 0, Math.PI * 2);
-			}
-
-			context.clip('evenodd');
-			// White line
-			context.beginPath();
-			context.strokeStyle = 'white';
-			context.lineWidth = 1.5;
-
-			// 1. Initial Position
-			const firstX = getFrameX(keyframes[0].frame);
-			const firstY = getValY(keyframes[0].value);
-			context.moveTo(clipFullStart, firstY);
-			if (count > 1) {
-				context.lineTo(firstX, firstY);
-			}
-
-			// 2. The Loop with Adjusted Tension
-			//const tension = 0.4; // 0.33 is the "magic number" for natural-looking curves
-			for (let i = 0; i < count - 1; i++) {
-				const x0 = getFrameX(keyframes[i].frame);
-				const y0 = getValY(keyframes[i].value);
-				const x1 = getFrameX(keyframes[i + 1].frame);
-				const y1 = getValY(keyframes[i + 1].value);
-
-				const distanceX = x1 - x0;
-
-				// 1. Check for Step (Departure from Keyframe A)
-				// If Step, we draw a horizontal line then a vertical jump
-				if (keyframes[i].easeOut === 0) {
-					context.lineTo(x1, y0); // Horizontal to the next frame's X
-					context.lineTo(x1, y1); // Vertical to the next frame's Y
-					continue; // Move to the next segment
-				}
-
-				// 2. Calculate "Tension" (Influence) for each side
-				// If Ease: 33% influence (standard Bezier curve)
-				// If Linear: 0% influence (straight line)
-				const outTension = keyframes[i].easeOut === 2 ? 0.4 : 0;
-				const inTension = keyframes[i + 1].easeIn === 2 ? 0.4 : 0;
-
-				// 3. Position the Control Points
-				const cp1x = x0 + distanceX * outTension;
-				const cp2x = x1 - distanceX * inTension;
-
-				// 4. Draw the Curve
-				// If both tensions are 0, this naturally draws a perfectly straight line!
-				context.bezierCurveTo(cp1x, y0, cp2x, y1, x1, y1);
-			}
-
-			// 3. Final Flat Line
-			const lastY = getValY(keyframes[count - 1].value);
-			context.lineTo(clipFullEnd, lastY);
-
-			context.stroke();
-			context.restore();
-			// 5. Draw the "dots" (keyframes) on top of the line
-			for (const keyframe of keyframeTrack.keyframes) {
-				// 1. Get X and Y using the logic we consolidated
-				const x = getFrameX(keyframe.frame);
-				const y = getValY(keyframe.value);
-
-				// 2. Draw the icon
-				drawKeyframe(x, y);
-			}
-		}
+		drawKeyframes(context, width, height);
 	}
 
 	// select box
@@ -277,7 +212,7 @@ export const drawSourceCanvas = (
 ) => {
 	if (!appState.selectedSource) return;
 
-	context.fillStyle = ZINC_900;
+	context.fillStyle = COLORS.zinc[900];
 	context.fillRect(0, 0, width, height);
 
 	context.fillStyle = '#34343c';
@@ -301,7 +236,7 @@ export const drawSourceCanvas = (
 	context.fill();
 	context.restore();
 
-	context.fillStyle = ZINC_900;
+	context.fillStyle = COLORS.zinc[900];
 	context.fillRect(inPosition - 3, 25, 3, 8);
 	context.fillRect(outPosition, 25, 3, 8);
 
@@ -328,6 +263,32 @@ const drawPlayhead = (
 	context.translate(position - 6, top);
 	context.fill(PLAYHEAD_PATH);
 	context.translate(-position + 6, -top);
+};
+
+const getClipPalette = (clip: Clip, selected = false, multiSelected = false) => {
+	const tint =
+		clip.source.type === 'text' || clip.source.type === 'image'
+			? 'purple'
+			: clip.source.type === 'audio'
+				? 'blue'
+				: 'green';
+	let clipColor = selected || multiSelected ? COLORS[tint][400] : COLORS[tint][500];
+	let clipBaseColor = COLORS[tint][500];
+	let clipDarkColor = COLORS[tint][600];
+
+	if (clip.invalid) {
+		clipColor = '#2b2d30';
+		clipBaseColor = '#2b2d30';
+		clipDarkColor = '#2b2d30';
+	}
+
+	if (clip.source.unlinked) {
+		clipColor = '#dc2626';
+		clipBaseColor = '#7f1d1d';
+		clipDarkColor = '#5e1919';
+	}
+
+	return { clipColor, clipBaseColor, clipDarkColor };
 };
 
 const drawRuler = (context: CanvasRenderingContext2D, containerHeight: number) => {
@@ -425,27 +386,7 @@ const drawClip = (
 	selected = false,
 	multiSelected = false
 ) => {
-	let clipColor = selected || multiSelected ? GREEN_LIGHT : GREEN;
-	let clipBaseColor = GREEN;
-	let clipDarkColor = GREEN_DARK;
-	if (clip.source.type === 'text' || clip.source.type === 'image') {
-		clipColor = selected || multiSelected ? PURPLE_LIGHT : PURPLE;
-		clipBaseColor = PURPLE;
-		clipDarkColor = PURPLE_DARK;
-	} else if (clip.source.type === 'audio') {
-		clipColor = selected || multiSelected ? BLUE_LIGHT : BLUE;
-		clipBaseColor = BLUE;
-		clipDarkColor = BLUE_DARK;
-	}
-	if (clip.invalid) {
-		clipColor = '#2b2d30';
-		clipBaseColor = '#2b2d30';
-	}
-	if (clip.source.unlinked) {
-		clipColor = '#dc2626';
-		clipBaseColor = '#7f1d1d';
-		clipDarkColor = '#5e1919';
-	}
+	const { clipColor, clipBaseColor, clipDarkColor } = getClipPalette(clip, selected, multiSelected);
 
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;
@@ -454,15 +395,7 @@ const drawClip = (
 			? 35
 			: timelineState.tracks[clip.track - 1].height;
 
-	const startPercent = clip.start / timelineState.duration - timelineState.offset;
-	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
-
-	const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
-	const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
-
-	const clipStart = clipFullStart + 1;
-	const clipWidth = clipFullEnd - clipFullStart - gap;
-	const clipEnd = clipFullEnd - gap;
+	const { clipStart, clipWidth, clipEnd } = getClipPixelMetrics(clip, width, gap);
 
 	const maskStart = clip.joinLeft ? clipStart - 20 : clipStart;
 	let maskWidth = clipWidth;
@@ -536,22 +469,15 @@ const drawInbetweenClip = (context: CanvasRenderingContext2D, width: number) => 
 	const clip = timelineState.selectedClip;
 	if (!clip) return;
 
-	let clipColor = GREEN_LIGHT;
-	if (clip.source.type === 'text' || clip.source.type === 'image') {
-		clipColor = PURPLE_LIGHT;
-	}
-	if (clip.source.type === 'audio') {
-		clipColor = BLUE_LIGHT;
-	}
+	const { clipColor } = getClipPalette(clip, true);
 
 	const flexHeight = timelineState.height - 35;
 	const trackContainerHeight = flexHeight * 0.8;
 
-	const startPercent = clip.start / timelineState.duration - timelineState.offset;
-	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+	const { clipFullStart, clipFullEnd } = getClipEdgePositions(clip, width);
 
-	const clipStart = Math.round(startPercent * width * timelineState.zoom);
-	const clipEnd = Math.round(endPercent * width * timelineState.zoom);
+	const clipStart = Math.round(clipFullStart);
+	const clipEnd = Math.round(clipFullEnd);
 	let clipTop = 0;
 	if (timelineState.trackDropZone === 0) {
 		clipTop = timelineState.tracks[0].top - 10;
@@ -577,14 +503,8 @@ const drawBaseShape = (context: CanvasRenderingContext2D, clip: Clip, width: num
 
 	if (clip.track === timelineState.focusedTrack && !clip.invalid) clipHeight += 90;
 
-	const startPercent = clip.start / timelineState.duration - timelineState.offset;
-	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+	const { clipStart, clipWidth } = getClipPixelMetrics(clip, width, gap);
 
-	const clipFullStart = Math.floor(startPercent * width * timelineState.zoom);
-	const clipFullEnd = Math.floor(endPercent * width * timelineState.zoom);
-
-	const clipStart = clipFullStart + 1;
-	const clipWidth = clipFullEnd - clipFullStart - gap;
 	context.fillStyle = '#131315';
 	context.beginPath();
 	context.roundRect(clipStart - 3, trackTop - 3, clipWidth + 6, clipHeight + 6, 11);
@@ -686,4 +606,121 @@ const drawClipWaveform = (
 	}
 	context.fill();
 	context.closePath();
+};
+
+const getClipEdgePositions = (clip: Clip, width: number) => {
+	const startPercent = clip.start / timelineState.duration - timelineState.offset;
+	const endPercent = (clip.start + clip.duration) / timelineState.duration - timelineState.offset;
+
+	return {
+		clipFullStart: Math.floor(startPercent * width * timelineState.zoom),
+		clipFullEnd: Math.floor(endPercent * width * timelineState.zoom)
+	};
+};
+
+const drawKeyframe = (context: CanvasRenderingContext2D, x: number, y: number, scale = 1) => {
+	context.beginPath();
+	context.moveTo(x + 1 * scale, y - 5 * scale);
+	context.lineTo(x + 6 * scale, y);
+	context.lineTo(x + 1 * scale, y + 5 * scale);
+	context.lineTo(x - 4 * scale, y);
+	context.closePath();
+	context.fill();
+};
+
+const drawKeyframes = (context: CanvasRenderingContext2D, width: number, height: number) => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const keyframeTrack = clip.keyframeTracks.get(appState.selectedKeyframeParam);
+	const { clipFullStart, clipFullEnd } = getClipEdgePositions(clip, width);
+	const { clipBaseColor } = getClipPalette(clip);
+
+	if (keyframeTrack && keyframeTrack.keyframes.length > 0) {
+		const { getFrameX, getValY } = getKeyframePositionHelpers(clip, keyframeTrack);
+		const keyframes = keyframeTrack.keyframes;
+		const count = keyframes.length;
+
+		context.save();
+		context.beginPath();
+		context.rect(0, 0, width, height);
+
+		for (const keyframe of keyframes) {
+			const x = getFrameX(keyframe.frame);
+			const y = getValY(keyframe.value);
+			const maskSize = 9;
+			context.moveTo(x + maskSize, y);
+			context.arc(x + 1, y, maskSize, 0, Math.PI * 2);
+		}
+
+		context.clip('evenodd');
+		context.beginPath();
+		context.strokeStyle = 'white';
+		context.lineWidth = 1.5;
+
+		const firstX = getFrameX(keyframes[0].frame);
+		const firstY = getValY(keyframes[0].value);
+		context.moveTo(clipFullStart, firstY);
+		if (count > 1) {
+			context.lineTo(firstX, firstY);
+		}
+
+		for (let i = 0; i < count - 1; i++) {
+			const x0 = getFrameX(keyframes[i].frame);
+			const y0 = getValY(keyframes[i].value);
+			const x1 = getFrameX(keyframes[i + 1].frame);
+			const y1 = getValY(keyframes[i + 1].value);
+
+			const distanceX = x1 - x0;
+
+			if (keyframes[i].easeOut === 0) {
+				context.lineTo(x1, y0);
+				context.lineTo(x1, y1);
+				continue;
+			}
+
+			const outTension = keyframes[i].easeOut === 2 ? 0.4 : 0;
+			const inTension = keyframes[i + 1].easeIn === 2 ? 0.4 : 0;
+			const cp1x = x0 + distanceX * outTension;
+			const cp2x = x1 - distanceX * inTension;
+			context.bezierCurveTo(cp1x, y0, cp2x, y1, x1, y1);
+		}
+
+		const lastY = getValY(keyframes[count - 1].value);
+		context.lineTo(clipFullEnd, lastY);
+		context.stroke();
+		context.restore();
+
+		context.fillStyle = 'white';
+		for (const keyframe of keyframeTrack.keyframes) {
+			const x = getFrameX(keyframe.frame);
+			const y = getValY(keyframe.value);
+			drawKeyframe(context, x, y, 0.9);
+		}
+	}
+
+	const trackTop = timelineState.tracks[timelineState.focusedTrack - 1].top;
+	const labelLeft = clipFullStart > -15 ? clipFullStart : -15;
+	context.font = '700 12px sen';
+	context.letterSpacing = '-0.2px';
+	const text = PARAM_NAMES[appState.selectedKeyframeParam];
+	const textWidth = context.measureText(text).width;
+	if (labelLeft + textWidth + 90 < clipFullEnd) {
+		context.fillStyle = clipBaseColor;
+		context.beginPath();
+		context.roundRect(labelLeft + 30, trackTop + 8, textWidth + 32, 19, 6);
+		context.fill();
+
+		context.fillStyle = '#000';
+		context.fillText(text, labelLeft + 52, trackTop + 21);
+		drawKeyframe(context, labelLeft + 41, trackTop + 18, 0.8);
+	}
+};
+
+const getClipPixelMetrics = (clip: Clip, width: number, gap = 3) => {
+	const { clipFullStart, clipFullEnd } = getClipEdgePositions(clip, width);
+	const clipStart = clipFullStart + 1;
+	const clipWidth = clipFullEnd - clipFullStart - gap;
+	const clipEnd = clipFullEnd - gap;
+
+	return { clipFullStart, clipFullEnd, clipStart, clipWidth, clipEnd };
 };

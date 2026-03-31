@@ -1,3 +1,4 @@
+import commonShader from '../shaders/common.wgsl?raw';
 import videoShader from '../shaders/video.wgsl?raw';
 
 export class VideoRenderer {
@@ -11,13 +12,13 @@ export class VideoRenderer {
 			layout: 'auto',
 			vertex: {
 				module: device.createShaderModule({
-					code: videoShader
+					code: `${commonShader}\n${videoShader}`
 				}),
 				entryPoint: 'vertexMain'
 			},
 			fragment: {
 				module: device.createShaderModule({
-					code: videoShader
+					code: `${commonShader}\n${videoShader}`
 				}),
 				entryPoint: 'fragmentMain',
 				targets: [

@@ -2,6 +2,7 @@ import {
 	appState,
 	audioState,
 	historyManager,
+	projectManager,
 	timelineState,
 	workerManager
 } from '$lib/state.svelte';
@@ -31,11 +32,11 @@ export const createOrUpdateKeyframe = (paramIndices: number[]) => {
 					easeOut: 1
 				}
 			});
+			projectManager.updateClip(clip);
 			continue;
 		} else {
 			// need to update
 			keyframe.value = clip.params[paramIndex];
-			console.log('updating');
 		}
 	}
 
@@ -123,6 +124,7 @@ export const deleteKeyframe = (keyframeIndex: number) => {
 
 	setParamsFromKeyframes();
 	workerManager.sendClip(clip);
+	projectManager.updateClip(clip);
 };
 
 export const removeKeyframe = (clip: Clip, frame: number, param: number) => {
@@ -179,6 +181,8 @@ export const finaliseKeyframe = (keyframe?: Keyframe) => {
 	keyframe.savedValue = keyframe.value;
 	keyframe.savedEaseIn = keyframe.easeIn;
 	keyframe.savedEaseOut = keyframe.easeOut;
+
+	projectManager.updateClip(clip);
 };
 
 export const getKeyframeAtMousePosition = (mouseX: number, mouseY: number, clip: Clip) => {
@@ -280,11 +284,6 @@ export const setParamsFromKeyframes = () => {
 
 				const value = k0.value + (k1.value - k0.value) * alpha;
 				clip.params[param] = Math.round(value * 1000) / 1000;
-				/* 				if (param === 4) {
-					const gainNode = audioState.gainNodes.get(clip.id);
-					if (gainNode) gainNode.gain.value = value;
-					
-				} */
 			}
 			if (clip.keyframeTracks.has(4)) {
 				const gainNode = audioState.gainNodes.get(clip.id);
@@ -298,4 +297,18 @@ export const setParamsFromKeyframes = () => {
 			clip.keyframesOnThisFrame = keyframesThisFrame;
 		}
 	}
+};
+
+export const toggleSelectedParam = () => {
+	const params = timelineState.selectedClip?.keyframeTracksActive;
+	if (!params || params.length < 1) return;
+	const currentIndex = params.findIndex((p) => p === appState.selectedKeyframeParam);
+	if (currentIndex < 0) {
+		appState.selectedKeyframeParam = params[0];
+	} else if (currentIndex === params.length - 1) {
+		appState.selectedKeyframeParam = params[0];
+	} else {
+		appState.selectedKeyframeParam = params[currentIndex + 1];
+	}
+	timelineState.invalidate = true;
 };
