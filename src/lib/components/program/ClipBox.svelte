@@ -30,12 +30,12 @@
 	let savedClipScale = { x: 0, y: 0 };
 	let savedClipCenter = { x: 0, y: 0 };
 
-	let boxSizeX = $derived.by(() => {
+	let boxSizeWidth = $derived.by(() => {
 		if (clip.source.info.type === 'test') return clip.params[0] * 1920 * (scale / 100);
 		if (clip.source.info.type !== 'video' && clip.source.info.type !== 'image') return 0;
 		return clip.params[0] * clip.source.info.resolution.width * (scale / 100);
 	});
-	let boxSizeY = $derived.by(() => {
+	let boxSizeHeight = $derived.by(() => {
 		if (clip.source.info.type === 'test') return clip.params[1] * 1080 * (scale / 100);
 		if (clip.source.info.type !== 'video' && clip.source.info.type !== 'image') return 0;
 		return clip.params[1] * clip.source.info.resolution.height * (scale / 100);
@@ -43,13 +43,19 @@
 	let position = $derived({
 		top:
 			canvasContainer.clientHeight / 2 -
-			boxSizeY / 2 -
+			boxSizeHeight / 2 -
 			(clip.params[3] / 2) * programState.canvasHeight * (scale / 100),
 		left:
 			canvasContainer.clientWidth / 2 -
-			boxSizeX / 2 +
+			boxSizeWidth / 2 +
 			(clip.params[2] / 2) * programState.canvasWidth * (scale / 100)
 	});
+	let cropBoxSize = $derived({
+		top: (boxSizeHeight * clip.params[12]) - 2,
+		left: (boxSizeWidth * clip.params[13]) - 2,
+		height: Math.max(0, boxSizeHeight * (1 - clip.params[12] - clip.params[14])),
+		width: Math.max(0, boxSizeWidth * (1 - clip.params[13] - clip.params[15]))
+	})
 
 	const mouseMove = (e: MouseEvent) => {
 		if (cornerHover) {
@@ -128,49 +134,58 @@
 {#if clip.source.type === 'video' || clip.source.type === 'test' || clip.source.type === 'image'}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
+		style:transform={`rotate(${-clip.params[17]}deg)`}
 		style:top={`${position.top}px`}
 		style:left={`${position.left}px`}
-		style:width={`${boxSizeX}px`}
-		style:height={`${boxSizeY}px`}
-		class="border-2 border-white absolute top-0 left-0"
+		style:width={`${boxSizeWidth}px`}
+		style:height={`${boxSizeHeight}px`}
+		class="border-2 border-white absolute top-0 left-0 border-dotted"
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			contextMenu.openContextMenu(e);
 		}}
 	>
-		{@render cornerBox(0)}
-		{@render cornerBox(1)}
-		{@render cornerBox(2)}
-		{@render cornerBox(3)}
-		{#snippet cornerBox(corner: number)}
-			<div
-				onmouseenter={() => {
-					cornerHover = true;
-					cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
-				}}
-				onmouseleave={() => {
-					cornerHover = false;
-				}}
-				onmousedown={(e) =>
-					cornerMouseDown(e, clip, {
-						x: position.left + boxSizeX / 2,
-						y: position.top + boxSizeY / 2
-					})}
-				class={[
-					corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
-					corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
-					'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
-				]}
-			></div>
+		<div
+			style:top={`${cropBoxSize.top}px`}
+			style:left={`${cropBoxSize.left}px`}
+			style:width={`${cropBoxSize.width}px`}
+			style:height={`${cropBoxSize.height}px`}
+			class="absolute border-2 border-white"
+		>
+			{@render cornerBox(0)}
+			{@render cornerBox(1)}
+			{@render cornerBox(2)}
+			{@render cornerBox(3)}
+			{#snippet cornerBox(corner: number)}
+				<div
+					onmouseenter={() => {
+						cornerHover = true;
+						cornerHoverStyle = corner === 0 || corner === 3 ? 'nwse-resize' : 'nesw-resize';
+					}}
+					onmouseleave={() => {
+						cornerHover = false;
+					}}
+					onmousedown={(e) =>
+						cornerMouseDown(e, clip, {
+							x: position.left + boxSizeWidth / 2,
+							y: position.top + boxSizeHeight / 2
+						})}
+					class={[
+						corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
+						corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
+						'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
+					]}
+				></div>
 		{/snippet}
+		</div>
 	</div>
 {/if}
 {#if clip.source.type === 'text'}
 	{@const { x, y } = getTextBoundingBox(clip.text, clip.params[6], scale, clip.params[7])}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		style:top={`${position.top + boxSizeY / 2 - y / 2}px`}
-		style:left={`${position.left + boxSizeX / 2 - x / 2}px`}
+		style:top={`${position.top + boxSizeHeight / 2 - y / 2}px`}
+		style:left={`${position.left + boxSizeWidth / 2 - x / 2}px`}
 		style:width={`${x}px`}
 		style:height={`${y}px`}
 		class="border-2 border-white absolute top-0 left-0"

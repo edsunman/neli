@@ -274,15 +274,18 @@ export const setParamsFromKeyframes = () => {
 				if (!outEase && !inEase) {
 					alpha = t;
 				} else {
-					// Cubic Bezier interpolation
-					const intensity = 0.8;
-					const cp1 = outEase ? intensity : 0;
-					const cp2 = inEase ? 1 - intensity : 1;
-					const mt = 1 - t;
-					alpha = 3 * (mt * mt) * t * cp1 + 3 * mt * (t * t) * cp2 + t * t * t;
+					const intensity = 3.5; 
+					if (outEase && inEase) {
+						const tn = Math.pow(t, intensity);
+						alpha = tn / (tn + Math.pow(1 - t, intensity));
+					} else if (outEase) {
+						alpha = Math.pow(t, intensity);
+					} else if (inEase) {
+						alpha = 1 - Math.pow(1 - t, intensity);
+					}
 				}
 
-				const value = k0.value + (k1.value - k0.value) * alpha;
+				const value = k0.value + (k1.value - k0.value) * (alpha || 0);
 				clip.params[param] = Math.round(value * 1000) / 1000;
 			}
 			if (clip.keyframeTracks.has(4)) {

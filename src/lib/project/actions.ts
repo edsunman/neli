@@ -183,10 +183,12 @@ export const loadProject = async (id: string) => {
 		const newClip = new Clip(source, clip.track, clip.start, clip.duration, clip.sourceOffset);
 		newClip.id = clip.id;
 		newClip.params = clip.params;
-		newClip.keyframeTracks = new Map(
-			Object.entries(clip.keyframeTracks).map(([key, track]) => [Number(key), track])
-		);
-		newClip.keyframeTracksActive = Object.keys(clip.keyframeTracks).map((n) => Number(n));
+		if (clip.keyframeTracks) {
+			newClip.keyframeTracks = new Map(
+				Object.entries(clip.keyframeTracks).map(([key, track]) => [Number(key), track])
+			);
+			newClip.keyframeTracksActive = Object.keys(clip.keyframeTracks).map((n) => Number(n));
+		}
 		timelineState.clips.push(newClip);
 		const lastClipFrame = clip.start + clip.duration;
 		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;
