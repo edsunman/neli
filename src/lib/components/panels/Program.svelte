@@ -22,6 +22,7 @@
 	let canvasContainer = $state<HTMLDivElement>();
 	let containerHeight = $state(0);
 	let containerWidth = $state(0);
+	let cropping = $state(false);
 
 	let dragging = false;
 	let draggedOffset = { x: 0, y: 0 };
@@ -35,7 +36,7 @@
 	});
 
 	const mouseDown = (e: MouseEvent) => {
-		if (appState.selectedSource) return;
+		if (appState.selectedSource || cropping) return;
 		appState.mouseMoveOwner = 'program';
 		appState.mouseIsDown = true;
 		pause();
@@ -131,7 +132,7 @@
 		></canvas>
 
 		{#if programState.selectedClip}
-			<ClipBox clip={programState.selectedClip} {canvasContainer} {scale} />
+			<ClipBox clip={programState.selectedClip} {canvasContainer} {scale} bind:cropping />
 		{/if}
 		{#if appState.selectedSource}
 			{@const sourceType = appState.selectedSource.type}

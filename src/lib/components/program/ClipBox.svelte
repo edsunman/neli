@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Clip } from '$lib/clip/clip.svelte';
-	import { getClipFillScaleFactor, getClipFitScaleFactor } from '$lib/clip/utils';
+	import { getClipFillScaleFactor, getClipFitScaleFactor, roundTo } from '$lib/clip/utils';
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { transformClip } from '$lib/program/actions';
@@ -19,8 +19,9 @@
 		clip: Clip;
 		canvasContainer: HTMLDivElement;
 		scale: number;
+		cropping: boolean;
 	};
-	let { clip, canvasContainer, scale }: Props = $props();
+	let { clip, canvasContainer, scale, cropping = $bindable() }: Props = $props();
 
 	let contextMenu: ContextMenu;
 	let resizing = false;
@@ -29,6 +30,9 @@
 	let initialDistance = 0;
 	let savedClipScale = { x: 0, y: 0 };
 	let savedClipCenter = { x: 0, y: 0 };
+	let initialPosition = 0;
+	let savedClipCrop = 0;
+	let currentEdge = 0;
 
 	let boxSizeWidth = $derived.by(() => {
 		if (clip.source.info.type === 'test') return clip.params[0] * 1920 * (scale / 100);
@@ -51,11 +55,11 @@
 			(clip.params[2] / 2) * programState.canvasWidth * (scale / 100)
 	});
 	let cropBoxSize = $derived({
-		top: (boxSizeHeight * clip.params[12]) - 2,
-		left: (boxSizeWidth * clip.params[13]) - 2,
+		top: boxSizeHeight * clip.params[12] - 2,
+		left: boxSizeWidth * clip.params[15] - 2,
 		height: Math.max(0, boxSizeHeight * (1 - clip.params[12] - clip.params[14])),
-		width: Math.max(0, boxSizeWidth * (1 - clip.params[13] - clip.params[15]))
-	})
+		width: Math.max(0, boxSizeWidth * (1 - clip.params[15] - clip.params[13]))
+	});
 
 	const mouseMove = (e: MouseEvent) => {
 		if (cornerHover) {
@@ -64,7 +68,7 @@
 			if (canvasContainer) canvasContainer.style.cursor = 'default';
 		}
 
-		if (appState.mouseMoveOwner !== 'program' || !resizing) return;
+		if (appState.mouseMoveOwner !== 'program') return;
 		if (e.buttons < 1 || !timelineState.selectedClip) return;
 
 		if (resizing) {
@@ -79,13 +83,32 @@
 			workerManager.sendClip(timelineState.selectedClip);
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		}
+		if (cropping) {
+			let currentPixelDistance, movedAmount;
+			if (currentEdge === 0 || currentEdge === 2) {
+				currentPixelDistance = e.clientY - initialPosition;
+				movedAmount = currentPixelDistance / boxSizeHeight;
+			} else {
+				currentPixelDistance = e.clientX - canvasContainer.offsetLeft - initialPosition;
+				movedAmount = currentPixelDistance / boxSizeWidth;
+			}
+
+			if (currentEdge === 2 || currentEdge === 1) movedAmount = -movedAmount;
+			let newValue = savedClipCrop + movedAmount;
+			if (newValue < 0) newValue = 0;
+			const params = timelineState.selectedClip.params;
+			if (currentEdge === 0 && newValue > 1 - params[14]) newValue = 1 - params[14];
+			if (currentEdge === 3 && newValue > 1 - params[13]) newValue = 1 - params[13];
+			timelineState.selectedClip.params[currentEdge + 12] = roundTo(newValue, 3);
+			workerManager.sendClip(timelineState.selectedClip);
+		}
 	};
 
 	const mouseUp = () => {
+		const clip = timelineState.selectedClip;
+		if (!clip) return;
 		if (resizing) {
 			resizing = false;
-			const clip = timelineState.selectedClip;
-			if (!clip) return;
 			historyManager.pushAction({
 				action: 'clipParam',
 				data: {
@@ -96,6 +119,18 @@
 				}
 			});
 			historyManager.finishCommand();
+			projectManager.updateClip(clip);
+		}
+		if (cropping) {
+			historyManager.newCommand({
+				action: 'clipParam',
+				data: {
+					clipId: clip.id,
+					paramIndex: [currentEdge + 12],
+					oldValue: [savedClipCrop],
+					newValue: [clip.params[currentEdge + 12]]
+				}
+			});
 			projectManager.updateClip(clip);
 		}
 	};
@@ -113,6 +148,23 @@
 		initialDistance = Math.sqrt(
 			Math.pow(offsetX - savedClipCenter.x, 2) + Math.pow(e.clientY - savedClipCenter.y, 2)
 		);
+	};
+
+	const edgeMouseDown = (e: MouseEvent, clip: Clip, edge: number) => {
+		e.stopPropagation();
+		e.preventDefault();
+		appState.mouseMoveOwner = 'program';
+		appState.mouseIsDown = true;
+		cropping = true;
+
+		currentEdge = edge;
+		if (edge === 0 || edge === 2) {
+			initialPosition = e.clientY;
+		} else {
+			initialPosition = e.clientX - canvasContainer!.offsetLeft;
+		}
+
+		savedClipCrop = clip.params[edge + 12];
 	};
 
 	const getTextBoundingBox = (
@@ -139,7 +191,10 @@
 		style:left={`${position.left}px`}
 		style:width={`${boxSizeWidth}px`}
 		style:height={`${boxSizeHeight}px`}
-		class="border-2 border-white absolute top-0 left-0 border-dotted"
+		class={[
+			cropping ? 'border-[rgba(255,255,255,0.5)]' : 'border-[rgba(255,255,255,0)]',
+			'border-2  absolute top-0 left-0 border-dotted'
+		]}
 		oncontextmenu={(e) => {
 			e.preventDefault();
 			contextMenu.openContextMenu(e);
@@ -152,10 +207,41 @@
 			style:height={`${cropBoxSize.height}px`}
 			class="absolute border-2 border-white"
 		>
-			{@render cornerBox(0)}
-			{@render cornerBox(1)}
-			{@render cornerBox(2)}
-			{@render cornerBox(3)}
+			{#if cropping}
+				{#if cropBoxSize.width > 44}
+					{@render cropBox(0)}
+					{@render cropBox(2)}
+				{/if}
+				{#if cropBoxSize.height > 44}
+					{@render cropBox(1)}
+					{@render cropBox(3)}
+				{/if}
+			{:else}
+				{@render cornerBox(0)}
+				{@render cornerBox(1)}
+				{@render cornerBox(2)}
+				{@render cornerBox(3)}
+			{/if}
+			{#snippet cropBox(edge: number)}
+				<div
+					onmouseenter={() => {
+						cornerHover = true;
+						cornerHoverStyle = edge === 0 || edge === 2 ? 'ns-resize ' : 'ew-resize';
+					}}
+					onmouseleave={() => {
+						cornerHover = false;
+					}}
+					onmousedown={(e) => edgeMouseDown(e, clip, edge)}
+					class={[
+						edge === 0 && '-top-[5px] left-[calc(50%-20px)]',
+						edge === 2 && '-bottom-[5px] left-[calc(50%-20px)]',
+						edge === 3 && 'top-[calc(50%-20px)] -left-[5px]',
+						edge === 1 && 'bottom-[calc(50%-20px)] -right-[5px]',
+						edge === 0 || edge === 2 ? 'h-[10px] w-[40px]' : 'h-[40px] w-[10px]',
+						'border-2 rounded-[5px] border-white absolute   bg-zinc-900'
+					]}
+				></div>
+			{/snippet}
 			{#snippet cornerBox(corner: number)}
 				<div
 					onmouseenter={() => {
@@ -172,11 +258,11 @@
 						})}
 					class={[
 						corner === 0 || corner === 2 ? '-top-[7px]' : '-bottom-[7px]',
-						corner === 0 || corner === 1 ? '-left-[7px]' : '-bottom-[7px]',
-						'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute -bottom-[7px] -right-[7px] bg-zinc-900'
+						corner === 0 || corner === 1 ? '-left-[7px]' : '-right-[7px]',
+						'h-[14px] w-[14px] border-2 rounded-[5px] border-white absolute  bg-zinc-900'
 					]}
 				></div>
-		{/snippet}
+			{/snippet}
 		</div>
 	</div>
 {/if}
@@ -223,4 +309,25 @@
 		}
 	]}
 />
-<svelte:window onmousemove={mouseMove} onmouseup={mouseUp} />
+<svelte:window
+	onmousemove={mouseMove}
+	onmouseup={mouseUp}
+	onkeydown={(e) => {
+		if (appState.disableKeyboardShortcuts) return;
+		switch (e.code) {
+			case 'ShiftLeft': {
+				cropping = true;
+				break;
+			}
+		}
+	}}
+	onkeyup={(e) => {
+		if (appState.disableKeyboardShortcuts) return;
+		switch (e.code) {
+			case 'ShiftLeft': {
+				cropping = false;
+				break;
+			}
+		}
+	}}
+/>
