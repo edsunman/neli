@@ -64,7 +64,13 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import { deleteIcon, scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
+	import {
+		deleteIcon,
+		easeInIcon,
+		easeOutIcon,
+		scissorsIcon,
+		zoomInIcon
+	} from '../icons/Icons.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -511,7 +517,7 @@
 		{
 			text: 'ease in',
 			onClick: () => {},
-			icon: scissorsIcon,
+			icon: easeInIcon,
 			hideCondition: () => clickedKeyframe < 0,
 			children: [
 				{
@@ -527,7 +533,7 @@
 		{
 			text: 'ease out',
 			onClick: () => {},
-			icon: scissorsIcon,
+			icon: easeOutIcon,
 			hideCondition: () => clickedKeyframe < 0,
 			children: [
 				{
@@ -548,6 +554,7 @@
 			text: 'delete keyframe',
 			onClick: () => {
 				deleteKeyframe(clickedKeyframe);
+				historyManager.finishCommand();
 				timelineState.invalidate = true;
 			},
 			icon: deleteIcon,

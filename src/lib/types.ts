@@ -57,11 +57,6 @@ export type Keyframe = {
 
 export type KeyframeTrack = {
 	keyframes: Keyframe[];
-	/* 	frames: number[];
-	savedFrames: number[];
-	values: number[];
-	easeIn: number[];
-	easeOut: number[]; */
 };
 
 export type SrtEntry = {

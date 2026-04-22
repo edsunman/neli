@@ -3,34 +3,95 @@ import { appState, timelineState } from '$lib/state.svelte';
 import type { KeyframeTrack } from '$lib/types';
 import type { Clip } from './clip.svelte';
 
-/** Get clip scale factor to 2 decimal places */
-export const getClipFitScaleFactor = (clip: Clip) => {
+/** Get clip scale factor to 3 decimal places */
+export const getClipFitTransform = (clip: Clip) => {
 	if (
 		clip.source.info.type !== 'image' &&
 		clip.source.info.type !== 'video' &&
 		clip.source.info.type !== 'test'
 	)
-		return 0;
+		return { scale: 0, x: 0, y: 0 };
+
 	const resolution = appState.project.resolution;
-	const width = clip.source.info.type === 'test' ? 1920 : clip.source.info.resolution.width;
-	const height = clip.source.info.type === 'test' ? 1080 : clip.source.info.resolution.height;
-	const { scaleFactor } = scaleToFit(resolution.width, resolution.height, width, height);
-	return Math.round(scaleFactor * 1000) / 1000;
+	const sourceWidth = clip.source.info.type === 'test' ? 1920 : clip.source.info.resolution.width;
+	const sourceHeight = clip.source.info.type === 'test' ? 1080 : clip.source.info.resolution.height;
+
+	const top = clip.params[12];
+	const right = clip.params[13];
+	const bottom = clip.params[14];
+	const left = clip.params[15];
+
+	const visibleWidthPercent = 1.0 - left - right;
+	const visibleHeightPercent = 1.0 - top - bottom;
+	const croppedWidth = sourceWidth * visibleWidthPercent;
+	const croppedHeight = sourceHeight * visibleHeightPercent;
+
+	const { scaleFactor } = scaleToFit(
+		resolution.width,
+		resolution.height,
+		croppedWidth,
+		croppedHeight
+	);
+
+	const visibleCenterX = left + visibleWidthPercent * 0.5;
+	const visibleCenterY = top + visibleHeightPercent * 0.5;
+	const offsetX = visibleCenterX - 0.5;
+	const offsetY = visibleCenterY - 0.5;
+
+	const canvasWidthOfImage = (sourceWidth / resolution.width) * 2.0 * scaleFactor;
+	const canvasHeightOfImage = (sourceHeight / resolution.height) * 2.0 * scaleFactor;
+
+	return {
+		scale: roundTo(scaleFactor, 3),
+		x: roundTo(-(offsetX * canvasWidthOfImage), 3),
+		y: roundTo(offsetY * canvasHeightOfImage, 3)
+	};
 };
 
-/**  Get clip scale factor to 2 decimal places */
-export const getClipFillScaleFactor = (clip: Clip) => {
+/**  Get clip scale factor to 3 decimal places */
+export const getClipFillTransform = (clip: Clip) => {
 	if (
 		clip.source.info.type !== 'image' &&
 		clip.source.info.type !== 'video' &&
 		clip.source.info.type !== 'test'
-	)
-		return 0;
+	) {
+		return { scale: 0, x: 0, y: 0 };
+	}
+
 	const resolution = appState.project.resolution;
-	const width = clip.source.info.type === 'test' ? 1920 : clip.source.info.resolution.width;
-	const height = clip.source.info.type === 'test' ? 1080 : clip.source.info.resolution.height;
-	const { scaleFactor } = scaleToFill(resolution.width, resolution.height, width, height);
-	return Math.round(scaleFactor * 1000) / 1000;
+	const sourceWidth = clip.source.info.type === 'test' ? 1920 : clip.source.info.resolution.width;
+	const sourceHeight = clip.source.info.type === 'test' ? 1080 : clip.source.info.resolution.height;
+
+	const top = clip.params[12];
+	const right = clip.params[13];
+	const bottom = clip.params[14];
+	const left = clip.params[15];
+
+	const visibleWidthPercent = 1.0 - left - right;
+	const visibleHeightPercent = 1.0 - top - bottom;
+	const croppedWidth = sourceWidth * visibleWidthPercent;
+	const croppedHeight = sourceHeight * visibleHeightPercent;
+
+	const { scaleFactor } = scaleToFill(
+		resolution.width,
+		resolution.height,
+		croppedWidth,
+		croppedHeight
+	);
+
+	const visibleCenterX = left + visibleWidthPercent * 0.5;
+	const visibleCenterY = top + visibleHeightPercent * 0.5;
+	const offsetX = visibleCenterX - 0.5;
+	const offsetY = visibleCenterY - 0.5;
+
+	const canvasWidthOfImage = (sourceWidth / resolution.width) * 2.0 * scaleFactor;
+	const canvasHeightOfImage = (sourceHeight / resolution.height) * 2.0 * scaleFactor;
+
+	return {
+		scale: roundTo(scaleFactor, 3),
+		x: roundTo(-(offsetX * canvasWidthOfImage), 3),
+		y: roundTo(offsetY * canvasHeightOfImage, 3)
+	};
 };
 
 export const getKeyframePositionHelpers = (clip: Clip, track: KeyframeTrack) => {

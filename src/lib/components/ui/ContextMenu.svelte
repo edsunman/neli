@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Portal } from 'bits-ui';
 	import { tick, type Snippet } from 'svelte';
+	import { forwardArrowIcon } from '../icons/Icons.svelte';
 
 	type Props = {
 		buttons: {
@@ -84,12 +85,12 @@
 								showContextMenu = false;
 							}}
 						>
-							<span class="mr-2">
+							<span class="mr-2 flex">
 								{#if button.icon}
 									{@render button.icon('size-4 inline')}
 								{/if}
 							</span>
-							<span class="mr-2">{button.text}</span>
+							<span class="mr-3">{button.text}</span>
 							{#if button.shortcuts && button.shortcuts.length > 0}
 								<span class="ml-5 text-xs text-zinc-500">
 									{#each button.shortcuts as shortcut (shortcut)}
@@ -101,6 +102,11 @@
 											{/if}
 										</span>
 									{/each}
+								</span>
+							{/if}
+							{#if button.children}
+								<span class="ml-auto text-zinc-700 flex">
+									{@render forwardArrowIcon('size-3 inline')}
 								</span>
 							{/if}
 						</button>

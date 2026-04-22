@@ -196,6 +196,14 @@ export const focusTrack = (trackNumber: number) => {
 		}
 	}
 
+	if (timelineState.selectedClip && timelineState.selectedClip.keyframeTracksActive.length > 0) {
+		const index = timelineState.selectedClip.keyframeTracksActive.findIndex(
+			(p) => p === appState.selectedKeyframeParam
+		);
+		if (index < 0)
+			appState.selectedKeyframeParam = timelineState.selectedClip.keyframeTracksActive[0];
+	}
+
 	setTrackPositions();
 	timelineState.invalidateWaveform = true;
 };
@@ -231,8 +239,8 @@ export const setTrackPositions = () => {
 	for (let i = 0; i < timelineState.tracks.length; i++) {
 		timelineState.tracks[i].top += Math.floor(topOfAllTracks + rulerContainerHeight);
 	}
-
-	projectManager.updateProject({ tracks: timelineState.tracks });
+	const trackTypes = timelineState.tracks.map((t) => t.type);
+	projectManager.updateProject({ tracks: trackTypes });
 };
 
 export const setTrackLocks = () => {

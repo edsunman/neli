@@ -1,7 +1,13 @@
 <script lang="ts">
-	import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
+	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
 	import { getKeyframeContext } from '$lib/context/context';
-	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
+	import {
+		appState,
+		historyManager,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 
 	type Props = {
 		value: number | string;
@@ -25,7 +31,7 @@
 
 <div
 	class={[
-		fullWidth ? '' : 'w-10 height-xl:w-12',
+		fullWidth ? '' : 'w-12',
 		'rounded-sm relative overflow-hidden z-0',
 		// before
 		'before:transition-all before:duration-200',
@@ -55,17 +61,23 @@
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
+			onBlur();
 			if (!timelineState.selectedClip) return;
 			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
 				workerManager.sendClip(timelineState.selectedClip);
 			}
 			projectManager.updateClip(timelineState.selectedClip);
-			onBlur();
+			if (keyframeContext.params && keyframeContext.active()) {
+				finaliseKeyframe();
+				historyManager.finishCommand();
+			}
 		}}
 		oninput={() => {
-			if (keyframeContext.params && keyframeContext.active())
+			if (keyframeContext.params && keyframeContext.active()) {
 				createOrUpdateKeyframe(keyframeContext.params);
+			}
+
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
 		bind:value

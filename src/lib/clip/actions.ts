@@ -9,9 +9,9 @@ import {
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
-import { getClipFitScaleFactor } from './utils';
+import { getClipFitTransform } from './utils';
 import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
-import type { KeyframeTrack } from '$lib/types';
+import type { KeyframeTrack, Keyframe } from '$lib/types';
 import { removeKeyframe } from './keyframes';
 
 export const createClip = (
@@ -68,9 +68,9 @@ export const createClip = (
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
 	if (source.type === 'video' || source.type === 'image' || source.type === 'test') {
-		const scaleFactor = getClipFitScaleFactor(clip);
-		clip.params[0] = scaleFactor;
-		clip.params[1] = scaleFactor;
+		const { scale } = getClipFitTransform(clip);
+		clip.params[0] = scale;
+		clip.params[1] = scale;
 	}
 
 	timelineState.clips.push(clip);
@@ -528,28 +528,26 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 			keyframes: []
 		};
 
-		const framesToMoveCount = track.keyframes.filter((k) => k.frame > clip.duration).length;
-		let newFrameIndex = framesToMoveCount - 1;
-		for (const keyframe of track.keyframes) {
-			if (keyframe.frame > clip.duration) {
-				const newKeyframe = structuredClone(keyframe);
-				newKeyframe.frame = keyframe.frame - moveAmount;
-				newTrack.keyframes[newFrameIndex] = newKeyframe;
+		const framesToMove: Keyframe[] = [];
+		for (let i = track.keyframes.length - 1; i >= 0; i--) {
+			if (track.keyframes[i].frame > clip.duration) {
 				historyManager.pushAction({
 					action: 'deleteKeyframe',
 					data: {
 						clipId: clip.id,
-						frame: keyframe.frame,
+						frame: track.keyframes[i].frame,
 						param: param,
-						value: keyframe.value,
-						easeIn: keyframe.easeIn,
-						easeOut: keyframe.easeOut
+						value: track.keyframes[i].value,
+						easeIn: track.keyframes[i].easeIn,
+						easeOut: track.keyframes[i].easeOut
 					}
 				});
-				removeKeyframe(clip, keyframe.frame, param);
-				newFrameIndex--;
+				const keyframe = removeKeyframe(clip, track.keyframes[i].frame, param);
+				keyframe.frame = keyframe.frame - moveAmount;
+				framesToMove.push(keyframe);
 			}
 		}
+		newTrack.keyframes = framesToMove.reverse();
 		newClip.keyframeTracks.set(param, newTrack);
 		newClip.keyframeTracksActive.push(param);
 	}

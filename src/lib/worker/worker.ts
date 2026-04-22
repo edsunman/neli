@@ -130,7 +130,12 @@ self.addEventListener('message', async function (event) {
 			if (event.data.image) {
 				if (seeking) break;
 				seeking = true;
-				const params = [1, 1, 0, 0];
+				const params = new Array(22).fill(0);
+				params[0] = 1;
+				params[1] = 1;
+				params[18] = 1;
+				params[20] = 1;
+				params[21] = 1;
 				renderer.resizeCanvas(event.data.imageWidth, event.data.imageHeight);
 				renderer.startPaint();
 				renderer.imagePass(
@@ -463,7 +468,7 @@ const calculateKeyframes = (clip: WorkerClip, frameNumber: number) => {
 		if (!outEase && !inEase) {
 			alpha = t;
 		} else {
-			const intensity = 3.5; 
+			const intensity = 3.5;
 			if (outEase && inEase) {
 				const tn = Math.pow(t, intensity);
 				alpha = tn / (tn + Math.pow(1 - t, intensity));

@@ -129,7 +129,15 @@
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
 			<Properties.Group label="name">
-				<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
+				<Properties.Input
+					bind:value={source.name}
+					type="text"
+					fullWidth
+					fallback="_"
+					onBlur={() => {
+						projectManager.updateSource(source.id, { name: source.name });
+					}}
+				/>
 			</Properties.Group>
 			{#if source.info.type === 'video'}
 				<Properties.Group label="duration">
@@ -192,7 +200,12 @@
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="text">
-				<Properties.Textarea bind:value={clip.text} />
+				<Properties.Textarea
+					bind:value={clip.text}
+					onBlur={() => {
+						if (clip) projectManager.updateClip(clip);
+					}}
+				/>
 			</Properties.Group>
 			<Properties.Group label="font size" keyframeParams={[6]}>
 				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />

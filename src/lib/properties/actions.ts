@@ -27,5 +27,16 @@ export const showClipPropertiesSection = (clip: Clip) => {
 		appState.propertiesSection = 'layout';
 		return;
 	}
+	if (type === 'image') {
+		if (
+			appState.propertiesSavedSection === 'colour' ||
+			appState.propertiesSavedSection === 'crop'
+		) {
+			appState.propertiesSection = appState.propertiesSavedSection;
+			return;
+		}
+		appState.propertiesSection = 'layout';
+		return;
+	}
 	appState.propertiesSection = 'layout';
 };

@@ -8,40 +8,7 @@ import {
 } from '$lib/state.svelte';
 import type { Keyframe } from '$lib/types';
 import type { Clip } from './clip.svelte';
-import { getKeyframePositionHelpers } from './utils';
-
-export const createOrUpdateKeyframe = (paramIndices: number[]) => {
-	const clip = timelineState.selectedClip;
-	if (!clip) return;
-	const clipFrame = timelineState.currentFrame - clip.start;
-	appState.selectedKeyframeParam = paramIndices[0];
-
-	for (const paramIndex of paramIndices) {
-		const track = clip.keyframeTracks.get(paramIndex);
-		const keyframe = track?.keyframes.find((k) => k.frame === clipFrame);
-		if (!track || !keyframe) {
-			addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
-			historyManager.pushAction({
-				action: 'addKeyframe',
-				data: {
-					clipId: clip.id,
-					frame: clipFrame,
-					param: paramIndex,
-					value: clip.params[paramIndex],
-					easeIn: 1,
-					easeOut: 1
-				}
-			});
-			projectManager.updateClip(clip);
-			continue;
-		} else {
-			// need to update
-			keyframe.value = clip.params[paramIndex];
-		}
-	}
-
-	workerManager.sendClip(clip);
-};
+import { getKeyframePositionHelpers, roundTo } from './utils';
 
 export const addKeyframe = (
 	clip: Clip,
@@ -71,7 +38,6 @@ export const addKeyframe = (
 	}
 
 	const keyframes = track.keyframes;
-
 	let insertIndex = 0;
 	while (insertIndex < keyframes.length && keyframes[insertIndex].frame < frame) {
 		insertIndex++;
@@ -98,29 +64,35 @@ export const updateKeyframeEasing = (
 		keyframe.easeOut = easing;
 	}
 
-	finaliseKeyframe(keyframe);
+	finaliseKeyframe(appState.selectedKeyframeParam, keyframe);
 	historyManager.finishCommand();
+	workerManager.sendClip(clip);
+	projectManager.updateClip(clip);
 	timelineState.invalidate = true;
 };
 
 export const deleteKeyframe = (keyframeIndex: number) => {
 	const clip = timelineState.selectedClip;
-	const keyframe = getKeyframeByIndex(clip, appState.selectedKeyframeParam, keyframeIndex);
+	const keyframeParam = appState.selectedKeyframeParam;
+	const keyframe = getKeyframeByIndex(clip, keyframeParam, keyframeIndex);
 	if (!clip || !keyframe) return;
 
-	historyManager.newCommand({
-		action: 'deleteKeyframe',
-		data: {
-			clipId: clip.id,
-			frame: keyframe.frame,
-			param: appState.selectedKeyframeParam,
-			value: clip.params[appState.selectedKeyframeParam],
-			easeIn: keyframe.easeIn,
-			easeOut: keyframe.easeOut
-		}
-	});
+	const paramsToRemove = getLinkedParams(keyframeParam);
+	for (const param of paramsToRemove) {
+		historyManager.pushAction({
+			action: 'deleteKeyframe',
+			data: {
+				clipId: clip.id,
+				frame: keyframe.frame,
+				param: param,
+				value: clip.params[param],
+				easeIn: keyframe.easeIn,
+				easeOut: keyframe.easeOut
+			}
+		});
 
-	removeKeyframe(clip, keyframe.frame, appState.selectedKeyframeParam);
+		removeKeyframe(clip, keyframe.frame, param);
+	}
 
 	setParamsFromKeyframes();
 	workerManager.sendClip(clip);
@@ -128,61 +100,141 @@ export const deleteKeyframe = (keyframeIndex: number) => {
 };
 
 export const removeKeyframe = (clip: Clip, frame: number, param: number) => {
-	// TODO: handle linked keyframes
-
 	const track = clip?.keyframeTracks.get(param);
 	const index = track?.keyframes.findIndex((k) => k.frame === frame);
 	if (!clip || !track || typeof index === 'undefined' || index < 0) {
 		throw new Error('keyframe does not exist');
 	}
 
-	track.keyframes.splice(index, 1);
-
+	const [removedKeyframe] = track.keyframes.splice(index, 1);
 	if (track.keyframes.length < 1) {
 		clip.keyframeTracks.delete(param);
 		const activeIndex = clip.keyframeTracksActive.indexOf(index);
 		clip.keyframeTracksActive.splice(activeIndex, 1);
 	}
+	return removedKeyframe;
 };
 
-export const finaliseKeyframe = (keyframe?: Keyframe) => {
+/** Finalise provided keyframe or keyframe at current frame */
+export const finaliseKeyframe = (param = appState.selectedKeyframeParam, keyframe?: Keyframe) => {
 	const clip = timelineState.selectedClip;
-	let clipFrame;
-	if (!keyframe) {
-		const clip = timelineState.selectedClip;
-		clipFrame = timelineState.currentFrame - (clip?.start || 0);
-		keyframe = getKeyframeByFrameNumber(
-			timelineState.selectedClip,
-			appState.selectedKeyframeParam,
-			clipFrame
-		);
-	} else {
+	if (!clip) return;
+	const keyframesToUpdate = new Map<number, Keyframe>();
+
+	let clipFrame: number;
+	if (keyframe) {
 		clipFrame = keyframe.frame;
-	}
-	if (!clip || !keyframe) {
-		throw new Error('keyframe does not exist');
-	}
-
-	historyManager.pushAction({
-		action: 'updateKeyframe',
-		data: {
-			clipId: clip.id,
-			param: appState.selectedKeyframeParam,
-			frame: clipFrame,
-			oldEaseIn: keyframe.savedEaseIn,
-			newEaseIn: keyframe.easeIn,
-			oldEaseOut: keyframe.savedEaseOut,
-			newEaseOut: keyframe.easeOut,
-			newValue: keyframe.value,
-			oldValue: keyframe.savedValue
+		keyframesToUpdate.set(appState.selectedKeyframeParam, keyframe);
+	} else {
+		clipFrame = timelineState.currentFrame - clip.start;
+		const params = getLinkedParams(param);
+		for (const param of params) {
+			const track = clip.keyframeTracks.get(param);
+			if (!track) continue;
+			const foundKeyframe = track.keyframes.find((k) => k.frame === clipFrame);
+			if (foundKeyframe) keyframesToUpdate.set(param, foundKeyframe);
 		}
-	});
+	}
 
-	keyframe.savedValue = keyframe.value;
-	keyframe.savedEaseIn = keyframe.easeIn;
-	keyframe.savedEaseOut = keyframe.easeOut;
-
+	for (const [param, keyframe] of keyframesToUpdate) {
+		historyManager.pushAction({
+			action: 'updateKeyframe',
+			data: {
+				clipId: clip.id,
+				param,
+				frame: clipFrame,
+				oldEaseIn: keyframe.savedEaseIn,
+				newEaseIn: keyframe.easeIn,
+				oldEaseOut: keyframe.savedEaseOut,
+				newEaseOut: keyframe.easeOut,
+				newValue: keyframe.value,
+				oldValue: keyframe.savedValue
+			}
+		});
+		keyframe.savedValue = keyframe.value;
+		keyframe.savedEaseIn = keyframe.easeIn;
+		keyframe.savedEaseOut = keyframe.easeOut;
+	}
 	projectManager.updateClip(clip);
+};
+
+export const createOrUpdateKeyframe = (paramIndices: number[]) => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const clipFrame = timelineState.currentFrame - clip.start;
+	appState.selectedKeyframeParam = paramIndices[0];
+
+	for (const paramIndex of paramIndices) {
+		const track = clip.keyframeTracks.get(paramIndex);
+		const keyframe = track?.keyframes.find((k) => k.frame === clipFrame);
+		if (!track || !keyframe) {
+			addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			historyManager.pushAction({
+				action: 'addKeyframe',
+				data: {
+					clipId: clip.id,
+					frame: clipFrame,
+					param: paramIndex,
+					value: clip.params[paramIndex],
+					easeIn: 1,
+					easeOut: 1
+				}
+			});
+			projectManager.updateClip(clip);
+			clip.keyframesOnThisFrame.push(paramIndex);
+			continue;
+		} else {
+			// need to update
+			keyframe.value = clip.params[paramIndex];
+		}
+	}
+
+	timelineState.invalidate = true;
+	workerManager.sendClip(clip);
+};
+
+export const createOrDeleteKeyframe = (paramIndices: number[]) => {
+	const clip = timelineState.selectedClip;
+	if (!clip) return;
+	const clipFrame = timelineState.currentFrame - clip.start;
+	appState.selectedKeyframeParam = paramIndices[0];
+
+	for (const paramIndex of paramIndices) {
+		const track = clip.keyframeTracks.get(paramIndex);
+		const keyframe = track?.keyframes.find((k) => k.frame === clipFrame);
+		if (!track || !keyframe) {
+			addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			historyManager.pushAction({
+				action: 'addKeyframe',
+				data: {
+					clipId: clip.id,
+					frame: clipFrame,
+					param: paramIndex,
+					value: clip.params[paramIndex],
+					easeIn: 1,
+					easeOut: 1
+				}
+			});
+			projectManager.updateClip(clip);
+			continue;
+		} else {
+			// need to delete
+			removeKeyframe(clip, clipFrame, paramIndex);
+			historyManager.pushAction({
+				action: 'deleteKeyframe',
+				data: {
+					clipId: clip.id,
+					frame: keyframe.frame,
+					param: paramIndex,
+					value: keyframe.value,
+					easeIn: keyframe.easeIn,
+					easeOut: keyframe.easeOut
+				}
+			});
+		}
+	}
+
+	workerManager.sendClip(clip);
 };
 
 export const getKeyframeAtMousePosition = (mouseX: number, mouseY: number, clip: Clip) => {
@@ -227,7 +279,10 @@ export const setParamsFromKeyframes = () => {
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
-			if (clip.keyframeTracksActive.length < 1) continue;
+			if (clip.keyframeTracksActive.length < 1) {
+				if (clip.keyframesOnThisFrame.length > 0) clip.keyframesOnThisFrame = [];
+				continue;
+			}
 
 			const clipFrame = frameNumber - clip.start;
 			const keyframesThisFrame: number[] = [];
@@ -236,8 +291,6 @@ export const setParamsFromKeyframes = () => {
 				if (!keyframes || keyframes.length === 0) continue;
 
 				const count = keyframes.length;
-
-				// Update UI indicator
 				for (let i = 0; i < count; i++) {
 					if (keyframes[i].frame === clipFrame) {
 						keyframesThisFrame.push(param);
@@ -274,7 +327,7 @@ export const setParamsFromKeyframes = () => {
 				if (!outEase && !inEase) {
 					alpha = t;
 				} else {
-					const intensity = 3.5; 
+					const intensity = 3.5;
 					if (outEase && inEase) {
 						const tn = Math.pow(t, intensity);
 						alpha = tn / (tn + Math.pow(1 - t, intensity));
@@ -285,8 +338,13 @@ export const setParamsFromKeyframes = () => {
 					}
 				}
 
-				const value = k0.value + (k1.value - k0.value) * (alpha || 0);
-				clip.params[param] = Math.round(value * 1000) / 1000;
+				let value = k0.value + (k1.value - k0.value) * (alpha || 0);
+				if (param === 17) {
+					value = roundTo(value, 0);
+				} else {
+					value = roundTo(value, 3);
+				}
+				clip.params[param] = value;
 			}
 			if (clip.keyframeTracks.has(4)) {
 				const gainNode = audioState.gainNodes.get(clip.id);
@@ -314,4 +372,15 @@ export const toggleSelectedParam = () => {
 		appState.selectedKeyframeParam = params[currentIndex + 1];
 	}
 	timelineState.invalidate = true;
+};
+
+export const getLinkedParams = (num: number) => {
+	const groups = [
+		[0, 1],
+		[2, 3],
+		[12, 13, 14, 15]
+	];
+
+	const match = groups.find((group) => group.includes(num));
+	return match ?? [num];
 };

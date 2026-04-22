@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { roundTo } from '$lib/clip/utils';
 	import { useThrottle } from '$lib/hooks/useThrottle';
 	import { appState } from '$lib/state.svelte';
 
@@ -87,7 +88,7 @@
 
 			const clamped = clamp(normalisedSize); // Math.min(Math.max(normalisedSize, 0), 1);
 			const lerped = lerp(min, max, clamped);
-			value = Math.round(lerped * 100) / 100;
+			value = roundTo(lerped, 2);
 			valueChanged();
 		}}
 	>
@@ -146,7 +147,7 @@
 			}
 			const lerped = lerp(min, max, normalised);
 			if (!step) {
-				value = Math.round(lerped * 100) / 100;
+				value = roundTo(lerped, 2);
 			} else {
 				value = Math.round(lerped);
 			}

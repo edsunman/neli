@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createOrUpdateKeyframe, setParamsFromKeyframes } from '$lib/clip/keyframes';
+	import { createOrDeleteKeyframe, setParamsFromKeyframes } from '$lib/clip/keyframes';
 
 	import { keyframeIcon } from '$lib/components/icons/Icons.svelte';
 	import { setKeyframeContext } from '$lib/context/context';
@@ -36,7 +36,7 @@
 			<span
 				onclick={() => {
 					if (keyframeParams) {
-						createOrUpdateKeyframe(keyframeParams);
+						createOrDeleteKeyframe(keyframeParams);
 						historyManager.finishCommand();
 						setParamsFromKeyframes();
 						timelineState.invalidate = true;

@@ -10,7 +10,11 @@ export const setupTests = () => {
 	if (!window) return;
 
 	// @ts-expect-error append function to window
-	window.tests = { lotsOfClips, unlinkSources, auditDatabase };
+	window.tests = {
+		lotsOfClips,
+		unlinkSources,
+		auditDatabase /*  pushProject, login, pullProject  */
+	};
 };
 
 /* const addKeyframes = () => {

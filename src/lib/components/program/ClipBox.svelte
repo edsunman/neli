@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Clip } from '$lib/clip/clip.svelte';
-	import { getClipFillScaleFactor, getClipFitScaleFactor, roundTo } from '$lib/clip/utils';
+	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
+	import { getClipFillTransform, getClipFitTransform, roundTo } from '$lib/clip/utils';
 
 	import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
 	import { transformClip } from '$lib/program/actions';
@@ -20,8 +21,9 @@
 		canvasContainer: HTMLDivElement;
 		scale: number;
 		cropping: boolean;
+		dragging: boolean;
 	};
-	let { clip, canvasContainer, scale, cropping = $bindable() }: Props = $props();
+	let { clip, canvasContainer, scale, cropping = $bindable(), dragging }: Props = $props();
 
 	let contextMenu: ContextMenu;
 	let resizing = false;
@@ -78,9 +80,12 @@
 				Math.pow(offsetX - savedClipCenter.x, 2) + Math.pow(e.clientY - savedClipCenter.y, 2)
 			);
 			const newScale = currentDistance / initialDistance;
-			timelineState.selectedClip.params[0] = Math.round(savedClipScale.x * newScale * 100) / 100;
-			timelineState.selectedClip.params[1] = Math.round(savedClipScale.y * newScale * 100) / 100;
+			timelineState.selectedClip.params[0] = roundTo(savedClipScale.x * newScale, 3);
+			timelineState.selectedClip.params[1] = roundTo(savedClipScale.y * newScale, 3);
 			workerManager.sendClip(timelineState.selectedClip);
+			if (timelineState.selectedClip.keyframeTracks.get(0)) {
+				createOrUpdateKeyframe([0, 1]);
+			}
 			if (canvasContainer) canvasContainer.style.cursor = cornerHoverStyle;
 		}
 		if (cropping) {
@@ -101,6 +106,9 @@
 			if (currentEdge === 3 && newValue > 1 - params[13]) newValue = 1 - params[13];
 			timelineState.selectedClip.params[currentEdge + 12] = roundTo(newValue, 3);
 			workerManager.sendClip(timelineState.selectedClip);
+			if (timelineState.selectedClip.keyframeTracks.get(12)) {
+				createOrUpdateKeyframe([12, 13, 14, 15]);
+			}
 		}
 	};
 
@@ -109,28 +117,40 @@
 		if (!clip) return;
 		if (resizing) {
 			resizing = false;
-			historyManager.pushAction({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: [0, 1],
-					oldValue: [savedClipScale.x, savedClipScale.y],
-					newValue: [clip.params[0], clip.params[1]]
-				}
-			});
+			if (savedClipScale.x === clip.params[0] && savedClipScale.y === clip.params[1]) return;
+			if (clip.keyframeTracks.get(0)) {
+				finaliseKeyframe();
+			} else {
+				historyManager.pushAction({
+					action: 'clipParam',
+					data: {
+						clipId: clip.id,
+						paramIndex: [0, 1],
+						oldValue: [savedClipScale.x, savedClipScale.y],
+						newValue: [clip.params[0], clip.params[1]]
+					}
+				});
+			}
+
 			historyManager.finishCommand();
 			projectManager.updateClip(clip);
 		}
 		if (cropping) {
-			historyManager.newCommand({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: [currentEdge + 12],
-					oldValue: [savedClipCrop],
-					newValue: [clip.params[currentEdge + 12]]
-				}
-			});
+			if (savedClipCrop === clip.params[currentEdge + 12]) return;
+			if (clip.keyframeTracks.get(12)) {
+				finaliseKeyframe();
+			} else {
+				historyManager.pushAction({
+					action: 'clipParam',
+					data: {
+						clipId: clip.id,
+						paramIndex: [currentEdge + 12],
+						oldValue: [savedClipCrop],
+						newValue: [clip.params[currentEdge + 12]]
+					}
+				});
+			}
+			historyManager.finishCommand();
 			projectManager.updateClip(clip);
 		}
 	};
@@ -290,8 +310,8 @@
 			onClick: () => {
 				const clip = timelineState.selectedClip;
 				if (!clip) return;
-				const scaleFactor = getClipFitScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+				const { scale, x, y } = getClipFitTransform(clip);
+				transformClip(clip, scale, scale, x, y);
 			},
 			icon: scaleToFitIcon,
 			shortcuts: []
@@ -301,8 +321,8 @@
 			onClick: () => {
 				const clip = timelineState.selectedClip;
 				if (!clip) return;
-				const scaleFactor = getClipFillScaleFactor(clip);
-				transformClip(clip, scaleFactor, scaleFactor, 0, 0);
+				const { scale, x, y } = getClipFillTransform(clip);
+				transformClip(clip, scale, scale, x, y);
 			},
 			icon: scaleToFillIcon,
 			shortcuts: []
@@ -316,6 +336,8 @@
 		if (appState.disableKeyboardShortcuts) return;
 		switch (e.code) {
 			case 'ShiftLeft': {
+				if (e.ctrlKey || dragging) return;
+				if (timelineState.selectedClip?.source.type === 'test') return;
 				cropping = true;
 				break;
 			}
@@ -326,6 +348,8 @@
 		switch (e.code) {
 			case 'ShiftLeft': {
 				cropping = false;
+				cornerHover = false;
+				canvasContainer.style.cursor = 'default';
 				break;
 			}
 		}

@@ -74,12 +74,21 @@ export const getClipAtCanvasPoint = (pointX: number, pointY: number) => {
 		}
 		box.centerX = (clip.params[2] / 2 + 0.5) * programState.canvasWidth;
 		box.centerY = (1 - (clip.params[3] / 2 + 0.5)) * programState.canvasHeight;
-		if (
-			pointX > box.centerX - box.width / 2 &&
-			pointX < box.centerX + box.width / 2 &&
-			pointY > box.centerY - box.height / 2 &&
-			pointY < box.centerY + box.height / 2
-		) {
+
+		const localLeft = -box.width / 2 + clip.params[15] * box.width;
+		const localRight = box.width / 2 - clip.params[13] * box.width;
+		const localTop = -box.height / 2 + clip.params[12] * box.height;
+		const localBottom = box.height / 2 - clip.params[14] * box.height;
+
+		const rotationDeg = clip.params[17];
+		const rotationRad = (rotationDeg * Math.PI) / 180;
+
+		const dx = pointX - box.centerX;
+		const dy = pointY - box.centerY;
+		const testX = dx * Math.cos(rotationRad) - dy * Math.sin(rotationRad);
+		const testY = dx * Math.sin(rotationRad) + dy * Math.cos(rotationRad);
+
+		if (testX > localLeft && testX < localRight && testY > localTop && testY < localBottom) {
 			return clip;
 		}
 	}
