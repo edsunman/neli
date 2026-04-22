@@ -25,11 +25,14 @@ export class VDecoder {
 	lastUsedTime = 0;
 	usedThisFrame = false;
 
-	constructor() {
+	constructor(errorCallback: () => void) {
 		this.decoder = new VideoDecoder({
 			output: this.onOutput,
 			error: (e) => {
 				console.error(e);
+				if (e.message.includes('reclaimed')) {
+					errorCallback();
+				}
 			}
 		});
 	}
@@ -219,6 +222,11 @@ export class VDecoder {
 		this.decoder?.flush();
 		this.clearFrameQueue();
 		this.startToQueueFrames = false;
+	}
+
+	close() {
+		if (!this.decoder) return;
+		this.decoder.close();
 	}
 
 	private onOutput = (frame: VideoFrame) => {

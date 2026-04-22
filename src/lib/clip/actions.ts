@@ -9,8 +9,10 @@ import {
 import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
-import { getClipFitScaleFactor } from './utils';
+import { getClipFitTransform } from './utils';
 import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
+import type { KeyframeTrack, Keyframe } from '$lib/types';
+import { removeKeyframe } from './keyframes';
 
 export const createClip = (
 	sourceId: string,
@@ -66,9 +68,9 @@ export const createClip = (
 	const clip = new Clip(source, track, start, duration, sourceOffset);
 
 	if (source.type === 'video' || source.type === 'image' || source.type === 'test') {
-		const scaleFactor = getClipFitScaleFactor(clip);
-		clip.params[0] = scaleFactor;
-		clip.params[1] = scaleFactor;
+		const { scale } = getClipFitTransform(clip);
+		clip.params[0] = scale;
+		clip.params[1] = scale;
 	}
 
 	timelineState.clips.push(clip);
@@ -328,6 +330,30 @@ export const resizeSelctedClip = () => {
 			clip.sourceOffset = 0;
 			//clip.invalid = true;
 		}
+
+		// keyframes
+		const offset = clip.start - clip.savedStart;
+		for (const [param, track] of clip.keyframeTracks) {
+			const keyframes = track.keyframes;
+			for (let i = keyframes.length - 1; i >= 0; i--) {
+				const keyframe = keyframes[i];
+				keyframe.frame = keyframe.savedFrame - offset;
+				if (keyframe.frame < 0) {
+					historyManager.pushAction({
+						action: 'deleteKeyframe',
+						data: {
+							clipId: clip.id,
+							frame: keyframe.savedFrame,
+							param: param,
+							value: keyframe.value,
+							easeIn: keyframe.easeIn,
+							easeOut: keyframe.easeOut
+						}
+					});
+					removeKeyframe(clip, keyframe.frame, param);
+				}
+			}
+		}
 	} else if (clip.resizeHover === 'end') {
 		clip.duration = clip.savedDuration + frameOffset;
 
@@ -357,6 +383,28 @@ export const resizeSelctedClip = () => {
 			if (clip.duration > maxLength) {
 				clip.duration = maxLength;
 				//clip.invalid = true;
+			}
+		}
+
+		// keyframes
+		for (const [param, track] of clip.keyframeTracks) {
+			const keyframes = track.keyframes;
+			for (let i = keyframes.length - 1; i >= 0; i--) {
+				const keyframe = keyframes[i];
+				if (keyframes[i].frame > clip.duration) {
+					historyManager.pushAction({
+						action: 'deleteKeyframe',
+						data: {
+							clipId: clip.id,
+							frame: keyframe.savedFrame,
+							param: param,
+							value: keyframe.value,
+							easeIn: keyframe.easeIn,
+							easeOut: keyframe.easeOut
+						}
+					});
+					removeKeyframe(clip, keyframe.frame, param);
+				}
 			}
 		}
 	}
@@ -472,6 +520,38 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 	);
 	newClip.params = [...clip.params];
 	newClip.text = clip.text;
+
+	// move keyframes over
+	const moveAmount = frame - clip.start + gapSize;
+	for (const [param, track] of clip.keyframeTracks) {
+		const newTrack: KeyframeTrack = {
+			keyframes: []
+		};
+
+		const framesToMove: Keyframe[] = [];
+		for (let i = track.keyframes.length - 1; i >= 0; i--) {
+			if (track.keyframes[i].frame > clip.duration) {
+				historyManager.pushAction({
+					action: 'deleteKeyframe',
+					data: {
+						clipId: clip.id,
+						frame: track.keyframes[i].frame,
+						param: param,
+						value: track.keyframes[i].value,
+						easeIn: track.keyframes[i].easeIn,
+						easeOut: track.keyframes[i].easeOut
+					}
+				});
+				const keyframe = removeKeyframe(clip, track.keyframes[i].frame, param);
+				keyframe.frame = keyframe.frame - moveAmount;
+				framesToMove.push(keyframe);
+			}
+		}
+		newTrack.keyframes = framesToMove.reverse();
+		newClip.keyframeTracks.set(param, newTrack);
+		newClip.keyframeTracksActive.push(param);
+	}
+
 	timelineState.clips.push(newClip);
 	workerManager.sendClip([clip, newClip]);
 	projectManager.createClip(newClip);

@@ -11,7 +11,7 @@ export class DecoderPool {
 		let decoder;
 		if (this.decoders.size < this.maxDecoders) {
 			// No idle decoder, create a new one
-			decoder = new VDecoder();
+			decoder = new VDecoder(this.decoderError);
 			this.decoderCount++;
 			decoder.id = this.decoderCount;
 			if (DEBUG) console.log(`[Pool] Created new decoder`);
@@ -63,5 +63,15 @@ export class DecoderPool {
 				decoder.pause();
 			}
 		}
+	}
+
+	decoderError() {
+		console.log(
+			`Decoder error. Closing and removing all decoders. Remaining: ${this.decoders.size}`
+		);
+		for (const [, decoder] of this.decoders) {
+			decoder.close();
+		}
+		this.decoders.clear();
 	}
 }

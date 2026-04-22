@@ -339,6 +339,32 @@ export const renderAudioForExport = async (startFrame: number, endFrame: number)
 		source.buffer = audioBuffer;
 		source.connect(panNode);
 
+		const gainTrack = clip.keyframeTracks.get(4);
+		if (gainTrack) {
+			const keyframes = gainTrack.keyframes;
+			gainNode.gain.setValueAtTime(keyframes[0].value, 0);
+			for (let i = 1; i < gainTrack.keyframes.length; i++) {
+				if (keyframes[i - 1].easeOut === 0) {
+					gainNode.gain.setValueAtTime(keyframes[i].value, keyframes[i].frame / 30);
+				} else {
+					gainNode.gain.linearRampToValueAtTime(keyframes[i].value, keyframes[i].frame / 30);
+				}
+			}
+		}
+
+		const panTrack = clip.keyframeTracks.get(5);
+		if (panTrack) {
+			const keyframes = panTrack.keyframes;
+			panNode.pan.setValueAtTime(keyframes[0].value, 0);
+			for (let i = 1; i < panTrack.keyframes.length; i++) {
+				if (keyframes[i - 1].easeOut === 0) {
+					panNode.pan.setValueAtTime(keyframes[i].value, keyframes[i].frame / 30);
+				} else {
+					panNode.pan.linearRampToValueAtTime(keyframes[i].value, keyframes[i].frame / 30);
+				}
+			}
+		}
+
 		source.start(scheduleStartSeconds);
 	}
 

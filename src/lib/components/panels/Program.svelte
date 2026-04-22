@@ -13,17 +13,20 @@
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
 	import { showClipPropertiesSection } from '$lib/properties/actions';
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
-	import { pause } from '$lib/timeline/actions';
+	import { focusTrack, pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
 	import { startApp } from '$lib/app/actions';
 	import { deselectAllClips } from '$lib/clip/actions';
+	import { roundTo } from '$lib/clip/utils';
+	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
 
 	let canvas = $state<HTMLCanvasElement>();
 	let canvasContainer = $state<HTMLDivElement>();
 	let containerHeight = $state(0);
 	let containerWidth = $state(0);
+	let cropping = $state(false);
+	let dragging = $state(false);
 
-	let dragging = false;
 	let draggedOffset = { x: 0, y: 0 };
 	let mouseDownPosition = { x: 0, y: 0 };
 	let savedClipPosition = { x: 0, y: 0 };
@@ -35,7 +38,7 @@
 	});
 
 	const mouseDown = (e: MouseEvent) => {
-		if (appState.selectedSource) return;
+		if (appState.selectedSource || cropping) return;
 		appState.mouseMoveOwner = 'program';
 		appState.mouseIsDown = true;
 		pause();
@@ -53,8 +56,12 @@
 			programState.selectedClip = clip;
 			showClipPropertiesSection(clip);
 			dragging = true;
+			draggedOffset = { x: 0, y: 0 };
 			savedClipPosition = { x: clip.params[2], y: clip.params[3] };
 			mouseDownPosition = { x: e.clientX, y: e.clientY };
+			if (timelineState.focusedTrack > 0) {
+				focusTrack(clip.track);
+			}
 		}
 		timelineState.invalidate = true;
 	};
@@ -67,29 +74,43 @@
 		draggedOffset.y = e.clientY - mouseDownPosition.y;
 		const newX =
 			savedClipPosition.x + (draggedOffset.x / (scale / 100) / programState.canvasWidth) * 2;
-		programState.selectedClip.params[2] = Math.round(newX * 100) / 100;
+		programState.selectedClip.params[2] = roundTo(newX, 3);
 		const newY =
 			savedClipPosition.y - (draggedOffset.y / (scale / 100) / programState.canvasHeight) * 2;
-		programState.selectedClip.params[3] = Math.round(newY * 100) / 100;
+		programState.selectedClip.params[3] = roundTo(newY, 3);
 
-		if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+		if (timelineState.selectedClip) {
+			workerManager.sendClip(timelineState.selectedClip);
+			if (timelineState.selectedClip.keyframeTracks.get(2)) {
+				createOrUpdateKeyframe([2, 3]);
+			}
+		}
 	};
 
 	const mouseUp = async () => {
 		appState.mouseMoveOwner = 'timeline';
+		appState.mouseIsDown = false;
 		if (dragging) {
 			dragging = false;
+			if (draggedOffset.x === 0 && draggedOffset.y === 0) return;
 			const clip = timelineState.selectedClip;
 			if (!clip) return;
-			historyManager.newCommand({
-				action: 'clipParam',
-				data: {
-					clipId: clip.id,
-					paramIndex: [2, 3],
-					oldValue: [savedClipPosition.x, savedClipPosition.y],
-					newValue: [clip.params[2], clip.params[3]]
-				}
-			});
+			if (clip.keyframeTracks.get(2)) {
+				finaliseKeyframe();
+			} else {
+				// no keyframe
+				historyManager.pushAction({
+					action: 'clipParam',
+					data: {
+						clipId: clip.id,
+						paramIndex: [2, 3],
+						oldValue: [savedClipPosition.x, savedClipPosition.y],
+						newValue: [clip.params[2], clip.params[3]]
+					}
+				});
+			}
+
+			historyManager.finishCommand();
 			projectManager.updateClip(clip);
 		}
 	};
@@ -130,7 +151,13 @@
 		></canvas>
 
 		{#if programState.selectedClip}
-			<ClipBox clip={programState.selectedClip} {canvasContainer} {scale} />
+			<ClipBox
+				clip={programState.selectedClip}
+				{canvasContainer}
+				{scale}
+				bind:cropping
+				{dragging}
+			/>
 		{/if}
 		{#if appState.selectedSource}
 			{@const sourceType = appState.selectedSource.type}

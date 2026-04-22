@@ -19,6 +19,7 @@ class AppState {
 	selectedSourceFolder = $state(0);
 	sourceFolders: { id: number }[] = $state([]);
 	propertiesSection = $state<PropertiesSection>('project');
+	propertiesSavedSection = $state<PropertiesSection>('project');
 	progress = $state({ started: false, message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 
@@ -56,7 +57,8 @@ class AppState {
 	fonts: Font[] = [];
 	disableKeyboardShortcuts = false;
 	exportSuccessCallback: (success: boolean) => void = () => {};
-	mouseMoveOwner: 'timeline' | 'program' = 'timeline';
+	mouseMoveOwner: 'timeline' | 'program' | 'properties' = 'timeline';
+	selectedKeyframeParam = -1;
 }
 
 class TimelineState {

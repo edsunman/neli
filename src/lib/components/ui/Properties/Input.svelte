@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
+	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
+	import { getKeyframeContext } from '$lib/context/context';
+	import {
+		appState,
+		historyManager,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 
 	type Props = {
 		value: number | string;
@@ -7,14 +15,18 @@
 		type?: 'text' | 'number';
 		fullWidth?: boolean;
 		onBlur?: () => void;
+		step?: string;
 	};
 	let {
 		value = $bindable(),
 		fallback = 0,
 		type = 'number',
 		fullWidth = false,
-		onBlur = () => {}
+		onBlur = () => {},
+		step = '.01'
 	}: Props = $props();
+
+	const keyframeContext = getKeyframeContext();
 </script>
 
 <div
@@ -32,28 +44,42 @@
 >
 	<input
 		{type}
+		{step}
 		class={[
-			'relative w-full text-right px-1 py-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
+			type === 'number' ? 'py-0.5' : 'py-1',
+			'relative w-full text-sm text-right height-xl:py-1 px-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
 			'[&::-webkit-inner-spin-button]:appearance-none'
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
+			if (keyframeContext.active() && keyframeContext.params) {
+				appState.selectedKeyframeParam = keyframeContext.params[0];
+			} else {
+				appState.selectedKeyframeParam = -1;
+			}
+			timelineState.invalidate = true;
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
+			onBlur();
+			if (!timelineState.selectedClip) return;
 			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
 				value = fallback;
-				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+				workerManager.sendClip(timelineState.selectedClip);
 			}
-			if (timelineState.selectedClip) {
-				projectManager.updateClip(timelineState.selectedClip);
+			projectManager.updateClip(timelineState.selectedClip);
+			if (keyframeContext.params && keyframeContext.active()) {
+				finaliseKeyframe();
+				historyManager.finishCommand();
 			}
-			onBlur();
 		}}
 		oninput={() => {
+			if (keyframeContext.params && keyframeContext.active()) {
+				createOrUpdateKeyframe(keyframeContext.params);
+			}
+
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}
-		step=".01"
 		bind:value
 	/>
 </div>

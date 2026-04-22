@@ -1,16 +1,35 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClip } from './clip/actions';
 //import { createSource } from './source/actions';
-import { appState, projectManager } from './state.svelte';
+import { appState, projectManager /* timelineState, workerManager */ } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
+/* import type { KeyframeTrack } from './types'; */
 //import type { SourceType } from './types';
 
 export const setupTests = () => {
 	if (!window) return;
 
 	// @ts-expect-error append function to window
-	window.tests = { lotsOfClips, unlinkSources, auditDatabase };
+	window.tests = {
+		lotsOfClips,
+		unlinkSources,
+		auditDatabase /*  pushProject, login, pullProject  */
+	};
 };
+
+/* const addKeyframes = () => {
+	const clip = timelineState.clips[0];
+	if (!clip) return;
+
+	const newKeyframeTrack: KeyframeTrack = {
+		frames: [0, 60],
+		values: [0,1000]
+	}
+
+	clip.useKeyframes = [17];
+	clip.keyframeTracks.set(17, newKeyframeTrack);
+	workerManager.sendClip(clip);
+} */
 
 const lotsOfClips = () => {
 	extendTimeline(7500);

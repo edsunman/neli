@@ -25,7 +25,9 @@
 		zoomToFit,
 		centerViewOnPlayhead,
 		checkViewBounds,
-		updateGrabbedPosition
+		updateGrabbedPosition,
+		goToNextKeyframe,
+		goToPreviousKeyframe
 	} from '$lib/timeline/actions';
 	import {
 		removeHoverAllClips,
@@ -43,6 +45,12 @@
 		deleteClips,
 		deselectAllClips
 	} from '$lib/clip/actions';
+	import {
+		getKeyframeAtMousePosition,
+		deleteKeyframe,
+		updateKeyframeEasing,
+		toggleSelectedParam
+	} from '$lib/clip/keyframes';
 	import { drawCanvas, drawWaveforms } from '$lib/timeline/canvas';
 	import {
 		calculateMaxZoomLevel,
@@ -56,7 +64,13 @@
 
 	import Controls from './Controls.svelte';
 	import ContextMenu from '../ui/ContextMenu.svelte';
-	import { scissorsIcon, zoomInIcon } from '../icons/Icons.svelte';
+	import {
+		deleteIcon,
+		easeInIcon,
+		easeOutIcon,
+		scissorsIcon,
+		zoomInIcon
+	} from '../icons/Icons.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -65,6 +79,7 @@
 	let waveCanvas: OffscreenCanvas;
 	let waveContext: OffscreenCanvasRenderingContext2D | null;
 	let canvasContainer = $state<HTMLDivElement>();
+	let mouseIsDown = false;
 	let scrubbing = false;
 	let dragging = false;
 	let resizing = false;
@@ -77,6 +92,7 @@
 	let mainScrollDirection: 'x' | 'y' = 'y';
 	let invalidateScrub = false;
 	let latestScrubPosition = 0;
+	let clickedKeyframe = -1;
 
 	let cursorStyle = $derived.by(() => {
 		if (timelineState.selectedTool === 'hand') {
@@ -87,6 +103,7 @@
 	});
 
 	const mouseMove = (e: MouseEvent) => {
+		// TODO: throttle this function?
 		if (appState.mouseMoveOwner !== 'timeline') return;
 		if (!canvas || !canvasContainer) return;
 		let cursor = 'default';
@@ -140,6 +157,7 @@
 			if (offsetY > timelineState.height * 0.2) {
 				if (!inDropZone) mouseEnteredDropZone(e);
 				inDropZone = true;
+				mouseIsDown = true;
 			} else {
 				mouseLeftDropZone();
 				inDropZone = false;
@@ -172,15 +190,16 @@
 
 	const mouseDown = (e: MouseEvent) => {
 		if (appState.disableKeyboardShortcuts) return;
-
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
+		mouseIsDown = true;
 		appState.mouseMoveOwner = 'timeline';
 		appState.mouseIsDown = true;
 		programState.selectedClip = null;
 		timelineState.mouseDownPosition.x = e.offsetX;
 		timelineState.mouseDownPosition.y = e.offsetY;
 		timelineState.trackDropZone = -1;
+		clickedKeyframe = -1;
 		if (e.button > 0) {
 			timelineState.selectedClips.clear();
 			return;
@@ -251,6 +270,11 @@
 			clip.savedDuration = clip.duration;
 			clip.savedSourceOffset = clip.sourceOffset;
 			clip.savedTrack = clip.track;
+			for (const [, keyframeTrack] of clip.keyframeTracks) {
+				for (const keyframe of keyframeTrack.keyframes) {
+					keyframe.savedFrame = keyframe.frame;
+				}
+			}
 			setTrackLocks();
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
@@ -270,6 +294,9 @@
 	};
 
 	const mouseUp = () => {
+		if (!mouseIsDown) return;
+
+		mouseIsDown = false;
 		appState.mouseIsDown = false;
 		const clip = timelineState.selectedClip;
 		if (scrubbing) scrubbing = false;
@@ -324,6 +351,7 @@
 		if (scrolling) {
 			scrolling = false;
 		}
+
 		timelineState.action = 'none';
 		timelineState.invalidate = true;
 		historyManager.finishCommand();
@@ -451,6 +479,25 @@
 			const hoveredFrame = canvasPixelToFrame(e.offsetX);
 			const clip = setHoverOnHoveredClip(hoveredFrame, e.offsetY);
 			if (!clip) return;
+			clickedKeyframe = -1;
+			if (
+				clip &&
+				clip.keyframeTracksActive.length > 0 &&
+				timelineState.focusedTrack === clip.track &&
+				timelineState.selectedClip &&
+				appState.selectedKeyframeParam > -1 &&
+				canvasContainer
+			) {
+				// check for keyframe hitbox
+				const offsetY = e.clientY - canvasContainer.offsetTop;
+				const { keyframe, index } = getKeyframeAtMousePosition(e.offsetX, offsetY, clip);
+				if (keyframe) {
+					clickedKeyframe = index;
+					if (e.button === 0 && timelineState.selectedClip) {
+						setCurrentFrame(keyframe.frame + timelineState.selectedClip.start);
+					}
+				}
+			}
 
 			clickedFrame = hoveredFrame;
 			timelineState.selectedClip = clip;
@@ -468,6 +515,52 @@
 	bind:this={contextMenu}
 	buttons={[
 		{
+			text: 'ease in',
+			onClick: () => {},
+			icon: easeInIcon,
+			hideCondition: () => clickedKeyframe < 0,
+			children: [
+				{
+					text: 'linear',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 1, 'in')
+				},
+				{
+					text: 'ease',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 2, 'in')
+				}
+			]
+		},
+		{
+			text: 'ease out',
+			onClick: () => {},
+			icon: easeOutIcon,
+			hideCondition: () => clickedKeyframe < 0,
+			children: [
+				{
+					text: 'step',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 0, 'out')
+				},
+				{
+					text: 'linear',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 1, 'out')
+				},
+				{
+					text: 'ease',
+					onClick: () => updateKeyframeEasing(clickedKeyframe, 2, 'out')
+				}
+			]
+		},
+		{
+			text: 'delete keyframe',
+			onClick: () => {
+				deleteKeyframe(clickedKeyframe);
+				historyManager.finishCommand();
+				timelineState.invalidate = true;
+			},
+			icon: deleteIcon,
+			hideCondition: () => clickedKeyframe < 0
+		},
+		{
 			text: 'cut clip',
 			onClick: () => {
 				if (timelineState.selectedClip) {
@@ -477,13 +570,14 @@
 				}
 			},
 			icon: scissorsIcon,
-			shortcuts: []
+			hideCondition: () => clickedKeyframe > -1
 		},
 		{
 			text: 'focus clip',
 			onClick: () => focusClip(),
 			icon: zoomInIcon,
-			shortcuts: ['shift', 'F']
+			shortcuts: ['shift', 'F'],
+			hideCondition: () => clickedKeyframe > -1
 		}
 	]}
 />
@@ -515,12 +609,20 @@
 			case 'ArrowLeft':
 				if (appState.selectedSource) break;
 				if (timelineState.playing) pause();
-				setCurrentFrame(timelineState.currentFrame - 1);
+				if (event.shiftKey) {
+					goToPreviousKeyframe();
+				} else {
+					setCurrentFrame(timelineState.currentFrame - 1);
+				}
 				break;
 			case 'ArrowRight':
 				if (appState.selectedSource) break;
 				if (timelineState.playing) pause();
-				setCurrentFrame(timelineState.currentFrame + 1);
+				if (event.shiftKey) {
+					goToNextKeyframe();
+				} else {
+					setCurrentFrame(timelineState.currentFrame + 1);
+				}
 				break;
 			case 'Minus':
 				if (event.ctrlKey) break;
@@ -575,6 +677,12 @@
 					}
 				} else {
 					focusTrack(0);
+				}
+				break;
+			}
+			case 'KeyK': {
+				if (timelineState.selectedClip) {
+					toggleSelectedParam();
 				}
 			}
 		}

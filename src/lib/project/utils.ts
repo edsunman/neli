@@ -1,8 +1,8 @@
 export const getNextProjectName = (existingNames: string[]) => {
-	const baseName = 'untitled';
+	const baseName = 'my-project';
 	if (!existingNames.includes(baseName)) return baseName;
 
-	const regex = /^untitled \((\d+)\)$/;
+	const regex = /^my-project \((\d+)\)$/;
 
 	let maxNumber = 0;
 	existingNames.forEach((name) => {

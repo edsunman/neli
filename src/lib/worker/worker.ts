@@ -130,7 +130,12 @@ self.addEventListener('message', async function (event) {
 			if (event.data.image) {
 				if (seeking) break;
 				seeking = true;
-				const params = [1, 1, 0, 0];
+				const params = new Array(22).fill(0);
+				params[0] = 1;
+				params[1] = 1;
+				params[18] = 1;
+				params[20] = 1;
+				params[21] = 1;
 				renderer.resizeCanvas(event.data.imageWidth, event.data.imageHeight);
 				renderer.startPaint();
 				renderer.imagePass(
@@ -320,7 +325,12 @@ const drawSourceFrame = async (frameNumber: number, run = false, source: WorkerV
 
 	if (!frame) return;
 
-	const params = [1, 1, 0, 0];
+	const params = new Array(22).fill(0);
+	params[0] = 1;
+	params[1] = 1;
+	params[18] = 1;
+	params[20] = 1;
+	params[21] = 1;
 	renderer.startPaint();
 	renderer.videoPass(1, frame, params, source.height, source.width);
 	await renderer.endPaint(encoding);
@@ -394,6 +404,7 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 	renderer.startPaint();
 
 	for (const clip of activeClips) {
+		calculateKeyframes(clip, frameNumber);
 		if (clip.type === 'video') {
 			const frame = videoFrames.get(clip.id);
 			if (!frame) continue;
@@ -419,6 +430,57 @@ const buildAndDrawFrame = async (frameNumber: number, run = false) => {
 
 	await renderer.endPaint(encoding);
 	return true;
+};
+
+const calculateKeyframes = (clip: WorkerClip, frameNumber: number) => {
+	const clipFrame = frameNumber - clip.start;
+	for (const [param, track] of clip.keyframeTracks) {
+		const keyframes = track.keyframes;
+		if (!keyframes || keyframes.length === 0) continue;
+
+		const count = keyframes.length;
+		if (clipFrame <= keyframes[0].frame) {
+			clip.params[param] = keyframes[0].value;
+			continue;
+		}
+		if (clipFrame >= keyframes[count - 1].frame) {
+			clip.params[param] = keyframes[count - 1].value;
+			continue;
+		}
+
+		let i = 1;
+		for (; i < count; i++) {
+			if (keyframes[i].frame > clipFrame) break;
+		}
+
+		const k0 = keyframes[i - 1];
+		const k1 = keyframes[i];
+		if (k0.easeOut === 0) {
+			clip.params[param] = k0.value;
+			continue;
+		}
+
+		const t = (clipFrame - k0.frame) / (k1.frame - k0.frame);
+		let alpha;
+		const outEase = k0.easeOut === 2;
+		const inEase = k1.easeIn === 2;
+
+		if (!outEase && !inEase) {
+			alpha = t;
+		} else {
+			const intensity = 3.5;
+			if (outEase && inEase) {
+				const tn = Math.pow(t, intensity);
+				alpha = tn / (tn + Math.pow(1 - t, intensity));
+			} else if (outEase) {
+				alpha = Math.pow(t, intensity);
+			} else if (inEase) {
+				alpha = 1 - Math.pow(1 - t, intensity);
+			}
+		}
+
+		clip.params[param] = k0.value + (k1.value - k0.value) * (alpha || 0);
+	}
 };
 
 // Gets decoder from pool and assignes to clip
@@ -500,9 +562,6 @@ const encodeAudio = (audioBuffer: Float32Array, durationInFrames: number) => {
 	const individualPlanarChannels = Array.from({ length: numberOfChannels }, (_, c) => {
 		const startOffset = c * totalInputFrames;
 		const startByteOffest = startOffset * Float32Array.BYTES_PER_ELEMENT;
-		console.log(
-			`trying with startOffset: ${startOffset}, byteOffset:${startByteOffest}, input frames: ${totalInputFrames}`
-		);
 		return new Float32Array(audioBuffer.buffer, startByteOffest, totalInputFrames);
 	});
 

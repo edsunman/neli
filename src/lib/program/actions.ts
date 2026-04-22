@@ -1,5 +1,6 @@
 import { pauseAudio, runSourceAudio } from '$lib/audio/actions';
 import type { Clip } from '$lib/clip/clip.svelte';
+import { createOrUpdateKeyframe } from '$lib/clip/keyframes';
 import type { Source } from '$lib/source/source.svelte';
 import {
 	appState,
@@ -195,21 +196,43 @@ export const transformClip = (
 	positionX: number,
 	positionY: number
 ) => {
-	historyManager.newCommand({
-		action: 'clipParam',
-		data: {
-			clipId: clip.id,
-			paramIndex: [0, 1, 2, 3],
-			oldValue: [clip.params[0], clip.params[1], clip.params[2], clip.params[3]],
-			newValue: [scaleX, scaleY, positionX, positionY]
-		}
-	});
-	clip.params[0] = scaleX;
-	clip.params[1] = scaleY;
-	clip.params[2] = positionX;
-	clip.params[3] = positionY;
-	if (timelineState.selectedClip) {
-		workerManager.sendClip(timelineState.selectedClip);
-		projectManager.updateClip(clip);
+	if (clip.keyframeTracks.get(0)) {
+		clip.params[0] = scaleX;
+		clip.params[1] = scaleY;
+		createOrUpdateKeyframe([0, 1]);
+	} else {
+		historyManager.pushAction({
+			action: 'clipParam',
+			data: {
+				clipId: clip.id,
+				paramIndex: [0, 1],
+				oldValue: [clip.params[0], clip.params[1]],
+				newValue: [scaleX, scaleY]
+			}
+		});
+		clip.params[0] = scaleX;
+		clip.params[1] = scaleY;
 	}
+
+	if (clip.keyframeTracks.get(0)) {
+		clip.params[2] = positionX;
+		clip.params[3] = positionY;
+		createOrUpdateKeyframe([2, 3]);
+	} else {
+		historyManager.pushAction({
+			action: 'clipParam',
+			data: {
+				clipId: clip.id,
+				paramIndex: [2, 3],
+				oldValue: [clip.params[2], clip.params[3]],
+				newValue: [positionX, positionY]
+			}
+		});
+		clip.params[2] = positionX;
+		clip.params[3] = positionY;
+	}
+
+	historyManager.finishCommand();
+	workerManager.sendClip(clip);
+	projectManager.updateClip(clip);
 };

@@ -24,7 +24,15 @@ export type PaletteState = {
 	lock: boolean;
 };
 
-export type PropertiesSection = 'outputAudio' | 'project' | 'layout' | 'audio' | 'text' | 'source';
+export type PropertiesSection =
+	| 'outputAudio'
+	| 'project'
+	| 'layout'
+	| 'audio'
+	| 'text'
+	| 'source'
+	| 'crop'
+	| 'colour';
 
 export type TrackType = 'graphics' | 'video' | 'audio' | 'none';
 export type Track = {
@@ -34,6 +42,21 @@ export type Track = {
 	lockBottom: boolean;
 	lockTop: boolean;
 	type: TrackType;
+};
+
+export type Keyframe = {
+	frame: number;
+	savedFrame: number;
+	value: number;
+	savedValue: number;
+	easeIn: number;
+	savedEaseIn: number;
+	easeOut: number;
+	savedEaseOut: number;
+};
+
+export type KeyframeTrack = {
+	keyframes: Keyframe[];
 };
 
 export type SrtEntry = {
@@ -127,6 +150,42 @@ export type Command =
 			action: 'clipParam';
 			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
 	  }
+	| {
+			action: 'addKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				value: number;
+				easeIn: number;
+				easeOut: number;
+			};
+	  }
+	| {
+			action: 'deleteKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				value: number;
+				easeIn: number;
+				easeOut: number;
+			};
+	  }
+	| {
+			action: 'updateKeyframe';
+			data: {
+				clipId: string;
+				param: number;
+				frame: number;
+				oldValue: number;
+				oldEaseIn: number;
+				oldEaseOut: number;
+				newValue: number;
+				newEaseIn: number;
+				newEaseOut: number;
+			};
+	  }
 	| { action: 'deleteSource'; data: { sourceId: string } };
 
 export type WorkerClip = {
@@ -142,6 +201,8 @@ export type WorkerClip = {
 	text: string;
 	deleted: boolean;
 	type: SourceType;
+	keyframeTracksActive: number[];
+	keyframeTracks: Map<number, KeyframeTrack>;
 };
 
 export type WorkerVideoSource = {

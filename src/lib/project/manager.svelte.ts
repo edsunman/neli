@@ -1,7 +1,7 @@
 import type { Clip } from '$lib/clip/clip.svelte';
 import type { Source } from '$lib/source/source.svelte';
 import { appState } from '$lib/state.svelte';
-import type { FileInfo, SourceType, Track } from '$lib/types';
+import type { FileInfo, KeyframeTrack, SourceType, TrackType, Keyframe } from '$lib/types';
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
 
 type ProjectTable = {
@@ -10,7 +10,7 @@ type ProjectTable = {
 	height: number;
 	width: number;
 	aspect: number;
-	tracks: Track[];
+	tracks: TrackType[];
 	duration: number;
 	createdAt: number;
 	lastModified: number;
@@ -38,6 +38,8 @@ type ClipTable = {
 	duration: number;
 	sourceOffset: number;
 	params: number[];
+	text: string;
+	keyframeTracks: { [param: number]: KeyframeTrack };
 	createdAt: number;
 	lastModified: number;
 };
@@ -67,7 +69,7 @@ interface VideoEditorDB extends DBSchema {
 export class ProjectManager {
 	private dbName = 'VideoEditorDB';
 	// Increment when schema changes
-	private dbVersion = 1;
+	private dbVersion = 2;
 	private db: IDBPDatabase<VideoEditorDB> | null = null;
 
 	async init() {
@@ -84,8 +86,6 @@ export class ProjectManager {
 				clipStore.createIndex('by-project', 'projectId');
 				const sourceStore = db.createObjectStore('sources', { keyPath: 'id' });
 				sourceStore.createIndex('by-project', 'projectId');
-				//const thumbnailStore = db.createObjectStore('thumbnails');
-				//thumbnailStore.createIndex('by-project', 'projectId');
 				const store = db.createObjectStore('thumbnails', { keyPath: 'id', autoIncrement: true });
 				store.createIndex('by-parentId', 'parentId');
 			}
@@ -265,7 +265,9 @@ export class ProjectManager {
 			sourceOffset: clip.sourceOffset,
 			duration: clip.duration,
 			track: clip.track,
+			text: clip.text,
 			params: $state.snapshot(clip.params),
+			keyframeTracks: Object.fromEntries(clip.keyframeTracks),
 			deleted: false,
 			createdAt: Date.now(),
 			lastModified: Date.now()
@@ -304,6 +306,8 @@ export class ProjectManager {
 					sourceOffset: clip.sourceOffset,
 					duration: clip.duration,
 					params: $state.snapshot(clip.params),
+					text: clip.text,
+					keyframeTracks: Object.fromEntries(clip.keyframeTracks),
 					deleted: clip.deleted,
 					lastModified: Date.now()
 				};
@@ -378,5 +382,75 @@ export class ProjectManager {
 		]);
 
 		return { projects, clips, sources, thumbnails };
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	async addRemoteProject(remoteProject: any) {
+		if (!this.db) return null;
+		const newProject: ProjectTable = {
+			id: remoteProject.id,
+			name: remoteProject.name,
+			tracks: remoteProject.tracks,
+			height: remoteProject.height,
+			width: remoteProject.width,
+			aspect: remoteProject.aspect,
+			duration: remoteProject.duration,
+			createdAt: remoteProject.createdAt,
+			lastModified: remoteProject.lastModified
+		};
+		await this.db.add('projects', newProject as ProjectTable);
+		for (const source of remoteProject.sources) {
+			const newSource: SourceTable = {
+				id: source.id,
+				projectId: remoteProject.id,
+				name: source.name,
+				type: source.type,
+				info: source.info,
+				handle: null,
+				deleted: false,
+				createdAt: source.createdAt,
+				lastModified: source.lastModified
+			};
+			await this.db.add('sources', newSource as SourceTable);
+			for (const clip of source.clips) {
+				const keyframeTracks = new Map<number, KeyframeTrack>();
+				if (clip.keyframes.length > 0) {
+					for (const keyframe of clip.keyframes) {
+						const newKeyframe: Keyframe = {
+							frame: keyframe.frame,
+							savedFrame: keyframe.frame,
+							value: keyframe.value,
+							savedValue: keyframe.value,
+							easeIn: keyframe.easeIn,
+							savedEaseIn: keyframe.easeIn,
+							easeOut: keyframe.easeOut,
+							savedEaseOut: keyframe.easeOut
+						};
+						const track = keyframeTracks.get(keyframe.param);
+						if (!track) {
+							keyframeTracks.set(keyframe.param, { keyframes: [newKeyframe] });
+						} else {
+							track.keyframes.push(newKeyframe);
+						}
+					}
+				}
+				const newClip: ClipTable = {
+					id: clip.id,
+					projectId: remoteProject.id,
+					sourceId: source.id,
+					start: clip.start,
+					sourceOffset: clip.sourceOffset,
+					duration: clip.duration,
+					track: clip.track,
+					text: clip.text,
+					keyframeTracks: Object.fromEntries(keyframeTracks),
+					params: clip.params,
+					deleted: false,
+					createdAt: clip.createdAt,
+					lastModified: clip.lastModified
+				};
+				await this.db.add('clips', newClip as ClipTable);
+			}
+		}
 	}
 }

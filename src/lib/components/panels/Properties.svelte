@@ -13,7 +13,9 @@
 		aspectLandscape,
 		aspectSquare,
 		aspectPortrait,
-		imageIcon
+		imageIcon,
+		opacityIcon,
+		cropIcon
 	} from '../icons/Icons.svelte';
 	import { changeProjectResolution } from '$lib/project/actions';
 	import { secondsToTimecode } from '$lib/timeline/utils';
@@ -27,7 +29,7 @@
 </script>
 
 <div
-	class="flex mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 text-right relative"
+	class="flex justify-end mt-5 height-lg:mt-12 mr-16 xl:mr-[calc(100svw/20)] rounded text-zinc-500 relative"
 >
 	<div class="absolute -right-13 z-10">
 		<BitsTooltip.Provider delayDuration={500}>
@@ -57,6 +59,10 @@
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
 					{/if}
+					{#if source.type === 'video' || source.type === 'image'}
+						{@render sideButton('crop', 'crop settings', cropIcon)}
+						{@render sideButton('colour', 'colour settings', opacityIcon)}
+					{/if}
 					{#if source.type === 'audio' || source.type === 'video' || source.type === 'test'}
 						{@render sideButton('audio', 'audio settings', audioIcon)}
 					{/if}
@@ -65,7 +71,7 @@
 		</BitsTooltip.Provider>
 	</div>
 
-	<div class="flex-1 flex flex-col gap-5 height-xl:gap-7 mt-2 mr-3">
+	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-40 justify-end">
 		{#if appState.propertiesSection === 'project'}
 			<Properties.Group label="project name">
 				<Properties.Input
@@ -123,7 +129,15 @@
 		{#if appState.propertiesSection === 'source' && appState.selectedSource}
 			{@const source = appState.selectedSource}
 			<Properties.Group label="name">
-				<Properties.Input bind:value={source.name} type="text" fullWidth fallback="_" />
+				<Properties.Input
+					bind:value={source.name}
+					type="text"
+					fullWidth
+					fallback="_"
+					onBlur={() => {
+						projectManager.updateSource(source.id, { name: source.name });
+					}}
+				/>
 			</Properties.Group>
 			{#if source.info.type === 'video'}
 				<Properties.Group label="duration">
@@ -164,23 +178,38 @@
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			{#if clip.source.type !== 'text'}
-				<Properties.Group label="size">
-					<Properties.Input bind:value={clip.params[0]} fallback={1} />
-					<Properties.Input bind:value={clip.params[1]} fallback={1} />
+				<Properties.Group label="size" keyframeParams={[0, 1]}>
+					<Properties.Grid>
+						<Properties.Input bind:value={clip.params[0]} fallback={1} />
+						<Properties.Input bind:value={clip.params[1]} fallback={1} />
+					</Properties.Grid>
 				</Properties.Group>
 			{/if}
-			<Properties.Group label="position">
-				<Properties.Input bind:value={clip.params[2]} />
-				<Properties.Input bind:value={clip.params[3]} />
+			<Properties.Group label="position" keyframeParams={[2, 3]}>
+				<Properties.Grid>
+					<Properties.Input bind:value={clip.params[2]} />
+					<Properties.Input bind:value={clip.params[3]} />
+				</Properties.Grid>
 			</Properties.Group>
+			{#if clip.source.type !== 'test'}
+				<Properties.Group label="rotate" keyframeParams={[17]}>
+					<Properties.Input bind:value={clip.params[17]} step="1" />
+				</Properties.Group>
+			{/if}
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="text">
-				<Properties.Textarea bind:value={clip.text} />
+				<Properties.Textarea
+					bind:value={clip.text}
+					onBlur={() => {
+						if (clip) projectManager.updateClip(clip);
+					}}
+				/>
 			</Properties.Group>
-			<Properties.Group label="font size">
-				<Properties.Input bind:value={clip.params[6]} fallback={20} />
+			<Properties.Group label="font size" keyframeParams={[6]}>
+				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />
+				<Properties.Slider bind:value={clip.params[6]} min={1} max={75} step />
 			</Properties.Group>
 			<Properties.Group label="justify">
 				<Properties.Toggle
@@ -196,18 +225,55 @@
 				<Properties.Input bind:value={clip.params[7]} fallback={1} />
 			</Properties.Group>
 		{/if}
-		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
+		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label="gain">
-				<Properties.Input bind:value={clip.params[4]} fallback={1} />
+			<Properties.Group label="crop" className={['w-30']} keyframeParams={[12, 13, 14, 15]}>
+				<Properties.Grid>
+					<Properties.Input bind:value={clip.params[12]} />
+					<Properties.Input bind:value={clip.params[13]} />
+					<Properties.Input bind:value={clip.params[14]} />
+					<Properties.Input bind:value={clip.params[15]} />
+				</Properties.Grid>
 			</Properties.Group>
-			<Properties.Group label="pan">
-				<Properties.Input bind:value={clip.params[5]} fallback={0} />
+			<Properties.Group label="round corners">
+				<Properties.Input bind:value={clip.params[16]} step="1" />
 			</Properties.Group>
 		{/if}
+		{#if appState.propertiesSection === 'colour' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="opacity" keyframeParams={[18]}>
+				<Properties.Input bind:value={clip.params[18]} fallback={1} />
+				<Properties.Slider bind:value={clip.params[18]} />
+			</Properties.Group>
+			<Properties.Group label="exposure" keyframeParams={[19]}>
+				<Properties.Input bind:value={clip.params[19]} fallback={0} />
+				<Properties.Slider bind:value={clip.params[19]} max={2} min={-2} />
+			</Properties.Group>
+			<Properties.Group label="contrast" keyframeParams={[20]}>
+				<Properties.Input bind:value={clip.params[20]} fallback={1} />
+				<Properties.Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
+			</Properties.Group>
+			<Properties.Group label="saturation" keyframeParams={[21]}>
+				<Properties.Input bind:value={clip.params[21]} fallback={1} />
+				<Properties.Slider bind:value={clip.params[21]} max={2} min={0} />
+			</Properties.Group>
+		{/if}
+		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="gain" keyframeParams={[4]}>
+				<Properties.Input bind:value={clip.params[4]} fallback={1} />
+				<Properties.Slider bind:value={clip.params[4]} min={0} max={1.5} />
+			</Properties.Group>
+			<Properties.Group label="pan" keyframeParams={[5]}>
+				<Properties.Input bind:value={clip.params[5]} fallback={0} />
+				<Properties.Slider bind:value={clip.params[5]} min={-1} max={1} />
+			</Properties.Group>
+		{/if}
+
 		{#if appState.propertiesSection === 'outputAudio'}
-			<div class="flex h-full w-full justify-end pr-3">
+			<div class="flex h-full w-full justify-end">
 				<Slider
+					vertical
 					bind:value={audioState.masterGain}
 					onValueChange={(g: number) => {
 						audioState.masterGainNode.gain.value = g;
@@ -239,7 +305,12 @@
 {#snippet sideButton(section: PropertiesSection, description: string, icon: Snippet<[string]>)}
 	<Tooltip
 		contentProps={{ side: 'left' }}
-		triggerProps={{ onclick: () => (appState.propertiesSection = section) }}
+		triggerProps={{
+			onclick: () => {
+				appState.propertiesSection = section;
+				appState.propertiesSavedSection = section;
+			}
+		}}
 	>
 		{#snippet trigger()}
 			<div

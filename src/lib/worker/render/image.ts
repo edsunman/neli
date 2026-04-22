@@ -1,3 +1,4 @@
+import commonShader from '../shaders/common.wgsl?raw';
 import imageShader from '../shaders/image.wgsl?raw';
 
 export class ImageRenderer {
@@ -11,13 +12,13 @@ export class ImageRenderer {
 			layout: 'auto',
 			vertex: {
 				module: device.createShaderModule({
-					code: imageShader
+					code: `${commonShader}\n${imageShader}`
 				}),
 				entryPoint: 'vertexMain'
 			},
 			fragment: {
 				module: device.createShaderModule({
-					code: imageShader
+					code: `${commonShader}\n${imageShader}`
 				}),
 				entryPoint: 'fragmentMain',
 				targets: [

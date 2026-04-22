@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { appState, timelineState, workerManager } from '$lib/state.svelte';
+	import { onDestroy } from 'svelte';
 
 	type Props = {
-		value: any;
+		value: string;
 		fallback?: number | string;
+		onBlur?: () => void;
 	};
-	let { value = $bindable() }: Props = $props();
+	let { value = $bindable(), onBlur = () => {} }: Props = $props();
+
+	onDestroy(() => {
+		onBlur();
+	});
 </script>
 
 <div
@@ -31,9 +37,11 @@
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
+			onBlur();
+			if (!timelineState.selectedClip) return;
 			if (value === '') {
 				value = '_';
-				if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
+				workerManager.sendClip(timelineState.selectedClip);
 			}
 		}}
 		oninput={() => {

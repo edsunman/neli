@@ -8,9 +8,35 @@ export const showClipPropertiesSection = (clip: Clip) => {
 		return;
 	}
 	if (type === 'text') {
+		if (appState.propertiesSavedSection === 'layout') {
+			appState.propertiesSection = 'layout';
+			return;
+		}
 		appState.propertiesSection = 'text';
 		return;
 	}
-	//if ((type === 'video' || type === 'test') && previousSelected === 'audio') return 'audio';
+	if (type === 'video') {
+		if (
+			appState.propertiesSavedSection === 'colour' ||
+			appState.propertiesSavedSection === 'crop' ||
+			appState.propertiesSavedSection === 'audio'
+		) {
+			appState.propertiesSection = appState.propertiesSavedSection;
+			return;
+		}
+		appState.propertiesSection = 'layout';
+		return;
+	}
+	if (type === 'image') {
+		if (
+			appState.propertiesSavedSection === 'colour' ||
+			appState.propertiesSavedSection === 'crop'
+		) {
+			appState.propertiesSection = appState.propertiesSavedSection;
+			return;
+		}
+		appState.propertiesSection = 'layout';
+		return;
+	}
 	appState.propertiesSection = 'layout';
 };

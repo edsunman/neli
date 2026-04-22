@@ -8,13 +8,17 @@
 		backIcon,
 		backArrowIcon,
 		copyIcon,
+		cropIcon,
 		deleteIcon,
+		easeInIcon,
+		easeOutIcon,
 		exportIcon,
 		fileIcon,
 		fileNewIcon,
 		fileOpenIcon,
 		filmIcon,
 		folderIcon,
+		forwardArrowIcon,
 		forwardIcon,
 		handIcon,
 		helpIcon,
@@ -25,10 +29,12 @@
 		justifyLeftIcon,
 		justifyCenterIcon,
 		justifyRightIcon,
+		keyframeIcon,
 		linkIcon,
 		logoIcon,
 		mouseIcon,
 		moveIcon,
+		opacityIcon,
 		outPointIcon,
 		paletteIcon,
 		pauseIcon,
@@ -166,6 +172,20 @@
 	</svg>
 {/snippet}
 
+{#snippet cropIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M680-40v-160H280q-33 0-56.5-23.5T200-280v-400H40v-80h160v-160h80v640h640v80H760v160h-80Zm0-320v-320H360v-80h320q33 0 56.5 23.5T760-680v320h-80Z"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet copyIcon(className: string)}
 	<svg
 		class={className}
@@ -194,6 +214,54 @@
 		<path
 			d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"
 		/>
+	</svg>
+{/snippet}
+
+{#snippet easeInIcon(className: string)}
+	<svg
+		class={className}
+		version="1.1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path
+			class="cls-1"
+			d="M2.2,16.67c4.37,0,5.78-3.2,8.07-7.13,2.06-3.53,3.63-6.23,7.43-6.23"
+		/><line class="cls-1" x1="6.68" y1="3.3" x2="5.06" y2="3.3" /><circle
+			class="cls-1"
+			cx="3.08"
+			cy="3.3"
+			r="1.98"
+		/><line class="cls-1" x1="10.81" y1="3.3" x2="9.85" y2="3.3" />
+	</svg>
+{/snippet}
+
+{#snippet easeOutIcon(className: string)}
+	<svg
+		class={className}
+		version="1.1"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
+	>
+		<path
+			class="cls-1"
+			d="M2.2,16.67c4.37,0,5.78-3.2,8.07-7.13,2.06-3.53,3.63-6.23,7.43-6.23"
+		/><line class="cls-1" x1="13.32" y1="16.67" x2="14.93" y2="16.67" /><circle
+			class="cls-1"
+			cx="16.91"
+			cy="16.67"
+			r="1.98"
+		/><line class="cls-1" x1="9.18" y1="16.67" x2="10.15" y2="16.67" />
 	</svg>
 {/snippet}
 
@@ -288,6 +356,18 @@
 			class="st0"
 			d="M3.5,16.5c-.4,0-.8-.1-1.1-.4-.3-.3-.4-.6-.4-1.1V4.5c0-.4.1-.8.4-1.1.3-.3.6-.4,1.1-.4h3.9c.2,0,.4,0,.6.1.2,0,.3.2.5.3l1.6,1.8h6.5c.4,0,.8.1,1.1.4.3.3.4.6.4,1.1v8.3c0,.4-.1.8-.4,1.1-.3.3-.6.4-1.1.4H3.5ZM3.8,14.7h12.4v-7.8s-6.8,0-6.8,0l-2-2.1h-3.7v9.9Z"
 		/>
+	</svg>
+{/snippet}
+
+{#snippet forwardArrowIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path d="M560-880 960-480l-400 400-71-71 329-329-329-329 71-71Z" />
 	</svg>
 {/snippet}
 
@@ -456,6 +536,25 @@
 	</svg>
 {/snippet}
 
+{#snippet keyframeIcon(className: string, active = false)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 20 20"
+		fill="currentColor"
+	>
+		{#if active}
+			<path class="cls-1" d="M10,1.54L1.3,10.24l8.7,8.7,8.7-8.7L10,1.54Z" />
+		{:else}
+			<path
+				class="cls-1"
+				d="M10,1.54L1.3,10.24l8.7,8.7,8.7-8.7L10,1.54ZM6.39,10.24l3.61-3.61,3.61,3.61-3.61,3.61-3.61-3.61Z"
+			/>
+		{/if}
+	</svg>
+{/snippet}
+
 {#snippet linkIcon(className: string)}
 	<svg
 		class={className}
@@ -532,6 +631,20 @@
 	</svg>
 {/snippet}
 
+{#snippet opacityIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path
+			d="M253.5-212Q160-304 160-436q0-65 25-121.5T254-658l226-222 226 222q44 44 69 100.5T800-436q0 132-93.5 224T480-120q-133 0-226.5-92ZM242-400h474q12-72-13.5-123T650-600L480-768 310-600q-27 26-53 77t-15 123Z"
+		/>
+	</svg>
+{/snippet}
+
 {#snippet outPointIcon(className: string)}
 	<svg
 		class={className}
@@ -555,7 +668,6 @@
 	<svg
 		class={className}
 		role="img"
-		id="Layer_1"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 -960 960 960"
 		fill="currentColor"
@@ -668,29 +780,24 @@
 		id="Layer_1"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 20 20"
-		fill="currentColor"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
 	>
-		<path
-			class="cls-2"
-			d="M12.7,2.98v13.97h-5.27V2.98h5.27M12.7.98h-5.27c-1.1,0-2,.9-2,2v13.97c0,1.1.9,2,2,2h5.27c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2h0Z"
-		/><path class="cls-2" d="M4.61.98v2h-1.52v1.43H1.08s0-.38,0-1.43S1.88.98,3.08.98h1.52Z" /><path
-			class="cls-2"
-			d="M19.05,4.5h-2v-1.52h-1.43V.97s.38,0,1.43,0,2,.79,2,2v1.52Z"
-		/><path class="cls-2" d="M15.53,18.94v-2h1.52v-1.43h2s0,.38,0,1.43-.79,2-2,2h-1.52Z" /><path
-			class="cls-2"
-			d="M1.08,15.42h2v1.52h1.43v2s-.38,0-1.43,0-2-.79-2-2v-1.52Z"
-		/><polygon class="cls-1" points="3.08 8.72 1.08 8.72 1.08 6.55 3.08 6.55 3.08 8.72" /><rect
+		<polyline class="cls-1" points="2.87 11.96 2.87 17.09 8.11 17.09" /><line
 			class="cls-1"
-			x="1.08"
-			y="11.05"
-			width="2"
-			height="2.23"
-		/><polygon class="cls-1" points="19.05 8.8 17.05 8.8 17.05 6.63 19.05 6.63 19.05 8.8" /><rect
+			x1="8.39"
+			y1="11.68"
+			x2="2.87"
+			y2="17.09"
+		/><polyline class="cls-1" points="16.69 8.5 16.69 3.37 11.45 3.37" /><line
 			class="cls-1"
-			x="17.06"
-			y="11.13"
-			width="2"
-			height="2.23"
+			x1="11.2"
+			y1="8.75"
+			x2="16.69"
+			y2="3.37"
 		/>
 	</svg>
 {/snippet}
@@ -702,31 +809,24 @@
 		id="Layer_1"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 20 20"
-		fill="currentColor"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		fill="none"
 	>
-		<path
-			d="M17.05.98H3.08C1.98.98,1.08,1.88,1.08,2.98v13.97c0,1.1.9,2,2,2h13.97c1.1,0,2-.9,2-2V2.98c0-1.1-.9-2-2-2ZM17.05,16.95H3.08V2.92h13.97v14.02Z"
-		/><rect class="cls-1" x="5.43" y="6.92" width="2" height="2.22" /><rect
+		<polyline class="cls-1" points="7.91 17.3 7.91 12.16 2.66 12.16" /><line
 			class="cls-1"
-			x="5.43"
-			y="2.92"
-			width="2"
-			height="2.24"
-		/><rect x="5.43" y="14.92" width="2" height="2" /><rect
-			x="5.43"
-			y="10.92"
-			width="2"
-			height="2.24"
-		/><rect x="12.7" y="14.92" width="2" height="2" /><rect
-			x="12.7"
-			y="6.92"
-			width="2"
-			height="2.22"
-		/><polyline points="14.7 2.92 14.7 5.17 12.7 5.17 12.7 2.92" /><rect
-			x="12.7"
-			y="10.92"
-			width="2"
-			height="2.24"
+			x1="2.38"
+			y1="17.57"
+			x2="7.91"
+			y2="12.16"
+		/><polyline class="cls-1" points="11.53 3.29 11.53 8.42 16.77 8.42" /><line
+			class="cls-1"
+			x1="17.02"
+			y1="3.04"
+			x2="11.53"
+			y2="8.42"
 		/>
 	</svg>
 {/snippet}

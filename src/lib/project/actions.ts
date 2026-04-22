@@ -13,7 +13,6 @@ import {
 import {
 	appState,
 	historyManager,
-	programState,
 	projectManager,
 	timelineState,
 	workerManager
@@ -92,7 +91,7 @@ export const createNewProject = async () => {
 		});
 	}
 	setTrackPositions();
-	await projectManager.updateProject({ tracks: timelineState.tracks });
+	await projectManager.updateProject({ tracks: ['none', 'none'] });
 
 	timelineState.clips.length = 0;
 	deselectAllClips();
@@ -100,6 +99,8 @@ export const createNewProject = async () => {
 };
 
 export const loadProject = async (id: string) => {
+	pause();
+
 	const project = await projectManager.getProject(id);
 	if (!project) return;
 
@@ -166,7 +167,16 @@ export const loadProject = async (id: string) => {
 
 	timelineState.currentFrame = 0;
 	timelineState.tracks.length = 0;
-	timelineState.tracks = Array.from(project.tracks);
+	for (let i = 0; i < project.tracks.length; i++) {
+		timelineState.tracks.push({
+			height: 35,
+			top: 0,
+			lock: true,
+			lockBottom: true,
+			lockTop: true,
+			type: project.tracks[i]
+		});
+	}
 	timelineState.showPlayhead = true;
 	focusTrack(0);
 	setTrackPositions();
@@ -182,6 +192,13 @@ export const loadProject = async (id: string) => {
 		const newClip = new Clip(source, clip.track, clip.start, clip.duration, clip.sourceOffset);
 		newClip.id = clip.id;
 		newClip.params = clip.params;
+		newClip.text = clip.text;
+		if (clip.keyframeTracks) {
+			newClip.keyframeTracks = new Map(
+				Object.entries(clip.keyframeTracks).map(([key, track]) => [Number(key), track])
+			);
+			newClip.keyframeTracksActive = Object.keys(clip.keyframeTracks).map((n) => Number(n));
+		}
 		timelineState.clips.push(newClip);
 		const lastClipFrame = clip.start + clip.duration;
 		if (lastClipFrame > lastFrame) lastFrame = lastClipFrame;

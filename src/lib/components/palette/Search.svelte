@@ -35,12 +35,13 @@
 
 	let inputValue = $state<string>();
 	let selectedIndex = 0;
+	let selectedId = $state(101);
 	let showSeekOptions = $state(false);
 	let targetFrame = $state(0);
 	let targetFrameFormatted = $state('');
 	let scrollDiv = $state<HTMLDivElement>();
 
-	const categories = $state.raw([
+	const categories = [
 		{
 			id: 1,
 			name: 'App',
@@ -48,7 +49,6 @@
 				{
 					id: 101,
 					text: 'import',
-					selected: true,
 					icon: importIcon,
 					shortcuts: ['N'],
 					action: () => {
@@ -59,7 +59,6 @@
 				{
 					id: 102,
 					text: 'export',
-					selected: false,
 					icon: exportIcon,
 					shortcuts: ['M'],
 					action: () => (appState.palette.page = 'export')
@@ -67,7 +66,6 @@
 				/* {
 					id: 103,
 					text: 'settings',
-					selected: false,
 					icon: SettingsIcon,
 					shortcuts: [],
 					action: () => console.log(2)
@@ -75,7 +73,6 @@
 				{
 					id: 104,
 					text: 'about',
-					selected: false,
 					icon: infoIcon,
 					shortcuts: [],
 					action: () => (appState.palette.page = 'about')
@@ -83,7 +80,6 @@
 				{
 					id: 105,
 					text: 'help',
-					selected: false,
 					icon: helpIcon,
 					shortcuts: [],
 					action: () => {
@@ -94,7 +90,6 @@
 				{
 					id: 106,
 					text: 'undo',
-					selected: false,
 					icon: undoIcon,
 					shortcuts: ['ctrl', 'Z'],
 					action: () => {
@@ -106,7 +101,6 @@
 				{
 					id: 107,
 					text: 'redo',
-					selected: false,
 					icon: redoIcon,
 					shortcuts: ['ctrl', 'alt', 'Z'],
 					action: () => {
@@ -124,7 +118,6 @@
 				{
 					id: 201,
 					text: 'play / pause',
-					selected: false,
 					icon: playIcon,
 					shortcuts: ['space'],
 					action: () => {
@@ -147,7 +140,6 @@
 				{
 					id: 202,
 					text: 'zoom in',
-					selected: false,
 					icon: zoomInIcon,
 					shortcuts: ['='],
 					action: () => {
@@ -158,7 +150,6 @@
 				{
 					id: 203,
 					text: 'zoom out',
-					selected: false,
 					icon: zoomOutIcon,
 					shortcuts: ['-'],
 					action: () => {
@@ -169,7 +160,6 @@
 				{
 					id: 204,
 					text: 'one frame forward',
-					selected: false,
 					icon: forwardIcon,
 					shortcuts: ['right arrow'],
 					action: () => {
@@ -180,7 +170,6 @@
 				{
 					id: 205,
 					text: 'one frame back',
-					selected: false,
 					icon: backIcon,
 					shortcuts: ['left arrow'],
 					action: () => {
@@ -197,7 +186,6 @@
 				{
 					id: 301,
 					text: 'new project',
-					selected: false,
 					icon: fileNewIcon,
 					shortcuts: [],
 					action: async () => {
@@ -209,7 +197,6 @@
 				{
 					id: 302,
 					text: 'load project',
-					selected: false,
 					icon: fileOpenIcon,
 					shortcuts: [],
 					action: () => {
@@ -220,7 +207,6 @@
 				{
 					id: 303,
 					text: 'delete project',
-					selected: false,
 					icon: deleteIcon,
 					shortcuts: [],
 					action: async () => {
@@ -231,7 +217,7 @@
 				}
 			]
 		}
-	]);
+	];
 	let filtered = $derived.by(() => {
 		return categories.map((category) => {
 			return {
@@ -260,7 +246,7 @@
 		if (allCategoriesEmpty) return false;
 		for (const category of filtered) {
 			for (const command of category.commands) {
-				if (command.selected && command.action) {
+				if (command.id === selectedId && command.action) {
 					command.action();
 					break;
 				}
@@ -298,21 +284,18 @@
 			index = 0;
 		}
 		let i = 0;
-		let commandId = 0;
 		filtered.forEach((category) => {
 			category.commands.forEach((command) => {
-				if (command.selected) command.selected = false;
 				if (index === i) {
-					command.selected = true;
+					selectedId = command.id;
 					selectedIndex = index;
-					commandId = command.id;
 				}
 				i++;
 			});
 		});
-		filtered = [...filtered];
+
 		// keyboard scroll
-		const element = document.getElementById(`command-${commandId}`);
+		const element = document.getElementById(`command-${selectedId}`);
 		if (!element || !scrollDiv) return;
 		const rect = element.getBoundingClientRect();
 		const scrollRect = scrollDiv.getBoundingClientRect();
@@ -328,15 +311,13 @@
 		let i = -1;
 		filtered.forEach((category) => {
 			category.commands.forEach((command) => {
-				if (command.selected) command.selected = false;
 				if (command.id === id) {
-					command.selected = true;
 					selectedIndex = i;
 				}
 				i++;
 			});
 		});
-		filtered = [...filtered];
+		selectedId = id;
 	};
 
 	const seekEvent = () => {
@@ -371,7 +352,7 @@
 					<div
 						id={`command-${command.id}`}
 						onmousemove={() => {
-							if (!command.selected) selectById(command.id);
+							if (command.id !== selectedId) selectById(command.id);
 						}}
 						onclick={() => {
 							command.action();
@@ -379,7 +360,7 @@
 						}}
 						class={[
 							'cursor-pointer w-full px-2 py-2.5 rounded-lg text-left flex items-center group',
-							command.selected ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
+							command.id === selectedId ? 'text-zinc-200 bg-hover' : ' text-zinc-200'
 						]}
 					>
 						{@render command.icon('size-5 inline mr-3')}
@@ -389,7 +370,7 @@
 							<div
 								class={[
 									'text-sm px-1.5 py-0.5 rounded-sm mx-1 border-1',
-									command.selected
+									command.id === selectedId
 										? 'border-zinc-500 text-zinc-400'
 										: 'border-zinc-700 text-zinc-600'
 								]}
