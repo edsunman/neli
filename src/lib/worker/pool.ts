@@ -65,7 +65,7 @@ export class DecoderPool {
 		}
 	}
 
-	decoderError() {
+	decoderError = () => {
 		console.log(
 			`Decoder error. Closing and removing all decoders. Remaining: ${this.decoders.size}`
 		);
@@ -73,5 +73,5 @@ export class DecoderPool {
 			decoder.close();
 		}
 		this.decoders.clear();
-	}
+	};
 }

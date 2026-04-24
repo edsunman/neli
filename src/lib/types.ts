@@ -70,6 +70,7 @@ export type SourceType = 'video' | 'audio' | 'srt' | 'image' | 'text' | 'test';
 export type FileInfo =
 	| {
 			type: 'video';
+			mimeType: string;
 			codec: string;
 			resolution: { width: number; height: number };
 			frameRate: number;
@@ -77,6 +78,7 @@ export type FileInfo =
 	  }
 	| {
 			type: 'audio';
+			mimeType: string;
 			codec: string;
 			sampleRate: number;
 			channelCount: number;
@@ -89,7 +91,7 @@ export type FileInfo =
 	  }
 	| {
 			type: 'image';
-			format: string;
+			mimeType: string;
 			resolution: { width: number; height: number };
 			extention: string;
 	  }

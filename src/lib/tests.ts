@@ -1,35 +1,130 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClip } from './clip/actions';
-//import { createSource } from './source/actions';
-import { appState, projectManager /* timelineState, workerManager */ } from './state.svelte';
+import { appState, projectManager } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
-/* import type { KeyframeTrack } from './types'; */
-//import type { SourceType } from './types';
+import { PUBLIC_API_URL, PUBLIC_R2_URL } from '$env/static/public';
 
 export const setupTests = () => {
-	if (!window) return;
+	//if (!window) return;
 
 	// @ts-expect-error append function to window
 	window.tests = {
 		lotsOfClips,
 		unlinkSources,
-		auditDatabase /*  pushProject, login, pullProject  */
+		auditDatabase,
+		pushProject,
+		login,
+		pullProject,
+		genrateUrl
 	};
 };
 
-/* const addKeyframes = () => {
-	const clip = timelineState.clips[0];
-	if (!clip) return;
+const login = async () => {
+	const response = await fetch(`${PUBLIC_API_URL}/auth/login`, {
+		method: 'POST',
+		body: JSON.stringify({ email: 'test@test.com', password: 'password' }),
+		credentials: 'include',
+		headers: { 'Content-Type': 'application/json' }
+	});
+	console.log(response);
+};
 
-	const newKeyframeTrack: KeyframeTrack = {
-		frames: [0, 60],
-		values: [0,1000]
+const pushProject = async () => {
+	const project = await projectManager.getProject(appState.project.id);
+	if (!project) return;
+	const sources = await projectManager.getProjectSources(appState.project.id);
+	const clips = await projectManager.getProjectClips(appState.project.id);
+	const keyframes = [];
+	for (const clip of clips) {
+		for (const [key, track] of Object.entries(clip.keyframeTracks)) {
+			const keyNumber = Number(key);
+			for (const keyframe of track.keyframes) {
+				keyframes.push({
+					clipId: clip.id,
+					param: keyNumber,
+					frame: keyframe.frame,
+					value: keyframe.value,
+					easeIn: keyframe.easeIn,
+					easeOut: keyframe.easeOut
+				});
+			}
+		}
 	}
 
-	clip.useKeyframes = [17];
-	clip.keyframeTracks.set(17, newKeyframeTrack);
-	workerManager.sendClip(clip);
-} */
+	const data = { sources, clips, keyframes, ...project };
+
+	await fetch(`${PUBLIC_API_URL}/projects/${project?.id}`, {
+		method: 'POST',
+		body: JSON.stringify(data),
+		credentials: 'include',
+		headers: { 'Content-Type': 'application/json' }
+	});
+
+	// upload files
+	for (const source of sources) {
+		if (
+			(source.info.type === 'video' ||
+				source.info.type === 'audio' ||
+				source.info.type === 'image') &&
+			source.handle
+		) {
+			const fileHandle = source.handle as FileSystemFileHandle;
+			const file = await fileHandle.getFile();
+			//const extension = getExtentionFromFileType(source.info.mimeType);
+			//const fileName = `projects/${project.id}/sources/${source.id}${extension}`;
+			const response = await fetch(`${PUBLIC_API_URL}/generate-upload-url`, {
+				method: 'POST',
+				body: JSON.stringify({ sourceId: source.id, fileType: source.info.mimeType }),
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' }
+			});
+			if (!response.ok) return;
+
+			const { uploadUrl, fileName } = await response.json();
+			console.log(`Uploading ${source.type}, ${source.id}`);
+			await fetch(uploadUrl, {
+				method: 'PUT',
+				body: file,
+				headers: {
+					'Content-Type': source.info.mimeType
+				}
+			});
+
+			source.url = `${PUBLIC_R2_URL}/${fileName}`;
+			console.log(`Upload done`);
+		}
+	}
+};
+
+const genrateUrl = async () => {
+	const response = await fetch(`${PUBLIC_API_URL}/generate-upload-url`, {
+		method: 'POST',
+		body: JSON.stringify({ fileName: 'test.mp4', fileType: 'video/mp4' }),
+		credentials: 'include',
+		headers: { 'Content-Type': 'application/json' }
+	});
+
+	if (response.ok) {
+		console.log(await response.json());
+	}
+};
+
+const pullProject = async () => {
+	const response = await fetch(`${PUBLIC_API_URL}/projects/c67c6fbc-2104-41b0-a307-3bef500abd5c`, {
+		method: 'GET'
+	});
+	if (response.ok) {
+		const remoteProject = await response.json();
+		const existingProject = await projectManager.getProject(remoteProject.id);
+
+		if (existingProject) {
+			console.log('project already exists');
+			return;
+		}
+
+		projectManager.addRemoteProject(remoteProject);
+		appState.projectCount++;
+	}
+};
 
 const lotsOfClips = () => {
 	extendTimeline(7500);
@@ -53,14 +148,14 @@ const auditDatabase = async () => {
 	if (!data) return;
 
 	const { projects, sources, clips, thumbnails } = data;
-	const projectIds = new Set(projects.map((p: any) => p.id));
-	const sourceIds = new Set(sources.map((s: any) => s.id));
+	const projectIds = new Set(projects.map((p) => p.id));
+	const sourceIds = new Set(sources.map((s) => s.id));
 
 	const orphans = {
-		sourcesNoProject: sources.filter((s: any) => !projectIds.has(s.projectId)),
-		clipsNoProject: clips.filter((c: any) => !projectIds.has(c.projectId)),
-		clipsNoSource: clips.filter((c: any) => !sourceIds.has(c.sourceId)), // New Check
-		thumbnailsNoParent: thumbnails.filter((t: any) => {
+		sourcesNoProject: sources.filter((s) => !projectIds.has(s.projectId)),
+		clipsNoProject: clips.filter((c) => !projectIds.has(c.projectId)),
+		clipsNoSource: clips.filter((c) => !sourceIds.has(c.sourceId)), // New Check
+		thumbnailsNoParent: thumbnails.filter((t) => {
 			if (t.type === 'project') return !projectIds.has(t.parentId);
 			if (t.type === 'source') return !sourceIds.has(t.parentId);
 			return true;

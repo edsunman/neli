@@ -70,7 +70,7 @@ fn colorAndCropUniforms(rawColor: vec4f, uv: vec2f, u: ClipUniforms) -> vec4f {
 
     // 1. Color Grading
     color = color * exp2(u.exposure);
-    color = highlightRollOff(color);
+    color = highlightRollOff(color, u.exposure);
 
     let luminance = dot(color, vec3f(0.2126, 0.7152, 0.0722));
     color = mix(vec3f(luminance), color, u.saturation);
@@ -100,18 +100,16 @@ fn linearToSrgb(rgb: vec3f) -> vec3f {
     return pow(rgb, vec3f(1.0 / 2.2));
 }
 
-fn highlightRollOff(color: vec3f) -> vec3f {
+fn highlightRollOff(color: vec3f, exposure: f32) -> vec3f {
     let luma = dot(color, vec3f(0.2126, 0.7152, 0.0722));
-    let knee = 0.5; // Start smoothing at 50% brightness
+    let knee = mix(1.0, 0.5, saturate(exposure / 3.0)); 
 
     if (luma <= knee) {
         return color;
     }
-    let over = luma - knee;
-    let compressedOver = sqrt(over); 
-    
-    // R-scale the compressed value so it stays in a visible range [0.5 to 1.0]
-    let newLuma = knee + (compressedOver * 0.25); 
+
+    let range = 1.0 - knee;
+    let newLuma = knee + range * (luma - knee) / (range + luma - knee);
 
     return color * (newLuma / luma);
 }

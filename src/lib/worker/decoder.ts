@@ -29,9 +29,10 @@ export class VDecoder {
 		this.decoder = new VideoDecoder({
 			output: this.onOutput,
 			error: (e) => {
-				console.error(e);
 				if (e.message.includes('reclaimed')) {
 					errorCallback();
+				} else {
+					console.error(e);
 				}
 			}
 		});
@@ -225,8 +226,9 @@ export class VDecoder {
 	}
 
 	close() {
-		if (!this.decoder) return;
-		this.decoder.close();
+		this.lastFrame?.close();
+		this.savedFrame?.close();
+		if (this.decoder && this.decoder.state !== 'closed') this.decoder.close();
 	}
 
 	private onOutput = (frame: VideoFrame) => {
