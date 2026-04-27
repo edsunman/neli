@@ -201,7 +201,9 @@
 					<span
 						style:background-image={!source.unlinked ? `url(${source.thumbnail})` : ''}
 						class={[
-							(source.type === 'video' || source.type === 'image') && !source.thumbnail
+							(source.type === 'video' || source.type === 'image') &&
+							!source.thumbnail &&
+							!source.unlinked
 								? 'opacity-0'
 								: appState.dragAndDrop.active &&
 									  appState.dragAndDrop.dragFrom === 'sources' &&

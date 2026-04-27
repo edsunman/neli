@@ -14,6 +14,8 @@ fn vertexMain(@builtin(vertex_index) VertexIndex: u32) -> VertexOutput {
 
 @fragment
 fn fragmentMain(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
-    let rawColor = textureSampleBaseClampToEdge(myTexture, mySampler, uv);
-    return colorAndCropUniforms(rawColor,uv, uniforms);
+    let raw = textureSampleBaseClampToEdge(myTexture, mySampler, uv);
+    // Clamp RGB channels to avoid colours out of range
+    let clean = vec4(clamp(raw.rgb, vec3(0.0), vec3(1.0)), raw.a);
+    return colorAndCropUniforms(clean, uv, uniforms);
 }

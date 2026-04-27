@@ -7,6 +7,11 @@
 		fallback?: number | string;
 		type?: 'text' | 'number';
 		onBlur?: () => void;
+		onInput?: (
+			e: Event & {
+				currentTarget: EventTarget & HTMLInputElement;
+			}
+		) => void;
 		extention?: string;
 		selectOnMount?: boolean;
 	}
@@ -15,6 +20,7 @@
 		value = $bindable(),
 		fallback,
 		onBlur = () => {},
+		onInput = () => {},
 		type = 'text',
 		extention,
 		selectOnMount = false,
@@ -51,6 +57,9 @@
 		class={['relative w-full px-3 py-2 z-2 text-zinc-100 outline-0']}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
+		}}
+		oninput={(e) => {
+			onInput(e);
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;

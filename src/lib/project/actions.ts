@@ -6,6 +6,8 @@ import {
 	createImageSource,
 	createSource,
 	createThumbnailBlob,
+	downloadToOPFS,
+	getExtentionFromFileType,
 	getSourceFromId,
 	relinkFile,
 	setSourceThumbnail
@@ -25,6 +27,7 @@ import {
 	setZoom
 } from '$lib/timeline/actions';
 import { getNextProjectName } from './utils';
+import { PUBLIC_R2_URL } from '$env/static/public';
 
 export const changeProjectResolution = (width: number, height: number) => {
 	pause();
@@ -94,7 +97,7 @@ export const createNewProject = async () => {
 	await projectManager.updateProject({ tracks: ['none', 'none'] });
 
 	timelineState.clips.length = 0;
-	deselectAllClips();
+	deselectAllClips(false);
 	timelineState.invalidate = true;
 };
 
@@ -122,10 +125,34 @@ export const loadProject = async (id: string) => {
 	await cleanOPFS();
 	const projectSources = await projectManager.getProjectSources(id);
 	let i = 0;
+
 	for (const source of projectSources) {
 		const newSource = createSource(source.type, source.info);
 		newSource.id = source.id;
 		newSource.name = source.name;
+		newSource.url = source.url;
+		if (
+			(source.info.type === 'video' ||
+				source.info.type === 'audio' ||
+				source.info.type === 'image') &&
+			source.url
+		) {
+			const extention = getExtentionFromFileType(source.info.mimeType);
+			if (!extention) throw new Error('invalid extention');
+			const fileName = source.id + extention;
+			let handle = await getFileHandleFromOPFS(fileName);
+			if (!handle) {
+				// no local copy so need to download
+				appState.progress.message = 'downloading files...';
+				const url = `${PUBLIC_R2_URL}/${source.url}`;
+				handle = await downloadToOPFS(url, fileName);
+			}
+			if (handle) {
+				source.handle = handle;
+				newSource.handle = handle;
+				//await projectManager.updateSource(source.id, { handle });
+			}
+		}
 
 		if (source.type === 'video' || source.type === 'image') {
 			const thumbnailData = await projectManager.getThumbnail(source.id);
@@ -135,8 +162,10 @@ export const loadProject = async (id: string) => {
 		if (source.type === 'video' || source.type === 'audio') {
 			newSource.unlinked = true;
 			if (source.handle && source.handle.kind === 'file') {
-				const permission = await source.handle.queryPermission({ mode: 'read' });
-				if (permission == 'granted') {
+				const permission = source.handle.queryPermission
+					? await source.handle.queryPermission({ mode: 'read' })
+					: 'granted'; // Default to granted for Firefox/OPFS
+				if (permission === 'granted') {
 					const fileHandle = source.handle as FileSystemFileHandle;
 					try {
 						const file = await fileHandle.getFile();
@@ -146,14 +175,15 @@ export const loadProject = async (id: string) => {
 					}
 				}
 			}
-			if (source.handle) newSource.handle = source.handle;
+			//if (source.handle) newSource.handle = source.handle;
 		}
 
 		if (source.info.type === 'image') {
 			// check opfs for image
 			const fileName = `${source.id}.${source.info.extention}`;
-			const file = await getFileFromOPFS(fileName);
-			if (file) {
+			const handle = await getFileHandleFromOPFS(fileName);
+			if (handle) {
+				const file = await handle.getFile();
 				await createImageSource(file, source.info, newSource);
 			} else {
 				newSource.unlinked = true;
@@ -182,7 +212,7 @@ export const loadProject = async (id: string) => {
 	setTrackPositions();
 
 	timelineState.clips.length = 0;
-	deselectAllClips();
+	deselectAllClips(false);
 	await projectManager.purgeDeletedClips();
 	const projectClips = await projectManager.getProjectClips(id);
 	let lastFrame = 0;
@@ -229,16 +259,16 @@ export const createProjectThumbnail = async () => {
 	return blob;
 };
 
-const getFileFromOPFS = async (fileName: string) => {
+const getFileHandleFromOPFS = async (fileName: string) => {
 	const root = await navigator.storage.getDirectory();
 	let handle;
 	try {
 		handle = await root.getFileHandle(fileName, { create: false });
-	} catch (e) {
-		console.error(e);
+	} catch {
+		//console.log('File not found');
 		return;
 	}
-	return handle.getFile();
+	return handle;
 };
 
 /** Removes files with id that has no matching source in db */

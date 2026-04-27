@@ -24,3 +24,10 @@ Once you've cloned the project and installed dependencies with `pnpm install`, s
 ```bash
 pnpm dev
 ```
+
+To generate local SSL certificate:
+
+```bash
+mkcert -install
+mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1
+```

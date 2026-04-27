@@ -170,9 +170,15 @@
 					</span>
 				</Properties.Group>
 				<Properties.Group label="format">
-					<span class="text-zinc-300">{source.info.format}</span>
+					<span class="text-zinc-300">{source.info.mimeType === 'image/png' ? 'png' : 'jpeg'}</span>
 				</Properties.Group>
 			{/if}
+
+			<div class="text-sm font-medium flex flex-col items-end w-full">
+				<div class="bg-zinc-600 text-zinc-900 rounded-sm px-1.5 font-extralight">
+					{source.url ? 'remote' : 'local'}
+				</div>
+			</div>
 		{/if}
 
 		{#if appState.propertiesSection === 'layout' && timelineState.selectedClip}

@@ -26,7 +26,8 @@
 		forwardIcon,
 		fileOpenIcon,
 		fileNewIcon,
-		deleteIcon
+		deleteIcon,
+		settingsIcon
 	} from '../icons/Icons.svelte';
 	import { pauseProgram, playProgram } from '$lib/program/actions';
 	import { createNewProject, createProjectThumbnail } from '$lib/project/actions';
@@ -63,22 +64,16 @@
 					shortcuts: ['M'],
 					action: () => (appState.palette.page = 'export')
 				},
-				/* {
-					id: 103,
-					text: 'settings',
-					icon: SettingsIcon,
-					shortcuts: [],
-					action: () => console.log(2)
-				}, */
+
 				{
-					id: 104,
+					id: 103,
 					text: 'about',
 					icon: infoIcon,
 					shortcuts: [],
 					action: () => (appState.palette.page = 'about')
 				},
 				{
-					id: 105,
+					id: 104,
 					text: 'help',
 					icon: helpIcon,
 					shortcuts: [],
@@ -86,6 +81,13 @@
 						window.open('https://neli.video/docs/getting-started', '_blank');
 						appState.palette.open = false;
 					}
+				},
+				{
+					id: 105,
+					text: 'settings',
+					icon: settingsIcon,
+					shortcuts: [],
+					action: () => (appState.palette.page = 'settings')
 				},
 				{
 					id: 106,

@@ -2,9 +2,10 @@
 	import { appState, projectManager } from '$lib/state.svelte';
 	import { onMount } from 'svelte';
 	import { createProjectThumbnail, loadProject } from '$lib/project/actions';
-	import ProgressBar from './ProgressBar.svelte';
 	import { closePalette } from '$lib/app/actions';
 	import { getRelativeTime } from '$lib/project/utils';
+
+	import ProgressBar from './ProgressBar.svelte';
 
 	type Project = {
 		id: string;
@@ -106,7 +107,7 @@
 
 {#if appState.progress.started}
 	<div class="h-full p-8 content-center w-full">
-		<ProgressBar />
+		<ProgressBar message={appState.progress.message} percentage={appState.progress.percentage} />
 	</div>
 {:else}
 	<div

@@ -45,7 +45,7 @@ self.addEventListener('message', async function (event) {
 		case 'load-file': {
 			if (event.data.type === 'video') {
 				const newSource = await loadFile(event.data.file, event.data.id);
-				if (!newSource) return;
+				if (!newSource) throw Error('No source loaded');
 				sources.push(newSource);
 				sendFrameForThumbnail(newSource, event.data.requestId);
 			} else if (event.data.type === 'image') {

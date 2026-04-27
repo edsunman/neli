@@ -2,14 +2,15 @@
 	import { appState } from '$lib/state.svelte';
 	import { closePalette } from '$lib/app/actions';
 	import { onMount } from 'svelte';
+	import { backArrowIcon } from '../icons/Icons.svelte';
 
 	import Search from './Search.svelte';
 	import Export from './Export.svelte';
 	import Import from './Import.svelte';
 	import About from './About.svelte';
 	import Projects from './Projects.svelte';
-	import { backArrowIcon } from '../icons/Icons.svelte';
 	import DeleteProject from './DeleteProject.svelte';
+	import Settings from './Settings.svelte';
 
 	let searchComponent = $state<Search>();
 	let searchInput = $state<HTMLInputElement>();
@@ -36,6 +37,10 @@
 		}
 		if (appState.palette.page === 'projects') {
 			searchInput.value = 'load project';
+			showBackButton = true;
+		}
+		if (appState.palette.page === 'settings') {
+			searchInput.value = 'settings';
 			showBackButton = true;
 		}
 		if (appState.palette.page === 'search') {
@@ -134,6 +139,8 @@
 			<About {onSelect} />
 		{:else if appState.palette.page === 'delete'}
 			<DeleteProject />
+		{:else if appState.palette.page === 'settings'}
+			<Settings />
 		{/if}
 	</div>
 	<div

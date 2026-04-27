@@ -38,7 +38,6 @@ export const play = async () => {
 		} else {
 			startPlayLoop();
 		}
-		//appState.propertiesSection = 'outputAudio';
 	}
 };
 

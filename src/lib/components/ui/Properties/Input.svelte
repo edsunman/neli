@@ -48,7 +48,7 @@
 		class={[
 			type === 'number' ? 'py-0.5' : 'py-1',
 			'relative w-full text-sm text-right height-xl:py-1 px-1 z-2 text-zinc-300 focus:text-zinc-100 outline-0',
-			'[&::-webkit-inner-spin-button]:appearance-none'
+			'[&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]'
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;

@@ -23,6 +23,7 @@ type SourceTable = {
 	info: FileInfo;
 	name: string;
 	handle: FileSystemHandle | null;
+	url: string;
 	deleted: boolean;
 	createdAt: number;
 	lastModified: number;
@@ -69,7 +70,7 @@ interface VideoEditorDB extends DBSchema {
 export class ProjectManager {
 	private dbName = 'VideoEditorDB';
 	// Increment when schema changes
-	private dbVersion = 2;
+	private dbVersion = 3;
 	private db: IDBPDatabase<VideoEditorDB> | null = null;
 
 	async init() {
@@ -193,6 +194,7 @@ export class ProjectManager {
 		const newSource: SourceTable = {
 			id: source.id,
 			projectId: appState.project.id,
+			url: source.url,
 			name: source.name,
 			type: source.type,
 			info: source.info,
@@ -406,6 +408,7 @@ export class ProjectManager {
 				name: source.name,
 				type: source.type,
 				info: source.info,
+				url: source.url,
 				handle: null,
 				deleted: false,
 				createdAt: source.createdAt,

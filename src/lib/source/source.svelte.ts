@@ -12,6 +12,7 @@ export class Source {
 	unlinked = $state(false);
 	thumbnail = $state('');
 	deleted = $state(false);
+	url = $state('');
 
 	sink: EncodedPacketSink | undefined;
 	sampleSink: AudioSampleSink | undefined;

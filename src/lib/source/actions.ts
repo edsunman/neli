@@ -9,6 +9,7 @@ import { Source } from './source.svelte';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
 import { showTimelineInProgram } from '$lib/program/actions';
+import { formatStorageSize } from '$lib/app/utils';
 
 export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	const newSource = new Source(type, info);
@@ -183,14 +184,7 @@ export const processFile = async (file: File, handle?: FileSystemHandle) => {
 		if (extension === '.srt') appState.import.fileDetails.type = 'application/x-subrip';
 	}
 
-	if (
-		file.type !== 'video/mp4' &&
-		file.type !== 'audio/mpeg' &&
-		file.type !== 'audio/wav' &&
-		file.type !== 'application/x-subrip' &&
-		file.type !== 'image/jpeg' &&
-		file.type !== 'image/png'
-	) {
+	if (!isFileTypeSupported(file.type)) {
 		appState.import.fileDetails.type = 'unknown';
 		appState.import.warningMessage = 'file type not supported';
 		appState.palette.page = 'import';
@@ -255,6 +249,7 @@ export const checkDroppedSource = async (
 
 		return {
 			type: 'video',
+			mimeType: fileType,
 			codec: videoTrack.codec ?? '',
 			resolution: { width: videoTrack.displayWidth, height: videoTrack.displayHeight },
 			frameRate,
@@ -278,6 +273,7 @@ export const checkDroppedSource = async (
 
 		return {
 			type: 'audio',
+			mimeType: fileType,
 			codec: audioTrack.codec ?? '',
 			sampleRate: audioTrack.sampleRate,
 			channelCount: audioTrack.numberOfChannels,
@@ -298,7 +294,7 @@ export const checkDroppedSource = async (
 		bitmap.close();
 		return {
 			type: 'image',
-			format: fileType === 'image/jpeg' ? 'jpeg' : 'png',
+			mimeType: fileType,
 			resolution: { width: width, height: height },
 			extention: file.name.split('.').pop() || ''
 		};
@@ -439,7 +435,6 @@ export const clickToImportFile = async () => {
 		}
 	} else {
 		// safari/firefox api
-		console.log('old');
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.style.display = 'none';
@@ -522,6 +517,40 @@ export const clickToRelinkFile = async (sourceId: string) => {
 	}
 };
 
+export const downloadToOPFS = async (url: string, fileName: string) => {
+	let response;
+	try {
+		response = await fetch(url);
+	} catch {
+		return;
+	}
+	if (!response.ok || !response.body) return;
+
+	const root = await navigator.storage.getDirectory();
+	const fileHandle = await root.getFileHandle(fileName, { create: true });
+	const writable = await fileHandle.createWritable();
+	const size = Number(response.headers.get('content-length')) || 0;
+
+	console.log(`Downloading file (${formatStorageSize(size)})`);
+
+	//let loaded = 0;
+	const reader = response.body.getReader();
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		//loaded += value.byteLength;
+		await writable.write(value);
+		/* if (size) {
+			const progress = (loaded / size) * 100;
+			console.log(`Download progress: ${progress.toFixed(2)}%`);
+		} */
+	}
+
+	await writable.close();
+	console.log('Download complete');
+	return fileHandle;
+};
+
 export const deleteSource = (source: Source) => {
 	if (appState.selectedSource && appState.selectedSource.id === source.id) {
 		showTimelineInProgram();
@@ -536,6 +565,31 @@ export const deleteSource = (source: Source) => {
 	historyManager.newCommand({ action: 'deleteSource', data: { sourceId: source.id } });
 	projectManager.updateSource(source.id, { deleted: true });
 	assignSourcesToFolders();
+};
+
+export const isFileTypeSupported = (fileType: string) => {
+	if (
+		fileType !== 'video/mp4' &&
+		fileType !== 'audio/mpeg' &&
+		fileType !== 'audio/wav' &&
+		fileType !== 'application/x-subrip' &&
+		fileType !== 'image/jpeg' &&
+		fileType !== 'image/png'
+	) {
+		return false;
+	} else {
+		return true;
+	}
+};
+
+export const getExtentionFromFileType = (fileType: string) => {
+	if (fileType === 'video/mp4') return '.mp4';
+	if (fileType === 'audio/mpeg') return '.mp3';
+	if (fileType === 'audio/wav') return '.wav';
+	if (fileType === 'application/x-subrip') return '.srt';
+	if (fileType === 'image/jpeg') return '.jpg';
+	if (fileType === 'image/png') return '.png';
+	throw new Error('Invalid file type');
 };
 
 const generateWaveform = async (source: Source) => {
