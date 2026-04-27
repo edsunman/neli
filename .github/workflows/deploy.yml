@@ -20,6 +20,10 @@ jobs:
         run: npm install -g pnpm
 
       - name: Install dependencies and build
+        env:
+          PUBLIC_R2_URL: ${{ secrets.PUBLIC_R2_URL }}
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          NODE_ENV: production
         run: |
           pnpm install
           pnpm run build
