@@ -3,10 +3,10 @@ import { appState, projectManager, workerManager } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
 import { PUBLIC_API_URL, PUBLIC_R2_URL } from '$env/static/public';
 import { createThumbnailBlob } from './source/actions';
+import { closePalette } from './app/actions';
+import { loadProject } from './project/actions';
 
 export const setupTests = () => {
-	//if (!window) return;
-
 	// @ts-expect-error append function to window
 	window.tests = {
 		lotsOfClips,
@@ -137,13 +137,9 @@ const genrateUrl = async () => {
 };
 
 const pullProject = async () => {
-	const response = await fetch(`${PUBLIC_API_URL}/projects/c67c6fbc-2104-41b0-a307-3bef500abd5c`, {
-		method: 'GET'
-	});
-	if (!response.ok) return;
-	const remoteProject = await response.json();
-	const existingProject = await projectManager.getProject(remoteProject.id);
+	const projectId = 'c67c6fbc-2104-41b0-a307-3bef500abd5c';
 
+	const existingProject = await projectManager.getProject(projectId);
 	// TODO: if project already exists then we should remove and replace
 	// if no local changes have been made
 	if (existingProject) {
@@ -151,11 +147,32 @@ const pullProject = async () => {
 		return;
 	}
 
-	projectManager.addRemoteProject(remoteProject);
+	appState.progress.started = true;
+	appState.progress.percentage = 0;
+	appState.progress.message = 'loading project...';
+	appState.palette.shrink = 'h-30';
+	appState.palette.page = 'projects';
+	appState.palette.open = true;
+	appState.palette.lock = true;
+
+	let remoteProject;
+	try {
+		const response = await fetch(`${PUBLIC_API_URL}/projects/${projectId}`, {
+			method: 'GET'
+		});
+		if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+		remoteProject = await response.json();
+	} catch {
+		appState.palette.lock = false;
+		closePalette();
+		return;
+	}
+
+	await projectManager.addRemoteProject(remoteProject);
 	appState.projectCount++;
 
 	// load thumbnail
-	let thumbnailResponse;
+	/* let thumbnailResponse;
 	try {
 		thumbnailResponse = await fetch(`${PUBLIC_R2_URL}/projects/${remoteProject.id}/thumbnail.png`);
 	} catch {
@@ -163,8 +180,12 @@ const pullProject = async () => {
 	}
 	if (!thumbnailResponse.ok || !thumbnailResponse.body) return;
 	const blob = await thumbnailResponse.blob();
-	projectManager.createThumbnail(blob, remoteProject.id, 'project');
+	projectManager.createThumbnail(blob, remoteProject.id, 'project'); */
+
 	console.log('project pulled');
+	await loadProject(remoteProject.id);
+	appState.palette.lock = false;
+	closePalette();
 };
 
 const lotsOfClips = () => {

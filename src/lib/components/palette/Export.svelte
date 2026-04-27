@@ -53,7 +53,7 @@
 <div class="px-8 flex-1 flex flex-col bg-zinc-900 rounded-2xl content-center flex-wrap">
 	<div class="flex-1 content-center flex-wrap w-full">
 		{#if appState.progress.started}
-			<ProgressBar />
+			<ProgressBar message={appState.progress.message} percentage={appState.progress.percentage} />
 		{:else}
 			<div class="flex w-full flex-col gap-2">
 				<div class="flex items-center justify-between text-sm font-medium text-white">

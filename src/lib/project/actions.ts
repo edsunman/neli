@@ -97,7 +97,7 @@ export const createNewProject = async () => {
 	await projectManager.updateProject({ tracks: ['none', 'none'] });
 
 	timelineState.clips.length = 0;
-	deselectAllClips();
+	deselectAllClips(false);
 	timelineState.invalidate = true;
 };
 
@@ -143,6 +143,7 @@ export const loadProject = async (id: string) => {
 			let handle = await getFileHandleFromOPFS(fileName);
 			if (!handle) {
 				// no local copy so need to download
+				appState.progress.message = 'downloading files...';
 				const url = `${PUBLIC_R2_URL}/${source.url}`;
 				handle = await downloadToOPFS(url, fileName);
 			}
@@ -161,11 +162,9 @@ export const loadProject = async (id: string) => {
 		if (source.type === 'video' || source.type === 'audio') {
 			newSource.unlinked = true;
 			if (source.handle && source.handle.kind === 'file') {
-				//const permission = await source.handle.queryPermission({ mode: 'read' });
 				const permission = source.handle.queryPermission
 					? await source.handle.queryPermission({ mode: 'read' })
 					: 'granted'; // Default to granted for Firefox/OPFS
-
 				if (permission === 'granted') {
 					const fileHandle = source.handle as FileSystemFileHandle;
 					try {
@@ -176,7 +175,7 @@ export const loadProject = async (id: string) => {
 					}
 				}
 			}
-			if (source.handle) newSource.handle = source.handle;
+			//if (source.handle) newSource.handle = source.handle;
 		}
 
 		if (source.info.type === 'image') {
@@ -266,7 +265,7 @@ const getFileHandleFromOPFS = async (fileName: string) => {
 	try {
 		handle = await root.getFileHandle(fileName, { create: false });
 	} catch {
-		console.log('File not found');
+		//console.log('File not found');
 		return;
 	}
 	return handle;

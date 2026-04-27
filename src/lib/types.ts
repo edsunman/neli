@@ -19,7 +19,7 @@ export type ImportState = {
 
 export type PaletteState = {
 	open: boolean;
-	page: 'search' | 'export' | 'import' | 'about' | 'projects' | 'delete';
+	page: 'search' | 'export' | 'import' | 'about' | 'projects' | 'delete' | 'settings';
 	shrink: string;
 	lock: boolean;
 };

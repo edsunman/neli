@@ -108,7 +108,7 @@
 						)}
 					{/if}
 					{#if fileDetails.info.type === 'image'}
-						{@render info('format:', fileDetails.info.format)}
+						{@render info('format:', fileDetails.info.mimeType === 'image/png' ? 'png' : 'jpg')}
 						{@render info(
 							'resolution:',
 							`${fileDetails.info.resolution.width} x ${fileDetails.info.resolution.height}`

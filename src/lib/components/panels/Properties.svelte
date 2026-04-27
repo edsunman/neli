@@ -175,7 +175,7 @@
 			{/if}
 
 			<div class="text-sm font-medium flex flex-col items-end w-full">
-				<div class="bg-zinc-500 text-zinc-900 rounded-sm px-1.5">
+				<div class="bg-zinc-600 text-zinc-900 rounded-sm px-1.5 font-extralight">
 					{source.url ? 'remote' : 'local'}
 				</div>
 			</div>

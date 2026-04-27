@@ -76,7 +76,7 @@ export class VDecoder {
 		while (true) {
 			// Lets try a queue size of 8, maybe change in future
 			// https://github.com/Vanilagy/mediabunny/blob/571fbb31986c7e9b37310e144121ac964d48a29b/src/media-sink.ts#L793
-			if (this.decoder.decodeQueueSize > 8) {
+			if (this.decoder.decodeQueueSize > 12) {
 				({ promise: this.queueDequeue, resolve: this.resumeFeedingChunks } =
 					Promise.withResolvers());
 				await this.queueDequeue;

@@ -9,6 +9,7 @@ import { Source } from './source.svelte';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink, AudioSampleSink } from 'mediabunny';
 import type { FileInfo, SourceType, SrtEntry } from '$lib/types';
 import { showTimelineInProgram } from '$lib/program/actions';
+import { formatStorageSize } from '$lib/app/utils';
 
 export const createSource = (type: SourceType, info: FileInfo, file?: File) => {
 	const newSource = new Source(type, info);
@@ -434,7 +435,6 @@ export const clickToImportFile = async () => {
 		}
 	} else {
 		// safari/firefox api
-		console.log('old');
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.style.display = 'none';
@@ -518,8 +518,6 @@ export const clickToRelinkFile = async (sourceId: string) => {
 };
 
 export const downloadToOPFS = async (url: string, fileName: string) => {
-	console.log('Downloading file');
-
 	let response;
 	try {
 		response = await fetch(url);
@@ -531,19 +529,19 @@ export const downloadToOPFS = async (url: string, fileName: string) => {
 	const root = await navigator.storage.getDirectory();
 	const fileHandle = await root.getFileHandle(fileName, { create: true });
 	const writable = await fileHandle.createWritable();
+	const size = Number(response.headers.get('content-length')) || 0;
 
-	//const contentLength = response.headers.get('content-length') || '';
-	//const total = parseInt(contentLength, 10);
+	console.log(`Downloading file (${formatStorageSize(size)})`);
+
 	//let loaded = 0;
 	const reader = response.body.getReader();
-
 	while (true) {
 		const { done, value } = await reader.read();
 		if (done) break;
 		//loaded += value.byteLength;
 		await writable.write(value);
-		/* if (total) {
-			const progress = (loaded / total) * 100;
+		/* if (size) {
+			const progress = (loaded / size) * 100;
 			console.log(`Download progress: ${progress.toFixed(2)}%`);
 		} */
 	}
