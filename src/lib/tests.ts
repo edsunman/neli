@@ -136,9 +136,7 @@ const genrateUrl = async () => {
 	}
 };
 
-const pullProject = async () => {
-	const projectId = 'c67c6fbc-2104-41b0-a307-3bef500abd5c';
-
+const pullProject = async (projectId: string) => {
 	const existingProject = await projectManager.getProject(projectId);
 	// TODO: if project already exists then we should remove and replace
 	// if no local changes have been made
