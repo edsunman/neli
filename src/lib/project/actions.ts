@@ -27,6 +27,7 @@ import {
 	setZoom
 } from '$lib/timeline/actions';
 import { getNextProjectName } from './utils';
+import { PUBLIC_R2_URL } from '$env/static/public';
 
 export const changeProjectResolution = (width: number, height: number) => {
 	pause();
@@ -142,7 +143,7 @@ export const loadProject = async (id: string) => {
 			let handle = await getFileHandleFromOPFS(fileName);
 			if (!handle) {
 				// no local copy so need to download
-				const url = `https://pub-ccdc9e59ee4a4882a942a5b79d47aafe.r2.dev/${source.url}`;
+				const url = `${PUBLIC_R2_URL}/${source.url}`;
 				handle = await downloadToOPFS(url, fileName);
 			}
 			if (handle) {

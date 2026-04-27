@@ -1,7 +1,8 @@
 import { createClip } from './clip/actions';
-import { appState, projectManager } from './state.svelte';
+import { appState, projectManager, workerManager } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
 import { PUBLIC_API_URL, PUBLIC_R2_URL } from '$env/static/public';
+import { createThumbnailBlob } from './source/actions';
 
 export const setupTests = () => {
 	//if (!window) return;
@@ -18,10 +19,10 @@ export const setupTests = () => {
 	};
 };
 
-const login = async () => {
+const login = async (email: string, password: string) => {
 	const response = await fetch(`${PUBLIC_API_URL}/auth/login`, {
 		method: 'POST',
-		body: JSON.stringify({ email: 'test@test.com', password: 'password' }),
+		body: JSON.stringify({ email, password }),
 		credentials: 'include',
 		headers: { 'Content-Type': 'application/json' }
 	});
@@ -52,12 +53,17 @@ const pushProject = async () => {
 
 	const data = { sources, clips, keyframes, ...project };
 
-	await fetch(`${PUBLIC_API_URL}/projects/${project?.id}`, {
+	const response = await fetch(`${PUBLIC_API_URL}/projects/${project?.id}`, {
 		method: 'POST',
 		body: JSON.stringify(data),
 		credentials: 'include',
 		headers: { 'Content-Type': 'application/json' }
 	});
+
+	if (!response.ok) {
+		console.error('fetch failed');
+		return;
+	}
 
 	// upload files
 	for (const source of sources) {
@@ -69,8 +75,6 @@ const pushProject = async () => {
 		) {
 			const fileHandle = source.handle as FileSystemFileHandle;
 			const file = await fileHandle.getFile();
-			//const extension = getExtentionFromFileType(source.info.mimeType);
-			//const fileName = `projects/${project.id}/sources/${source.id}${extension}`;
 			const response = await fetch(`${PUBLIC_API_URL}/generate-upload-url`, {
 				method: 'POST',
 				body: JSON.stringify({ sourceId: source.id, fileType: source.info.mimeType }),
@@ -93,6 +97,30 @@ const pushProject = async () => {
 			console.log(`Upload done`);
 		}
 	}
+
+	// project thumbnail
+	const { bitmap } = await workerManager.getThumbnail();
+	const blob = await createThumbnailBlob(bitmap, bitmap.width, bitmap.height);
+	bitmap.close();
+
+	const uploadResponse = await fetch(`${PUBLIC_API_URL}/generate-thumbnail-upload-url`, {
+		method: 'POST',
+		body: JSON.stringify({ projectId: project.id }),
+		credentials: 'include',
+		headers: { 'Content-Type': 'application/json' }
+	});
+	if (!response.ok) return;
+
+	const { uploadUrl } = await uploadResponse.json();
+	await fetch(uploadUrl, {
+		method: 'PUT',
+		body: blob,
+		headers: {
+			'Content-Type': 'image/png'
+		}
+	});
+
+	console.log('thumbnail uploaded');
 };
 
 const genrateUrl = async () => {
@@ -112,18 +140,31 @@ const pullProject = async () => {
 	const response = await fetch(`${PUBLIC_API_URL}/projects/c67c6fbc-2104-41b0-a307-3bef500abd5c`, {
 		method: 'GET'
 	});
-	if (response.ok) {
-		const remoteProject = await response.json();
-		const existingProject = await projectManager.getProject(remoteProject.id);
+	if (!response.ok) return;
+	const remoteProject = await response.json();
+	const existingProject = await projectManager.getProject(remoteProject.id);
 
-		if (existingProject) {
-			console.log('project already exists');
-			return;
-		}
-
-		projectManager.addRemoteProject(remoteProject);
-		appState.projectCount++;
+	// TODO: if project already exists then we should remove and replace
+	// if no local changes have been made
+	if (existingProject) {
+		console.log('project already exists');
+		return;
 	}
+
+	projectManager.addRemoteProject(remoteProject);
+	appState.projectCount++;
+
+	// load thumbnail
+	let thumbnailResponse;
+	try {
+		thumbnailResponse = await fetch(`${PUBLIC_R2_URL}/projects/${remoteProject.id}/thumbnail.png`);
+	} catch {
+		return;
+	}
+	if (!thumbnailResponse.ok || !thumbnailResponse.body) return;
+	const blob = await thumbnailResponse.blob();
+	projectManager.createThumbnail(blob, remoteProject.id, 'project');
+	console.log('project pulled');
 };
 
 const lotsOfClips = () => {
