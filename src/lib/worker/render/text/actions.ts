@@ -1,11 +1,4 @@
-import type {
-	CharacterDetails,
-	FontData,
-	FontGPU,
-	KerningMap,
-	MsdfChar,
-	MsdfTextMeasurements
-} from './types';
+import type { CharacterDetails, FontData, FontGPU, KerningMap, MsdfChar } from './types';
 import type { MsdfPipeline } from './text';
 
 // Loads texture from URL and uploads to GPU.
@@ -141,7 +134,12 @@ function createFontData(
 	};
 }
 
-export const measureText = (font: FontData, text: string, lineSpacing: number) => {
+export const measureText = (
+	font: FontData,
+	text: string,
+	lineSpacing: number,
+	writeOn: number = 1
+) => {
 	const characters: CharacterDetails[] = [];
 	let maxWidth = 0;
 	const lineWidths: number[] = [];
@@ -151,36 +149,54 @@ export const measureText = (font: FontData, text: string, lineSpacing: number) =
 	let line = 0;
 	let printedCharCount = 0;
 	let nextCharCode = text.charCodeAt(0);
-	let word = 0;
+	let wordCount = 0;
 	let inWord = false;
 
+	const wordStarts = [...text.matchAll(/\b\S+/g)].map((m) => m.index!);
+	const targetWord = Math.ceil(wordStarts.length * writeOn);
+	let characterCap =
+		targetWord < wordStarts.length ? text.indexOf(' ', wordStarts[targetWord - 1]) : text.length;
+	if (characterCap === -1) characterCap = text.length;
+
 	for (let i = 0; i < text.length; ++i) {
+		// a ghost character is ignored when calculating measurements
+		// but will still cout towards word and character count
+		const ghostLetter = i >= characterCap ? true : false;
 		const charCode = nextCharCode;
 		nextCharCode = i < text.length - 1 ? text.charCodeAt(i + 1) : -1;
 
 		switch (charCode) {
 			case 10: // Newline
-				lineWidths.push(textOffsetX);
+				if (!ghostLetter) lineWidths.push(textOffsetX);
 				line++;
 				maxWidth = Math.max(maxWidth, textOffsetX);
-				textOffsetX = 0;
+				if (!ghostLetter) textOffsetX = 0;
 				textOffsetY -= font.lineHeight * lineSpacing;
 				inWord = false;
 				break;
 			case 13: // CR
 				break;
 			case 32: // Space
-				textOffsetX += getXAdvance(font, charCode);
+				if (!ghostLetter) textOffsetX += getXAdvance(font, charCode);
 				inWord = false;
 				break;
 			default: {
 				if (!inWord) {
-					word++;
+					wordCount++;
 					inWord = true;
 				}
 				const char = getChar(font, charCode);
-				characters.push({ x: textOffsetX, y: textOffsetY, line, charIndex: char.charIndex, word });
-				textOffsetX += getXAdvance(font, charCode, nextCharCode);
+				characters.push({
+					x: ghostLetter ? 0 : textOffsetX,
+					y: ghostLetter ? 0 : textOffsetY,
+					line,
+					charIndex: char.charIndex,
+					word: wordCount
+				});
+				if (!ghostLetter) {
+					textOffsetX += getXAdvance(font, charCode, nextCharCode);
+				}
+
 				printedCharCount++;
 			}
 		}
@@ -193,7 +209,7 @@ export const measureText = (font: FontData, text: string, lineSpacing: number) =
 	const height = font.lineHeight + (lineWidths.length - 1) * linePitch;
 
 	return {
-		measurements: { width: maxWidth, height, lineWidths, printedCharCount, wordCount: word },
+		measurements: { width: maxWidth, height, lineWidths, printedCharCount, wordCount },
 		characters
 	};
 };

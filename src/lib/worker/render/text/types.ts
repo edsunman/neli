@@ -39,6 +39,7 @@ export type MsdfTextMeasurements = {
 	height: number;
 	lineWidths: number[];
 	printedCharCount: number;
+	wordCount: number;
 };
 
 export type CharacterDetails = {

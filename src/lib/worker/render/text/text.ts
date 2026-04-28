@@ -77,40 +77,19 @@ export class MsdfTextRenderer {
 		});
 		const textArray = new Float32Array(textBuffer.getMappedRange());
 
-		// write on
-		/* if (params[22] < 1) {
-			const textParts = text.split(/[\s\n]+/).filter((p) => p.length > 0);
-			const totalWords = textParts.length;
-			const keepCount = Math.ceil(totalWords * params[22]);
-			const lines = text.split('\n');
-			let resultLines: string[] = [];
-			let wordCount = 0;
-			for (let i = 0; i < lines.length; i++) {
-				const line = lines[i];
-				const leadingSpace = line.match(/^ +/)?.[0] || '';
-				const trailingSpace = line.match(/ +$/)?.[0] || '';
-				const words = line.split(/ +/).filter((w) => w.length > 0);
-				const lineResult: string[] = [];
-				for (const word of words) {
-					if (wordCount >= keepCount) break;
-					lineResult.push(word);
-					wordCount++;
-				}
-				resultLines.push(leadingSpace + lineResult.join(' ') + trailingSpace);
-				if (wordCount >= keepCount) {
-					resultLines = resultLines.slice(0, i + 1);
-					break;
-				}
-			}
-			text = resultLines.join('\n');
-		} */
+		// animation options
+		const inPlace = true;
+		const fadeIn = true;
 
 		// if string is empty or whitespace then skip
 		if (text.trim().length === 0) return null;
 
-		const { measurements, characters } = measureText(font.data, text, params[7]);
-
-		const fadeIn = true;
+		const { measurements, characters } = measureText(
+			font.data,
+			text,
+			params[7],
+			inPlace ? 1 : params[22]
+		);
 
 		let offset = 8;
 		for (const character of characters) {
@@ -132,8 +111,9 @@ export class MsdfTextRenderer {
 			if (fadeIn) {
 				const totalWords = measurements.wordCount;
 				const fadeProgress = params[22] * totalWords;
-				const currentWord = Math.floor(fadeProgress);
-				const wordFade = fadeProgress - currentWord;
+				const currentWord = Math.ceil(fadeProgress);
+
+				const wordFade = fadeProgress - currentWord + 1;
 				if (character.word < currentWord) {
 					textArray[offset + 3] = 1;
 				} else if (character.word > currentWord) {
