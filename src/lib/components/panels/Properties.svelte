@@ -58,6 +58,7 @@
 					{/if}
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
+						{@render sideButton('textAnimation', 'text animation', textIcon)}
 					{/if}
 					{#if source.type === 'video' || source.type === 'image'}
 						{@render sideButton('crop', 'crop settings', cropIcon)}
@@ -229,6 +230,13 @@
 			</Properties.Group>
 			<Properties.Group label="line spacing">
 				<Properties.Input bind:value={clip.params[7]} fallback={1} />
+			</Properties.Group>
+		{/if}
+		{#if appState.propertiesSection === 'textAnimation' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="write on" keyframeParams={[22]}>
+				<Properties.Input bind:value={clip.params[22]} fallback={1} />
+				<Properties.Slider bind:value={clip.params[22]} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}

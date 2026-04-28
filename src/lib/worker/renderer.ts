@@ -118,7 +118,7 @@ export class WebGPURenderer {
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
-		this.textRenderer.draw(this.passEncoder, [text]);
+		if (text) this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
 	testPass(trackNumber: number, frameNumber: number, params: number[]) {
@@ -152,7 +152,7 @@ export class WebGPURenderer {
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
-		this.textRenderer.draw(this.passEncoder, [text]);
+		if (text) this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
 	videoPass(

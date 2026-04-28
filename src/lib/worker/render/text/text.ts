@@ -1,5 +1,4 @@
 import type { FontGPU, MsdfTextMeasurements } from './types';
-import type { CharPosition } from './types';
 import { createFont, measureText } from './actions';
 import msdfTextWGSL from '../../shaders/text.wgsl?raw';
 
@@ -64,40 +63,91 @@ export class MsdfTextRenderer {
 	}
 
 	prepareText(
-		fontGPU: FontGPU,
+		font: FontGPU,
 		text: string,
 		params: number[],
 		uniformArray: Float32Array,
 		uniformBuffer: GPUBuffer
-	): MsdfText {
+	): MsdfText | null {
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
 			size: (text.length + 6) * Float32Array.BYTES_PER_ELEMENT * 4,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 			mappedAtCreation: true
 		});
-
 		const textArray = new Float32Array(textBuffer.getMappedRange());
+
+		// write on
+		/* if (params[22] < 1) {
+			const textParts = text.split(/[\s\n]+/).filter((p) => p.length > 0);
+			const totalWords = textParts.length;
+			const keepCount = Math.ceil(totalWords * params[22]);
+			const lines = text.split('\n');
+			let resultLines: string[] = [];
+			let wordCount = 0;
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				const leadingSpace = line.match(/^ +/)?.[0] || '';
+				const trailingSpace = line.match(/ +$/)?.[0] || '';
+				const words = line.split(/ +/).filter((w) => w.length > 0);
+				const lineResult: string[] = [];
+				for (const word of words) {
+					if (wordCount >= keepCount) break;
+					lineResult.push(word);
+					wordCount++;
+				}
+				resultLines.push(leadingSpace + lineResult.join(' ') + trailingSpace);
+				if (wordCount >= keepCount) {
+					resultLines = resultLines.slice(0, i + 1);
+					break;
+				}
+			}
+			text = resultLines.join('\n');
+		} */
+
+		// if string is empty or whitespace then skip
+		if (text.trim().length === 0) return null;
+
+		const { measurements, characters } = measureText(font.data, text, params[7]);
+
+		const fadeIn = true;
+
 		let offset = 8;
+		for (const character of characters) {
+			let textX = character.x;
 
-		const fontData = fontGPU.data;
-		const measurements = measureText(fontData, text, params[7]);
-
-		measureText(fontData, text, params[7], (pos: CharPosition) => {
-			let textX = pos.x;
+			// justification
 			if (params[8] === 1) {
-				textX = textX + (measurements.width - measurements.lineWidths[pos.line]) / 2;
+				textX = textX + (measurements.width - measurements.lineWidths[character.line]) / 2;
 			}
 			if (params[8] === 2) {
-				textX = textX + (measurements.width - measurements.lineWidths[pos.line]);
+				textX = textX + (measurements.width - measurements.lineWidths[character.line]);
 			}
 
 			textX = textX - measurements.width / 2;
-			textArray[offset] = textX;
-			textArray[offset + 1] = pos.y + measurements.height * 0.5;
-			textArray[offset + 2] = pos.charIndex;
+			textArray[offset] = character.charIndex;
+			textArray[offset + 1] = textX;
+			textArray[offset + 2] = character.y + measurements.height * 0.5;
+
+			if (fadeIn) {
+				const totalWords = measurements.wordCount;
+				const fadeProgress = params[22] * totalWords;
+				const currentWord = Math.floor(fadeProgress);
+				const wordFade = fadeProgress - currentWord;
+				if (character.word < currentWord) {
+					textArray[offset + 3] = 1;
+				} else if (character.word > currentWord) {
+					textArray[offset + 3] = 0;
+				} else {
+					textArray[offset + 3] = wordFade;
+				}
+			} else {
+				const keepCount = Math.ceil(measurements.wordCount * params[22]);
+				textArray[offset + 3] = character.word > keepCount ? 0 : 1;
+			}
+
 			offset += 4;
-		});
+		}
 
 		textBuffer.unmap();
 
@@ -119,13 +169,13 @@ export class MsdfTextRenderer {
 		});
 
 		const encoder = this.device.createRenderBundleEncoder(this.renderBundleDescriptor);
-		encoder.setPipeline(fontGPU.pipeline);
-		encoder.setBindGroup(0, fontGPU.bindGroup);
+		encoder.setPipeline(font.pipeline);
+		encoder.setBindGroup(0, font.bindGroup);
 		encoder.setBindGroup(1, bindGroup);
 		encoder.draw(4, measurements.printedCharCount);
 		const renderBundle = encoder.finish();
 
-		const msdfText = new MsdfText(this.device, renderBundle, measurements, fontGPU, textBuffer);
+		const msdfText = new MsdfText(this.device, renderBundle, measurements, font, textBuffer);
 
 		msdfText.setPixelScale(params[6] / 5000);
 		msdfText.setColor(params[9], params[10], params[11]);

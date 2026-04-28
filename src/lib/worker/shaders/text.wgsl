@@ -11,7 +11,7 @@ struct Char {
 struct FormattedText {
   color: vec4f,
   scale: f32,
-  chars: array<vec3f>,
+  chars: array<vec4f>, // character index, x, y, opacity
 };
 
 struct ClipUniforms {
@@ -37,13 +37,14 @@ struct VertexInput {
 struct VertexOutput {
   @builtin(position) position : vec4f,
   @location(0) texcoord : vec2f,
+  @location(1) charOpacity: f32, 
 };
 
 @vertex
 fn vertexMain(input : VertexInput) -> VertexOutput {
     let textElement = text.chars[input.instance];
-    let char = chars[u32(textElement.z)];
-    let charPos = (pos[input.vertex] * char.size + textElement.xy + char.offset) * text.scale;
+    let char = chars[u32(textElement.x)];
+    let charPos = (pos[input.vertex] * char.size + textElement.yz + char.offset) * text.scale;
     // Adjust for aspect ratio
     let scale = vec2f(clip.scale.x * 0.562, clip.scale.y);
     let newCharPos = charPos * scale + clip.position;
@@ -53,6 +54,7 @@ fn vertexMain(input : VertexInput) -> VertexOutput {
     output.texcoord = pos[input.vertex] * vec2f(1, -1);
     output.texcoord *= char.texExtent;
     output.texcoord += char.texOffset;
+    output.charOpacity = text.chars[input.instance].w;
     return output;
 }
 
@@ -65,6 +67,7 @@ fn sampleMsdf(texcoord: vec2f) -> f32 {
 // https://github.com/Chlumsky/msdfgen/issues/22#issuecomment-234958005
 @fragment
 fn fragmentMain(input : VertexOutput) -> @location(0) vec4f {
+  
     // pxRange (AKA distanceRange) comes from the msdfgen tool. Don McCurdy's tool
     // uses the default which is 4.
     let pxRange = 4.0;
@@ -83,5 +86,6 @@ fn fragmentMain(input : VertexOutput) -> @location(0) vec4f {
         discard;
     }
 
-    return vec4f(text.color.rgb, text.color.a * alpha);
+
+    return vec4f(text.color.rgb, text.color.a * alpha * input.charOpacity);
 }

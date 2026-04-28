@@ -1,5 +1,5 @@
 import type {
-	CharPosition,
+	CharacterDetails,
 	FontData,
 	FontGPU,
 	KerningMap,
@@ -141,12 +141,8 @@ function createFontData(
 	};
 }
 
-export function measureText(
-	font: FontData,
-	text: string,
-	lineSpacing: number,
-	onChar?: (position: CharPosition) => void
-): MsdfTextMeasurements {
+export const measureText = (font: FontData, text: string, lineSpacing: number) => {
+	const characters: CharacterDetails[] = [];
 	let maxWidth = 0;
 	const lineWidths: number[] = [];
 
@@ -155,6 +151,8 @@ export function measureText(
 	let line = 0;
 	let printedCharCount = 0;
 	let nextCharCode = text.charCodeAt(0);
+	let word = 0;
+	let inWord = false;
 
 	for (let i = 0; i < text.length; ++i) {
 		const charCode = nextCharCode;
@@ -167,17 +165,21 @@ export function measureText(
 				maxWidth = Math.max(maxWidth, textOffsetX);
 				textOffsetX = 0;
 				textOffsetY -= font.lineHeight * lineSpacing;
+				inWord = false;
 				break;
 			case 13: // CR
 				break;
 			case 32: // Space
 				textOffsetX += getXAdvance(font, charCode);
+				inWord = false;
 				break;
 			default: {
-				const char = getChar(font, charCode);
-				if (onChar) {
-					onChar({ x: textOffsetX, y: textOffsetY, line, charIndex: char.charIndex });
+				if (!inWord) {
+					word++;
+					inWord = true;
 				}
+				const char = getChar(font, charCode);
+				characters.push({ x: textOffsetX, y: textOffsetY, line, charIndex: char.charIndex, word });
 				textOffsetX += getXAdvance(font, charCode, nextCharCode);
 				printedCharCount++;
 			}
@@ -190,8 +192,11 @@ export function measureText(
 	const linePitch = lineSpacing * font.lineHeight;
 	const height = font.lineHeight + (lineWidths.length - 1) * linePitch;
 
-	return { width: maxWidth, height, lineWidths, printedCharCount };
-}
+	return {
+		measurements: { width: maxWidth, height, lineWidths, printedCharCount, wordCount: word },
+		characters
+	};
+};
 
 function getChar(fontData: FontData, charCode: number): MsdfChar {
 	return fontData.chars[charCode] ?? fontData.defaultChar;

@@ -24,7 +24,9 @@ export class Clip {
 		// 12 crop t, 13 crop r, 14 crop b, 15 crop l, 16 rounded corners, 17 rotation
 		0, 0, 0, 0, 0, 0,
 		// 18 opacity, 19 exposure, 20 contrast, 21 saturation
-		1, 0, 1, 1
+		1, 0, 1, 1,
+		// 22 write on
+		1
 	]);
 	text = $state('text');
 

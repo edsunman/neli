@@ -41,11 +41,12 @@ export type MsdfTextMeasurements = {
 	printedCharCount: number;
 };
 
-export type CharPosition = {
+export type CharacterDetails = {
 	x: number;
 	y: number;
 	line: number;
 	charIndex: number;
+	word: number;
 };
 
 export type MsdfTextFormattingOptions = {
