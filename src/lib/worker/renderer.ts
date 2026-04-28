@@ -1,8 +1,9 @@
-import { MsdfFont, MsdfTextRenderer } from './render/text';
+import { MsdfTextRenderer } from './render/text/text';
 import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
 import { ImageRenderer } from './render/image';
 import { SolidColorRenderer } from './render/solidColor';
+import type { FontGPU } from './render/text/types';
 
 export class WebGPURenderer {
 	bitmap?: ImageBitmap;
@@ -16,8 +17,8 @@ export class WebGPURenderer {
 	private commandEncoder?: GPUCommandEncoder;
 	private passEncoder?: GPURenderPassEncoder;
 
-	private font?: MsdfFont;
-	private testFont?: MsdfFont;
+	private font?: FontGPU;
+	private testFont?: FontGPU;
 	private textRenderer?: MsdfTextRenderer;
 	private testRenderer?: TestRenderer;
 	private videoRenderer?: VideoRenderer;
