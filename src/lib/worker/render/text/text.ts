@@ -69,9 +69,10 @@ export class MsdfTextRenderer {
 		uniformArray: Float32Array,
 		uniformBuffer: GPUBuffer
 	): MsdfText | null {
+		//const STRIDE_FLOATS = 6; // 24 bytes / 4 bytes per float
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
-			size: (text.length + 6) * Float32Array.BYTES_PER_ELEMENT * 4,
+			size: 32 + (text.length + 6) * 24,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 			mappedAtCreation: true
 		});
@@ -91,8 +92,11 @@ export class MsdfTextRenderer {
 			inPlace ? 1 : params[22]
 		);
 
-		let offset = 8;
+		const offset = 8;
+		const stride = 6;
+		let i = 0;
 		for (const character of characters) {
+			const base = offset + i * stride;
 			let textX = character.x;
 
 			// justification
@@ -104,9 +108,11 @@ export class MsdfTextRenderer {
 			}
 
 			textX = textX - measurements.width / 2;
-			textArray[offset] = character.charIndex;
-			textArray[offset + 1] = textX;
-			textArray[offset + 2] = character.y + measurements.height * 0.5;
+
+			textArray[base + 0] = textX;
+			textArray[base + 1] = character.y + measurements.height * 0.5;
+			textArray[base + 2] = character.charIndex;
+			textArray[base + 4] = 0.5;
 
 			if (fadeIn) {
 				const totalWords = measurements.wordCount;
@@ -115,18 +121,18 @@ export class MsdfTextRenderer {
 
 				const wordFade = fadeProgress - currentWord + 1;
 				if (character.word < currentWord) {
-					textArray[offset + 3] = 1;
+					textArray[base + 3] = 1;
 				} else if (character.word > currentWord) {
-					textArray[offset + 3] = 0;
+					textArray[base + 3] = 0;
 				} else {
-					textArray[offset + 3] = wordFade;
+					textArray[base + 3] = wordFade;
 				}
 			} else {
 				const keepCount = Math.ceil(measurements.wordCount * params[22]);
-				textArray[offset + 3] = character.word > keepCount ? 0 : 1;
+				textArray[base + 3] = character.word > keepCount ? 0 : 1;
 			}
 
-			offset += 4;
+			i++;
 		}
 
 		textBuffer.unmap();
