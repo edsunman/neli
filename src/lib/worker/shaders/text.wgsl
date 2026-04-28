@@ -9,7 +9,7 @@ struct CharData {
   position: vec2f,       // index 0, 1
   index: f32,   // index 2 (Option A: Use f32 and cast to u32 in shader)
   opacity: f32,     // index 3
-  metadata: f32,    // index 4
+  crop: f32,    // index 4
   _pad: f32,        // index 5 (Force size to 24 bytes)
 };
 
@@ -46,6 +46,8 @@ struct VertexOutput {
   @builtin(position) position : vec4f,
   @location(0) texcoord : vec2f,
   @location(1) charOpacity: f32, 
+  @location(2) charCrop: f32, 
+  @location(3) charPos : vec2f,
 };
 
 @vertex
@@ -54,19 +56,20 @@ fn vertexMain(input : VertexInput) -> VertexOutput {
     let index = u32(character.index);
     let fontCharacter = fontCharacters[index];
 
-   // let charIndex = u32(text.chars[instanceOffset]);
-
     let charPos = (quad[input.vertex] * fontCharacter.size + character.position + fontCharacter.offset) * text.scale;
+
     // Adjust for aspect ratio
     let scale = vec2f(clip.scale.x * 0.562, clip.scale.y);
     let newCharPos = charPos * scale + clip.position;
 
     var output : VertexOutput;
     output.position = vec4f(newCharPos, 0, 1);
+    output.charPos = quad[input.vertex] * vec2f(1, -1);
     output.texcoord = quad[input.vertex] * vec2f(1, -1);
     output.texcoord *= fontCharacter.texExtent;
     output.texcoord += fontCharacter.texOffset;
     output.charOpacity = character.opacity;
+    output.charCrop = character.crop;
     return output;
 }
 
@@ -74,7 +77,9 @@ fn vertexMain(input : VertexInput) -> VertexOutput {
 // https://github.com/Chlumsky/msdfgen/issues/22#issuecomment-234958005
 @fragment
 fn fragmentMain(input : VertexOutput) -> @location(0) vec4f {
-    
+    if (input.charPos.y > input.charCrop) {
+      discard;
+    }
     // pxRange (AKA distanceRange) comes from the msdfgen tool. Don McCurdy's tool
     // uses the default which is 4.
     let pxRange = 4.0;
@@ -92,7 +97,6 @@ fn fragmentMain(input : VertexOutput) -> @location(0) vec4f {
     if (alpha < 0.001) {
         discard;
     }
-
 
     return vec4f(text.color.rgb, text.color.a * alpha * input.charOpacity);
 }

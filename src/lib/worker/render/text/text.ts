@@ -112,7 +112,8 @@ export class MsdfTextRenderer {
 			textArray[base + 0] = textX;
 			textArray[base + 1] = character.y + measurements.height * 0.5;
 			textArray[base + 2] = character.charIndex;
-			textArray[base + 4] = 0.5;
+			textArray[base + 3] = 1;
+			textArray[base + 4] = Math.random();
 
 			if (fadeIn) {
 				const totalWords = measurements.wordCount;
@@ -121,11 +122,13 @@ export class MsdfTextRenderer {
 
 				const wordFade = fadeProgress - currentWord + 1;
 				if (character.word < currentWord) {
-					textArray[base + 3] = 1;
+					//textArray[base + 3] = 1;
 				} else if (character.word > currentWord) {
-					textArray[base + 3] = 0;
+					//textArray[base + 3] = 0;
+					textArray[base + 1] -= 50;
 				} else {
-					textArray[base + 3] = wordFade;
+					//	textArray[base + 3] = wordFade;
+					textArray[base + 1] += wordFade * 50 - 50;
 				}
 			} else {
 				const keepCount = Math.ceil(measurements.wordCount * params[22]);
