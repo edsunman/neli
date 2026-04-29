@@ -186,9 +186,12 @@ export const measureText = (
 					inWord = true;
 				}
 				const char = getChar(font, charCode);
+				//console.log(char.yoffset, char.height);
 				characters.push({
-					x: ghostLetter ? 0 : textOffsetX,
-					y: ghostLetter ? 0 : textOffsetY,
+					x: ghostLetter ? 0 : textOffsetX + char.xoffset,
+					y: ghostLetter ? 0 : textOffsetY - char.yoffset,
+					height: char.height,
+					yOffset: char.yoffset,
 					line,
 					charIndex: char.charIndex,
 					word: wordCount
@@ -209,7 +212,14 @@ export const measureText = (
 	const height = font.lineHeight + (lineWidths.length - 1) * linePitch;
 
 	return {
-		measurements: { width: maxWidth, height, lineWidths, printedCharCount, wordCount },
+		measurements: {
+			width: maxWidth,
+			height,
+			lineWidths,
+			printedCharCount,
+			wordCount,
+			fontLineHeight: font.lineHeight
+		},
 		characters
 	};
 };

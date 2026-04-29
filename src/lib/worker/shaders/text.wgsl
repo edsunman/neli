@@ -56,7 +56,7 @@ fn vertexMain(input : VertexInput) -> VertexOutput {
     let index = u32(character.index);
     let fontCharacter = fontCharacters[index];
 
-    let charPos = (quad[input.vertex] * fontCharacter.size + character.position + fontCharacter.offset) * text.scale;
+    let charPos = (quad[input.vertex] * fontCharacter.size + character.position) * text.scale;
 
     // Adjust for aspect ratio
     let scale = vec2f(clip.scale.x * 0.562, clip.scale.y);
@@ -98,7 +98,7 @@ fn fragmentMain(input : VertexOutput) -> @location(0) vec4f {
         discard;
     }
 
-    return vec4f(text.color.rgb, text.color.a * alpha * input.charOpacity);
+    return vec4f(text.color.rgb,  text.color.a * alpha * input.charOpacity );
 }
 
 

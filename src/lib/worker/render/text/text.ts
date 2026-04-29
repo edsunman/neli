@@ -113,26 +113,57 @@ export class MsdfTextRenderer {
 			textArray[base + 1] = character.y + measurements.height * 0.5;
 			textArray[base + 2] = character.charIndex;
 			textArray[base + 3] = 1;
-			textArray[base + 4] = Math.random();
+			textArray[base + 4] = 1;
 
 			if (fadeIn) {
+				const globalProgress = params[22];
 				const totalWords = measurements.wordCount;
-				const fadeProgress = params[22] * totalWords;
-				const currentWord = Math.ceil(fadeProgress);
+				const stagger = 0.2;
 
-				const wordFade = fadeProgress - currentWord + 1;
-				if (character.word < currentWord) {
-					//textArray[base + 3] = 1;
-				} else if (character.word > currentWord) {
-					//textArray[base + 3] = 0;
-					textArray[base + 1] -= 50;
+				// 1. Timing
+				const duration = totalWords > 1 ? 1 / (1 + (totalWords - 1) * stagger) : 1;
+				const delayPerWord = duration * stagger;
+				const wordIndex = character.word - 1;
+				const wordStart = wordIndex * delayPerWord;
+
+				let rawFade = Math.max(0, Math.min(1, (globalProgress - wordStart) / duration));
+
+				// 2. Easing
+				const wordFade =
+					rawFade < 0.5 ? 4 * rawFade * rawFade * rawFade : 1 - Math.pow(-2 * rawFade + 2, 3) / 2;
+
+				// 3. Movement
+				const riseDistance = 50;
+				const currentRise = (1 - wordFade) * riseDistance;
+
+				/**
+				 * 4. Shared Horizon Crop Logic
+				 * 'fontLineHeight' represents the bottom of the line.
+				 * We calculate where the character's bottom is currently located
+				 * relative to that line.
+				 */
+				const horizon = measurements.fontLineHeight + 5;
+				const characterBottom = (character.yOffset || 0) + character.height;
+				const currentBottomPosition = characterBottom + currentRise;
+
+				// How many pixels of the character are currently below the horizon?
+				const pixelsSubmerged = Math.max(0, currentBottomPosition - horizon);
+
+				// Calculate what percentage of the character's height is visible
+				// We clamp this strictly between 0 and 1
+				let wordCrop = (character.height - pixelsSubmerged) / character.height;
+				wordCrop = Math.max(0, Math.min(1, wordCrop));
+
+				// 5. Apply
+				if (rawFade <= 0) {
+					textArray[base + 1] -= riseDistance;
+					textArray[base + 4] = 0;
+				} else if (rawFade >= 1) {
+					textArray[base + 4] = 1; // Ensure 100% visibility at the end
 				} else {
-					//	textArray[base + 3] = wordFade;
-					textArray[base + 1] += wordFade * 50 - 50;
+					textArray[base + 1] -= currentRise;
+					textArray[base + 4] = wordCrop;
 				}
-			} else {
-				const keepCount = Math.ceil(measurements.wordCount * params[22]);
-				textArray[base + 3] = character.word > keepCount ? 0 : 1;
 			}
 
 			i++;

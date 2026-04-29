@@ -15,7 +15,8 @@
 		aspectPortrait,
 		imageIcon,
 		opacityIcon,
-		cropIcon
+		cropIcon,
+		seekIcon
 	} from '../icons/Icons.svelte';
 	import { changeProjectResolution } from '$lib/project/actions';
 	import { secondsToTimecode } from '$lib/timeline/utils';
@@ -58,7 +59,7 @@
 					{/if}
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
-						{@render sideButton('textAnimation', 'text animation', textIcon)}
+						{@render sideButton('textAnimation', 'text animation', seekIcon)}
 					{/if}
 					{#if source.type === 'video' || source.type === 'image'}
 						{@render sideButton('crop', 'crop settings', cropIcon)}

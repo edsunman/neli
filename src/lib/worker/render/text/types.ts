@@ -45,6 +45,8 @@ export type MsdfTextMeasurements = {
 export type CharacterDetails = {
 	x: number;
 	y: number;
+	height: number;
+	yOffset: number;
 	line: number;
 	charIndex: number;
 	word: number;
