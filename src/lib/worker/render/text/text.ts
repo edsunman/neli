@@ -1,5 +1,6 @@
-import type { FontGPU, MsdfTextMeasurements } from './types';
-import { createFont, measureText } from './actions';
+import type { FontGPU, MsdfTextLayout, TextEffect } from './types';
+import { createFont, layoutText } from './actions';
+import { fadeInEffect } from './effects';
 import msdfTextWGSL from '../../shaders/text.wgsl?raw';
 
 // Prepared text with GPU render bundle and color/scale buffers.
@@ -10,7 +11,7 @@ export class MsdfText {
 	constructor(
 		private device: GPUDevice,
 		public renderBundle: GPURenderBundle,
-		public measurements: MsdfTextMeasurements,
+		public layout: MsdfTextLayout,
 		public fontGPU: FontGPU,
 		public textBuffer: GPUBuffer
 	) {
@@ -67,7 +68,8 @@ export class MsdfTextRenderer {
 		text: string,
 		params: number[],
 		uniformArray: Float32Array,
-		uniformBuffer: GPUBuffer
+		uniformBuffer: GPUBuffer,
+		effect: TextEffect = fadeInEffect
 	): MsdfText | null {
 		//const STRIDE_FLOATS = 6; // 24 bytes / 4 bytes per float
 		const textBuffer = this.device.createBuffer({
@@ -78,19 +80,10 @@ export class MsdfTextRenderer {
 		});
 		const textArray = new Float32Array(textBuffer.getMappedRange());
 
-		// animation options
-		const inPlace = true;
-		const fadeIn = true;
-
 		// if string is empty or whitespace then skip
 		if (text.trim().length === 0) return null;
 
-		const { measurements, characters } = measureText(
-			font.data,
-			text,
-			params[7],
-			inPlace ? 1 : params[22]
-		);
+		const { layout, characters } = layoutText(font.data, text, params[7], 1);
 
 		const offset = 8;
 		const stride = 6;
@@ -101,70 +94,27 @@ export class MsdfTextRenderer {
 
 			// justification
 			if (params[8] === 1) {
-				textX = textX + (measurements.width - measurements.lineWidths[character.line]) / 2;
+				textX = textX + (layout.width - layout.lineWidths[character.line]) / 2;
 			}
 			if (params[8] === 2) {
-				textX = textX + (measurements.width - measurements.lineWidths[character.line]);
+				textX = textX + (layout.width - layout.lineWidths[character.line]);
 			}
 
-			textX = textX - measurements.width / 2;
+			textX = textX - layout.width / 2;
 
-			textArray[base + 0] = textX;
-			textArray[base + 1] = character.y + measurements.height * 0.5;
+			const state = {
+				x: textX,
+				y: character.y + layout.height * 0.5,
+				scale: 1
+			};
+
+			effect.apply(state, character, layout, params[22]);
+
+			textArray[base + 0] = state.x;
+			textArray[base + 1] = state.y;
 			textArray[base + 2] = character.charIndex;
 			textArray[base + 3] = 1;
-			textArray[base + 4] = 1;
-
-			if (fadeIn) {
-				const globalProgress = params[22];
-				const totalWords = measurements.wordCount;
-				const stagger = 0.2;
-
-				// 1. Timing
-				const duration = totalWords > 1 ? 1 / (1 + (totalWords - 1) * stagger) : 1;
-				const delayPerWord = duration * stagger;
-				const wordIndex = character.word - 1;
-				const wordStart = wordIndex * delayPerWord;
-
-				const rawFade = Math.max(0, Math.min(1, (globalProgress - wordStart) / duration));
-
-				// 2. Easing
-				const wordFade =
-					rawFade < 0.5 ? 4 * rawFade * rawFade * rawFade : 1 - Math.pow(-2 * rawFade + 2, 3) / 2;
-
-				// 3. Movement
-				const riseDistance = 50;
-				const currentRise = (1 - wordFade) * riseDistance;
-
-				/**
-				 * 4. Shared Horizon Crop Logic
-				 * 'fontLineHeight' represents the bottom of the line.
-				 * We calculate where the character's bottom is currently located
-				 * relative to that line.
-				 */
-				const horizon = measurements.fontLineHeight + 5;
-				const characterBottom = (character.yOffset || 0) + character.height;
-				const currentBottomPosition = characterBottom + currentRise;
-
-				// How many pixels of the character are currently below the horizon?
-				const pixelsSubmerged = Math.max(0, currentBottomPosition - horizon);
-
-				// Calculate what percentage of the character's height is visible
-				// We clamp this strictly between 0 and 1
-				let wordCrop = (character.height - pixelsSubmerged) / character.height;
-				wordCrop = Math.max(0, Math.min(1, wordCrop));
-
-				// 5. Apply
-				if (rawFade <= 0) {
-					textArray[base + 1] -= riseDistance;
-					textArray[base + 4] = 0;
-				} else if (rawFade >= 1) {
-					textArray[base + 4] = 1; // Ensure 100% visibility at the end
-				} else {
-					textArray[base + 1] -= currentRise;
-					textArray[base + 4] = wordCrop;
-				}
-			}
+			textArray[base + 4] = state.scale;
 
 			i++;
 		}
@@ -192,10 +142,10 @@ export class MsdfTextRenderer {
 		encoder.setPipeline(font.pipeline);
 		encoder.setBindGroup(0, font.bindGroup);
 		encoder.setBindGroup(1, bindGroup);
-		encoder.draw(4, measurements.printedCharCount);
+		encoder.draw(4, layout.printedCharCount);
 		const renderBundle = encoder.finish();
 
-		const msdfText = new MsdfText(this.device, renderBundle, measurements, font, textBuffer);
+		const msdfText = new MsdfText(this.device, renderBundle, layout, font, textBuffer);
 
 		msdfText.setPixelScale(params[6] / 5000);
 		msdfText.setColor(params[9], params[10], params[11]);

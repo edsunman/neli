@@ -59,6 +59,7 @@
 					{/if}
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
+						{@render sideButton('textLayout', 'text layout', textIcon)}
 						{@render sideButton('textAnimation', 'text animation', seekIcon)}
 					{/if}
 					{#if source.type === 'video' || source.type === 'image'}
@@ -210,10 +211,16 @@
 			<Properties.Group label="text">
 				<Properties.Textarea bind:value={clip.text} />
 			</Properties.Group>
+			<Properties.Group label="font">
+				<Properties.Select bind:value={clip.params[23]} param={23} />
+			</Properties.Group>
 			<Properties.Group label="font size" keyframeParams={[6]}>
 				<Properties.Input bind:value={clip.params[6]} param={6} fallback={20} step="1" />
 				<Properties.Slider bind:value={clip.params[6]} param={6} min={1} max={75} step />
 			</Properties.Group>
+		{/if}
+		{#if appState.propertiesSection === 'textLayout' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="justify">
 				<Properties.Toggle
 					bind:value={clip.params[8]}

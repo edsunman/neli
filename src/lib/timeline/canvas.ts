@@ -54,7 +54,8 @@ const PARAM_NAMES = [
 	'opacity',
 	'exposure',
 	'contrast',
-	'saturation'
+	'saturation',
+	'write on'
 ];
 
 export const drawCanvas = (

@@ -34,12 +34,13 @@ export type FontGPU = {
 	data: FontData;
 };
 
-export type MsdfTextMeasurements = {
+export type MsdfTextLayout = {
 	width: number;
 	height: number;
 	lineWidths: number[];
 	printedCharCount: number;
 	wordCount: number;
+	fontLineHeight: number;
 };
 
 export type CharacterDetails = {
@@ -65,4 +66,19 @@ export type FontData = {
 	lineHeight: number;
 	chars: { [x: number]: MsdfChar };
 	kernings: KerningMap;
+};
+
+export type LetterState = {
+	x: number;
+	y: number;
+	scale: number;
+};
+
+export type TextEffect = {
+	apply: (
+		state: LetterState,
+		character: CharacterDetails,
+		layout: MsdfTextLayout,
+		progress: number
+	) => void;
 };

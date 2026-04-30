@@ -134,7 +134,7 @@ function createFontData(
 	};
 }
 
-export const measureText = (
+export const layoutText = (
 	font: FontData,
 	text: string,
 	lineSpacing: number,
@@ -212,7 +212,7 @@ export const measureText = (
 	const height = font.lineHeight + (lineWidths.length - 1) * linePitch;
 
 	return {
-		measurements: {
+		layout: {
 			width: maxWidth,
 			height,
 			lineWidths,

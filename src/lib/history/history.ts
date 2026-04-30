@@ -157,6 +157,8 @@ export class HistoryManager {
 				);
 			case 'deleteSource':
 				return new DeleteSourceCommand(command.data.sourceId);
+			default:
+				throw new Error(`Unknown command action: ${command.action}`);
 		}
 	}
 }

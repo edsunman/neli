@@ -30,6 +30,7 @@ export type PropertiesSection =
 	| 'layout'
 	| 'audio'
 	| 'text'
+	| 'textLayout'
 	| 'textAnimation'
 	| 'source'
 	| 'crop'

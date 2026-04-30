@@ -24,7 +24,7 @@
 		"@types/node": "^24.2.1",
 		"@types/wicg-file-system-access": "^2023.10.7",
 		"@webgpu/types": "^0.1.61",
-		"bits-ui": "^1.8.0",
+		"bits-ui": "^2.18.0",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
