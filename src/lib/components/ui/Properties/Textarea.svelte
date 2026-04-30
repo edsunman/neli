@@ -1,6 +1,12 @@
 <script lang="ts">
-	import { appState, timelineState, workerManager } from '$lib/state.svelte';
-	import { onDestroy } from 'svelte';
+	import type { Clip } from '$lib/clip/clip.svelte';
+	import {
+		appState,
+		historyManager,
+		projectManager,
+		timelineState,
+		workerManager
+	} from '$lib/state.svelte';
 
 	type Props = {
 		value: string;
@@ -8,10 +14,8 @@
 		onBlur?: () => void;
 	};
 	let { value = $bindable(), onBlur = () => {} }: Props = $props();
-
-	onDestroy(() => {
-		onBlur();
-	});
+	let selectedClip: Clip;
+	let oldValue: string;
 </script>
 
 <div
@@ -34,15 +38,29 @@
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
+			if (timelineState.selectedClip) selectedClip = timelineState.selectedClip;
+			oldValue = value;
 		}}
 		onblur={() => {
 			appState.disableKeyboardShortcuts = false;
 			onBlur();
-			if (!timelineState.selectedClip) return;
+			if (!selectedClip) return;
 			if (value === '') {
 				value = '_';
-				workerManager.sendClip(timelineState.selectedClip);
+				workerManager.sendClip(selectedClip);
 			}
+			projectManager.updateClip(selectedClip);
+			if (oldValue !== value) {
+				historyManager.pushAction({
+					action: 'clipText',
+					data: {
+						clipId: selectedClip.id,
+						oldValue,
+						newValue: value
+					}
+				});
+			}
+			historyManager.finishCommand();
 		}}
 		oninput={() => {
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);

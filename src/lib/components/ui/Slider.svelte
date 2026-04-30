@@ -9,6 +9,7 @@
 		max?: number;
 		barStart?: number;
 		vertical?: boolean;
+		onSlideStart?: (n: number) => void;
 		onValueChange?: (n: number) => void;
 		onValueFinalised?: () => void;
 		step?: boolean;
@@ -20,6 +21,7 @@
 		min = 0,
 		max = 1,
 		barStart = 0,
+		onSlideStart,
 		onValueChange,
 		onValueFinalised,
 		step = false
@@ -47,16 +49,6 @@
 		const end = Math.max(barStartNormalised, clampedValue);
 		return { start, width: end - start, handle: clampedValue };
 	});
-
-	const valueChanged = () => {
-		if (onValueChange) {
-			onValueChange(value);
-		}
-	};
-
-	const valueFinalised = () => {
-		if (onValueFinalised) onValueFinalised();
-	};
 </script>
 
 <div
@@ -75,6 +67,7 @@
 		onmousedown={(e) => {
 			e.preventDefault();
 			dragging = true;
+			if (onSlideStart) onSlideStart(value);
 			let normalisedSize;
 			if (!vertical) {
 				clientStart = e.clientX;
@@ -85,11 +78,10 @@
 				offsetStart = e.offsetY;
 				normalisedSize = 1 - e.offsetY / height;
 			}
-
 			const clamped = clamp(normalisedSize); // Math.min(Math.max(normalisedSize, 0), 1);
 			const lerped = lerp(min, max, clamped);
 			value = roundTo(lerped, 2);
-			valueChanged();
+			if (onValueChange) onValueChange(value);
 		}}
 	>
 		<div
@@ -117,7 +109,8 @@
 				normalised = 1 - invLerp(min, max, value);
 			}
 			offsetStart = normalised * (vertical ? height : width);
-			valueChanged();
+			if (onSlideStart) onSlideStart(value);
+			if (onValueChange) onValueChange(value);
 		}}
 		style:left={!vertical ? `${barSize.handle * 100}%` : ''}
 		style:bottom={vertical ? `${barSize.handle * 100}%` : ''}
@@ -152,11 +145,11 @@
 				value = Math.round(lerped);
 			}
 
-			valueChanged();
+			if (onValueChange) onValueChange(value);
 		});
 	}}
 	onmouseup={() => {
-		if (dragging) valueFinalised();
+		if (dragging && onValueFinalised) onValueFinalised();
 		dragging = false;
 	}}
 />

@@ -154,6 +154,10 @@ export type Command =
 			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
 	  }
 	| {
+			action: 'clipText';
+			data: { clipId: string; oldValue: string; newValue: string };
+	  }
+	| {
 			action: 'addKeyframe';
 			data: {
 				clipId: string;

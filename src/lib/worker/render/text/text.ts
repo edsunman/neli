@@ -126,7 +126,7 @@ export class MsdfTextRenderer {
 				const wordIndex = character.word - 1;
 				const wordStart = wordIndex * delayPerWord;
 
-				let rawFade = Math.max(0, Math.min(1, (globalProgress - wordStart) / duration));
+				const rawFade = Math.max(0, Math.min(1, (globalProgress - wordStart) / duration));
 
 				// 2. Easing
 				const wordFade =
