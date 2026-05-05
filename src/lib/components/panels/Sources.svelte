@@ -20,7 +20,7 @@
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	import { deselectAllClips } from '$lib/clip/actions';
+	import { deselectAllClips } from '$lib/clip/actions.svelte';
 
 	let dragHover = $state(false);
 	let hoverName = $state('');

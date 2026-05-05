@@ -43,8 +43,17 @@
 		finaliseClip,
 		splitHoveredClip,
 		deleteClips,
-		deselectAllClips
-	} from '$lib/clip/actions';
+		deselectAllClips,
+
+		cloneClipProperties,
+
+		trimSiblingClips,
+
+		setTrackJoins
+
+
+
+	} from '$lib/clip/actions.svelte';
 	import {
 		getKeyframeAtMousePosition,
 		deleteKeyframe,
@@ -71,6 +80,7 @@
 		scissorsIcon,
 		zoomInIcon
 	} from '../icons/Icons.svelte';
+	import { Clip } from '$lib/clip/clip.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -679,6 +689,48 @@
 					focusTrack(0);
 				}
 				break;
+			}
+			case 'KeyC': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (timelineState.selectedClip) {
+					appState.clipboardState.clips.length = 0;
+					appState.clipboardState.clips.push(timelineState.selectedClip);
+				};
+				if (timelineState.selectedClips.size > 0) {
+					appState.clipboardState.clips = [...timelineState.selectedClips];
+				}
+				break;
+			}
+			case 'KeyV': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (appState.clipboardState.clips.length < 1) return;
+
+				const firstClip = appState.clipboardState.clips.reduce((prev, curr) => {
+					return (curr.start < prev.start) ? curr : prev;
+				});
+
+				const newClips: Clip[] = [];
+				let track = 0;
+				let lastFrame = 0;
+				for (const clip of appState.clipboardState.clips) {
+					const startFrame = timelineState.currentFrame + (clip.start - firstClip.start)
+					const newClip = createClip(clip.source.id, clip.track,startFrame, clip.duration, clip.sourceOffset, true);
+					if (!newClip) continue;
+					cloneClipProperties(clip,newClip);
+					trimSiblingClips(newClip);
+					historyManager.pushAction({action:'addClip', data: {clipId: newClip.id}})
+					newClips.push(newClip)
+					track = clip.track;
+					const clipLastFrame = startFrame + clip.duration;
+					if (clipLastFrame > lastFrame) lastFrame = clipLastFrame;
+				}
+				extendTimeline(lastFrame);
+				setTrackJoins(track)
+				workerManager.sendClip(newClips);
+				projectManager.updateClip(newClips);
+				historyManager.finishCommand();
+				timelineState.invalidateWaveform =true;
+
 			}
 			case 'KeyK': {
 				if (timelineState.selectedClip) {

@@ -9,7 +9,7 @@ import {
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-import { removeHoverAllClips } from '$lib/clip/actions';
+import { removeHoverAllClips } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
 import { setParamsFromKeyframes } from '$lib/clip/keyframes';

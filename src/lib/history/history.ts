@@ -1,4 +1,4 @@
-import { getClip, setAllJoins } from '$lib/clip/actions';
+import { getClip, setAllJoins } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import {
 	addKeyframe,

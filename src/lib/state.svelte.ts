@@ -9,7 +9,8 @@ import type {
 	PropertiesSection,
 	ImportState,
 	Track,
-	PaletteState
+	PaletteState,
+	ClipboardState
 } from './types';
 import { WorkerManager } from './worker/manager.svelte';
 
@@ -22,6 +23,10 @@ class AppState {
 	propertiesSavedSection = $state<PropertiesSection>('project');
 	progress = $state({ started: false, message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
+
+	clipboardState : ClipboardState = {
+		clips: []
+	}
 
 	palette = $state<PaletteState>({
 		open: false,

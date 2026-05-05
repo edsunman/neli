@@ -1,5 +1,10 @@
 import type { EncodedPacketSink, InputVideoTrack } from 'mediabunny';
 import type { Source } from './source/source.svelte';
+import type { Clip } from './clip/clip.svelte';
+
+export type ClipboardState = {
+	clips: Clip[];
+}
 
 export type DragAndDropState = {
 	currentCursor: { x: number; y: number };

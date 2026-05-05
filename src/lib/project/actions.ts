@@ -1,4 +1,4 @@
-import { deselectAllClips, setAllJoins } from '$lib/clip/actions';
+import { deselectAllClips, setAllJoins } from '$lib/clip/actions.svelte';
 import { Clip } from '$lib/clip/clip.svelte';
 import { resizeCanvas, showTimelineInProgram } from '$lib/program/actions';
 import {

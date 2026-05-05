@@ -8,7 +8,7 @@
 	import Properties from '$lib/components/panels/Properties.svelte';
 	import Palette from '$lib/components/palette/Palette.svelte';
 	import DragAndDropIcon from '$lib/components/misc/DragAndDropIcon.svelte';
-	import { deselectAllClips } from '$lib/clip/actions';
+	import { deselectAllClips } from '$lib/clip/actions.svelte';
 </script>
 
 <svelte:head>

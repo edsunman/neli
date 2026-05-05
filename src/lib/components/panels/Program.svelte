@@ -16,7 +16,7 @@
 	import { focusTrack, pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
 	import { startApp } from '$lib/app/actions';
-	import { deselectAllClips } from '$lib/clip/actions';
+	import { deselectAllClips } from '$lib/clip/actions.svelte';
 	import { roundTo } from '$lib/clip/utils';
 	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
 

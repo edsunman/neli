@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { deselectAllClips } from '$lib/clip/actions';
+	import { deselectAllClips } from '$lib/clip/actions.svelte';
 	import { appState, timelineState } from '$lib/state.svelte';
 	import { audioIcon, filmIcon, textIcon } from '../icons/Icons.svelte';
 

@@ -14,6 +14,7 @@
 }
 @custom-variant height-xl (@media (height >= 870px));
 @custom-variant height-lg (@media (height >= 750px));
+@custom-variant height-md (@media (height >= 650px));
 @font-face {
 	font-family: Sen;
 	font-style: normal;

@@ -23,12 +23,10 @@ export const createClip = (
 	temp = false
 ) => {
 	const source = getSourceFromId(sourceId);
-	if (!source) return;
+	if (!source) throw new Error('Invalid source id');
 
 	// Clip added after timeline max length
-	if (start && start > 9000) return;
-
-	if (start < 0) return;
+	if (start > 9000 || start < 0) return;
 
 	if (duration === 0) {
 		// No duration set so use defaults
@@ -413,7 +411,7 @@ export const resizeSelctedClip = () => {
 };
 
 export const trimSiblingClips = (clip: Clip) => {
-	const clipsToRemove: Clip[] = [];
+	const modifiedClips: Clip[] = [];
 	for (const siblingClip of timelineState.clips) {
 		if (siblingClip.id === clip.id || siblingClip.deleted || siblingClip.track !== clip.track)
 			continue;
@@ -422,7 +420,14 @@ export const trimSiblingClips = (clip: Clip) => {
 
 		if (clip.start <= siblingClip.start && clipEnd >= siblingEnd) {
 			// clip covers sibling so remove it
-			clipsToRemove.push(siblingClip);
+			siblingClip.deleted = true;
+			historyManager.pushAction({
+					action: 'deleteClip',
+					data: {
+						clipId: siblingClip.id
+					}
+				});
+			modifiedClips.push(siblingClip);
 			continue;
 		}
 
@@ -434,12 +439,11 @@ export const trimSiblingClips = (clip: Clip) => {
 		}
 
 		if (clip.start > siblingClip.start && clip.start < siblingEnd) {
-			// need to trim endprojectDatabase
+			// need to trim end
 			const trimAmount = siblingEnd - clip.start;
 			const oldDuration = siblingClip.duration;
 			siblingClip.duration = siblingClip.duration - trimAmount;
 			setTrackJoins(clip.track);
-			workerManager.sendClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
 				data: {
@@ -450,6 +454,7 @@ export const trimSiblingClips = (clip: Clip) => {
 					oldDuration: oldDuration
 				}
 			});
+			modifiedClips.push(siblingClip);
 		}
 		if (clipEnd > siblingClip.start && clipEnd < siblingEnd) {
 			// need to trim start
@@ -460,7 +465,6 @@ export const trimSiblingClips = (clip: Clip) => {
 			siblingClip.sourceOffset = siblingClip.sourceOffset + trimAmount;
 			siblingClip.duration = siblingClip.duration - trimAmount;
 			setTrackJoins(clip.track);
-			workerManager.sendClip(siblingClip);
 			historyManager.pushAction({
 				action: 'trimClip',
 				data: {
@@ -471,19 +475,13 @@ export const trimSiblingClips = (clip: Clip) => {
 					oldDuration: oldDuration
 				}
 			});
+			modifiedClips.push(siblingClip);
 		}
 	}
+		
 
-	for (const clip of clipsToRemove) {
-		clip.deleted = true;
-		historyManager.pushAction({
-			action: 'deleteClip',
-			data: {
-				clipId: clip.id
-			}
-		});
-		workerManager.sendClip(clip);
-	}
+	workerManager.sendClip(modifiedClips);
+	projectManager.updateClip(modifiedClips);
 };
 
 export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
@@ -852,3 +850,9 @@ export const deselectAllClips = (showOutputAudio = true) => {
 	timelineState.selectedClips.clear();
 	if (showOutputAudio) appState.propertiesSection = 'outputAudio';
 };
+
+export const cloneClipProperties = (clip:Clip, destinationClip:Clip) => {
+	destinationClip.params = $state.snapshot(clip.params);
+	destinationClip.keyframeTracks = structuredClone(clip.keyframeTracks);
+	destinationClip.keyframeTracksActive = [...clip.keyframeTracksActive];
+}
