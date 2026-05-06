@@ -49,7 +49,10 @@
 
 		trimSiblingClips,
 
-		setTrackJoins
+		setTrackJoins,
+
+		pasteClips
+
 
 
 
@@ -269,10 +272,15 @@
 
 			if (e.shiftKey) {
 				// If there is a clip selected check we have not clicked it
-				if (timelineState.selectedClip === clip) return;
+				if (timelineState.selectedClip && timelineState.selectedClip.id === clip.id) return;
 				multiSelectClip(clip.id);
 				return;
 			}
+
+			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== clip.track) {
+				focusTrack(clip.track)
+			}
+
 			timelineState.selectedClip = clip;
 			timelineState.selectedClips.clear();
 			showClipPropertiesSection(clip);
@@ -705,31 +713,7 @@
 				if (!event.ctrlKey && !event.metaKey) return;
 				if (appState.clipboardState.clips.length < 1) return;
 
-				const firstClip = appState.clipboardState.clips.reduce((prev, curr) => {
-					return (curr.start < prev.start) ? curr : prev;
-				});
-
-				const newClips: Clip[] = [];
-				let track = 0;
-				let lastFrame = 0;
-				for (const clip of appState.clipboardState.clips) {
-					const startFrame = timelineState.currentFrame + (clip.start - firstClip.start)
-					const newClip = createClip(clip.source.id, clip.track,startFrame, clip.duration, clip.sourceOffset, true);
-					if (!newClip) continue;
-					cloneClipProperties(clip,newClip);
-					trimSiblingClips(newClip);
-					historyManager.pushAction({action:'addClip', data: {clipId: newClip.id}})
-					newClips.push(newClip)
-					track = clip.track;
-					const clipLastFrame = startFrame + clip.duration;
-					if (clipLastFrame > lastFrame) lastFrame = clipLastFrame;
-				}
-				extendTimeline(lastFrame);
-				setTrackJoins(track)
-				workerManager.sendClip(newClips);
-				projectManager.updateClip(newClips);
-				historyManager.finishCommand();
-				timelineState.invalidateWaveform =true;
+				pasteClips()
 
 			}
 			case 'KeyK': {

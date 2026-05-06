@@ -210,10 +210,10 @@
 		inert={disabled}
 		class={[
 			disabled
-				? 'text-zinc-700 opacity-50'
+				? 'text-zinc-700 opacity-30'
 				: selected
-					? 'text-zinc-50 bg-zinc-700'
-					: 'text-zinc-600  active:text-zinc-50',
+					? 'text-zinc-50 bg-hover'
+					: 'text-zinc-700  active:text-zinc-50',
 			!selected && !disabled && !appState.mouseIsDown && 'hover:text-zinc-400',
 			'rounded-lg h-9 mx-1'
 		]}

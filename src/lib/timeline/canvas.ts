@@ -386,7 +386,8 @@ const drawClip = (
 	selected = false,
 	multiSelected = false
 ) => {
-	const { clipColor, clipBaseColor, clipDarkColor } = getClipPalette(clip, selected, multiSelected);
+	const selectedOrHovered = selected || clip.hovered;
+	const { clipColor, clipBaseColor, clipDarkColor } = getClipPalette(clip, selectedOrHovered, multiSelected);
 
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;
@@ -445,7 +446,7 @@ const drawClip = (
 		context.fill();
 		context.stroke();
 	}
-	if (clipWidth < 32) return;
+	if (clipWidth < 32 || clipHeight < 15) return;
 	if (selected || (clip.hovered && !multiSelected)) {
 		// handles
 		context.save();

@@ -10,7 +10,7 @@ import { getSourceFromId } from '$lib/source/actions';
 import { canvasPixelToFrame } from '$lib/timeline/utils';
 import { Clip } from './clip.svelte';
 import { getClipFitTransform } from './utils';
-import { addTrack, setAllTrackTypes } from '$lib/timeline/actions';
+import { addTrack, extendTimeline, setAllTrackTypes } from '$lib/timeline/actions';
 import type { KeyframeTrack, Keyframe } from '$lib/types';
 import { removeKeyframe } from './keyframes';
 
@@ -578,9 +578,9 @@ export const setHoverOnHoveredClip = (hoveredFrame: number, offsetY: number) => 
 		if (clip.deleted) continue;
 		clip.hovered = false;
 		for (let i = 0; i < timelineState.tracks.length; i++) {
-			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== i + 1) {
+			/* if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== i + 1) {
 				continue;
-			}
+			} */
 			if (
 				offsetY > timelineState.tracks[i].top &&
 				offsetY < timelineState.tracks[i].top + timelineState.tracks[i].height &&
@@ -853,6 +853,40 @@ export const deselectAllClips = (showOutputAudio = true) => {
 
 export const cloneClipProperties = (clip:Clip, destinationClip:Clip) => {
 	destinationClip.params = $state.snapshot(clip.params);
+	destinationClip.text = clip.text;
 	destinationClip.keyframeTracks = structuredClone(clip.keyframeTracks);
 	destinationClip.keyframeTracksActive = [...clip.keyframeTracksActive];
+}
+
+export const pasteClips = () => {
+	const firstClip = appState.clipboardState.clips.reduce((prev, curr) => {
+		return (curr.start < prev.start) ? curr : prev;
+	});
+
+	const newClips: Clip[] = [];
+	let track = 0;
+	let lastFrame = 0;
+	for (const clip of appState.clipboardState.clips) {
+		const startFrame = timelineState.currentFrame + (clip.start - firstClip.start)
+		const newClip = createClip(clip.source.id, clip.track,startFrame, clip.duration, clip.sourceOffset, true);
+		if (!newClip) continue;
+		cloneClipProperties(clip,newClip);
+		trimSiblingClips(newClip);
+		historyManager.pushAction({action:'addClip', data: {clipId: newClip.id}})
+		newClips.push(newClip)
+		track = clip.track;
+		const clipLastFrame = startFrame + clip.duration;
+		if (clipLastFrame > lastFrame) lastFrame = clipLastFrame;
+	}
+	extendTimeline(lastFrame);
+	setTrackJoins(track)
+	workerManager.sendClip(newClips);
+	projectManager.updateClip(newClips);
+	historyManager.finishCommand();
+	if (newClips.length<2) {
+		timelineState.selectedClip = newClips[0]
+	} else {
+		timelineState.selectedClips = new Set([...newClips])
+	}
+	timelineState.invalidateWaveform =true;
 }
