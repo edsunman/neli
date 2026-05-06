@@ -7,6 +7,7 @@ export type ClipboardState = {
 }
 
 export type DragAndDropState = {
+	startingCursor: { x: number; y: number };
 	currentCursor: { x: number; y: number };
 	dragFrom: 'sources' | 'program';
 	clicked: boolean;

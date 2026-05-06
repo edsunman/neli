@@ -9,8 +9,18 @@
 	};
 	let { value = $bindable(), onBlur = () => {} }: Props = $props();
 
+	const blur = () => {
+		appState.disableKeyboardShortcuts = false;
+			onBlur();
+			if (!timelineState.selectedClip) return;
+			if (value === '') {
+				value = '_';
+				workerManager.sendClip(timelineState.selectedClip);
+			}
+	}
+
 	onDestroy(() => {
-		onBlur();
+		blur();
 	});
 </script>
 
@@ -35,15 +45,7 @@
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
 		}}
-		onblur={() => {
-			appState.disableKeyboardShortcuts = false;
-			onBlur();
-			if (!timelineState.selectedClip) return;
-			if (value === '') {
-				value = '_';
-				workerManager.sendClip(timelineState.selectedClip);
-			}
-		}}
+		onblur={blur}
 		oninput={() => {
 			if (timelineState.selectedClip) workerManager.sendClip(timelineState.selectedClip);
 		}}

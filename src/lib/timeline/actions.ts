@@ -209,9 +209,9 @@ export const focusTrack = (trackNumber: number) => {
 
 /** Call after changing track heights to recalculate and set positions */
 export const setTrackPositions = () => {
-	const flexHeight = timelineState.height - 35;
-	const trackContainerHeight = flexHeight * 0.8;
-	const rulerContainerHeight = flexHeight * 0.2;
+	const flexHeight = timelineState.height - 30;
+	const rulerContainerHeight = flexHeight * 0.2 + 5;
+	const trackContainerHeight = flexHeight - rulerContainerHeight;
 	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 10;
 	if (trackContainerHeight < 220) trackPadding = 5;
 

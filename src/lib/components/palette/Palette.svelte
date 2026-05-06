@@ -54,6 +54,7 @@
 <div
 	class="h-dvh w-dvw absolute top-0 left-0 grid bg-black/70 backdrop-grayscale z-10 items-center justify-center"
 	onmousedown={closePalette}
+	onmousemove={(e)=>e.stopPropagation()}
 >
 	<div
 		class={[

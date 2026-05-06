@@ -202,7 +202,7 @@
 	};
 
 	const mouseDown = (e: MouseEvent) => {
-		if (appState.disableKeyboardShortcuts) return;
+		//if (appState.disableKeyboardShortcuts) return;
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		mouseIsDown = true;
@@ -241,7 +241,7 @@
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
 		if (
-			e.offsetY > timelineState.height - 40 &&
+			e.offsetY > timelineState.height - 30 &&
 			e.offsetX > scrollBarStart &&
 			e.offsetX < scrollBarEnd
 		) {

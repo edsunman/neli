@@ -4,7 +4,6 @@
 	import { audioIcon, filmIcon, textIcon } from '../icons/Icons.svelte';
 
 	let showIcon = $derived(appState.dragAndDrop.active && appState.dragAndDrop.showIcon);
-	let startingCursor = { x: 0, y: 0 };
 	let cursorMovedEnough = $state(false);
 
 	const mouseMove = (e: MouseEvent) => {
@@ -13,9 +12,9 @@
 			appState.dragAndDrop.currentCursor.y = e.clientY;
 			if (!cursorMovedEnough) {
 				const distance = Math.sqrt(
-					Math.pow(startingCursor.y - e.clientY, 2) + Math.pow(startingCursor.x - e.clientX, 2)
+					Math.pow(appState.dragAndDrop.startingCursor.y - e.clientY, 2) + Math.pow(appState.dragAndDrop.startingCursor.x - e.clientX, 2)
 				);
-				if (distance > 10) {
+				if (distance > 5) {
 					if (appState.propertiesSection !== 'source') appState.propertiesSection = 'outputAudio';
 					deselectAllClips(false);
 					timelineState.selectedTool = 'pointer';

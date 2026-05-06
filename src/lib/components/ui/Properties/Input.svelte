@@ -8,6 +8,7 @@
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
+	import { onDestroy } from 'svelte';
 
 	type Props = {
 		value: number | string;
@@ -27,6 +28,25 @@
 	}: Props = $props();
 
 	const keyframeContext = getKeyframeContext();
+
+	const blurActions = () => {
+			appState.disableKeyboardShortcuts = false;
+			onBlur();
+			if (!timelineState.selectedClip) return;
+			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
+				value = fallback;
+				workerManager.sendClip(timelineState.selectedClip);
+			}
+			projectManager.updateClip(timelineState.selectedClip);
+			if (keyframeContext.params && keyframeContext.active()) {
+				finaliseKeyframe();
+				historyManager.finishCommand();
+			}
+	} 
+
+	onDestroy(()=>{
+		blurActions()
+	})
 </script>
 
 <div
@@ -59,20 +79,7 @@
 			}
 			timelineState.invalidate = true;
 		}}
-		onblur={() => {
-			appState.disableKeyboardShortcuts = false;
-			onBlur();
-			if (!timelineState.selectedClip) return;
-			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
-				value = fallback;
-				workerManager.sendClip(timelineState.selectedClip);
-			}
-			projectManager.updateClip(timelineState.selectedClip);
-			if (keyframeContext.params && keyframeContext.active()) {
-				finaliseKeyframe();
-				historyManager.finishCommand();
-			}
-		}}
+		onblur={blurActions}
 		oninput={() => {
 			if (keyframeContext.params && keyframeContext.active()) {
 				createOrUpdateKeyframe(keyframeContext.params);

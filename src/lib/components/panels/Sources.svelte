@@ -17,10 +17,10 @@
 	import type { Source } from '$lib/source/source.svelte';
 	import { clickToRelinkFile, deleteSource, dropToImportFile } from '$lib/source/actions';
 	import { showSourceInProgram, showTimelineInProgram } from '$lib/program/actions';
+	import { deselectAllClips } from '$lib/clip/actions.svelte';
 
 	import ContextMenu from '../ui/ContextMenu.svelte';
 	import MyTooltip from '../ui/Tooltip.svelte';
-	import { deselectAllClips } from '$lib/clip/actions.svelte';
 
 	let dragHover = $state(false);
 	let hoverName = $state('');
@@ -131,7 +131,7 @@
 			style:top={`${hoverNameIndex * 60}px`}
 			class={[
 				showHoverName ? 'visible' : 'invisible',
-				hoverSelected ? 'bg-zinc-700 text-zinc-100' : 'bg-hover text-zinc-300',
+				hoverSelected ? 'bg-zinc-300 text-zinc-900' : 'bg-hover text-zinc-300',
 				'absolute h-14 ml-20 text-left flex ',
 				'items-center z-2 rounded-lg pointer-events-none text-sm pr-3 text-nowrap'
 			]}
@@ -163,7 +163,7 @@
 					}}
 					class={[
 						// selected
-						source.id === appState.selectedSource?.id && 'bg-zinc-700 text-zinc-100',
+						source.id === appState.selectedSource?.id && 'bg-zinc-300 text-zinc-900',
 						// hover
 						!appState.dragAndDrop.clicked &&
 							source.id !== appState.selectedSource?.id &&
@@ -185,6 +185,7 @@
 						appState.mouseIsDown = true;
 
 						if (source.unlinked) return;
+						appState.dragAndDrop.startingCursor = { x: e.clientX, y: e.clientY };
 						appState.dragAndDrop.currentCursor = { x: e.clientX, y: e.clientY };
 						appState.dragAndDrop.clicked = true;
 						appState.dragAndDrop.dragFrom = 'sources';
@@ -209,7 +210,7 @@
 									  appState.dragAndDrop.dragFrom === 'sources' &&
 									  appState.dragAndDrop.source?.id === source.id
 									? 'opacity-10'
-									: 'opacity-80',
+									: 'opacity-100',
 							source.type === 'text' || source.type === 'srt' ? 'bg-clip-purple-500' : '',
 							source.type === 'test' ? 'bg-clip-green-500' : '',
 							source.type === 'audio' && !source.unlinked ? 'bg-clip-blue-500' : '',

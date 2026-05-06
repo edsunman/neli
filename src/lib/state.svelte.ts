@@ -36,6 +36,7 @@ class AppState {
 	});
 
 	dragAndDrop = $state<DragAndDropState>({
+		startingCursor: { x: 0, y: 0 },
 		currentCursor: { x: 0, y: 0 },
 		dragFrom: 'sources',
 		clicked: false,
