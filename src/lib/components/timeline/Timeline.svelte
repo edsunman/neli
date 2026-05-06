@@ -44,18 +44,7 @@
 		splitHoveredClip,
 		deleteClips,
 		deselectAllClips,
-
-		cloneClipProperties,
-
-		trimSiblingClips,
-
-		setTrackJoins,
-
 		pasteClips
-
-
-
-
 	} from '$lib/clip/actions.svelte';
 	import {
 		getKeyframeAtMousePosition,
