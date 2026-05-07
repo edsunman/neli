@@ -3,6 +3,31 @@ import type { TextEffect } from './types';
 export const fadeInEffect: TextEffect = {
 	apply(state, character, layout, progress) {
 		const totalWords = layout.wordCount;
+		const stagger = 1;
+
+		const duration = totalWords > 1 ? 1 / (1 + (totalWords - 1) * stagger) : 1;
+		const delayPerWord = duration * stagger;
+		const wordIndex = character.word - 1;
+		const wordStart = wordIndex * delayPerWord;
+
+		const rawFade = Math.max(0, Math.min(1, (progress - wordStart) / duration));
+
+		const wordFade =
+			rawFade < 0.5 ? 4 * rawFade * rawFade * rawFade : 1 - Math.pow(-2 * rawFade + 2, 3) / 2;
+
+		if (rawFade <= 0) {
+			state.opacity = 0;
+		} else if (rawFade >= 1) {
+			state.opacity = 1;
+		} else {
+			state.opacity = wordFade;
+		}
+	}
+};
+
+export const popUpEffect: TextEffect = {
+	apply(state, character, layout, progress) {
+		const totalWords = layout.wordCount;
 		const stagger = 0.2;
 
 		const duration = totalWords > 1 ? 1 / (1 + (totalWords - 1) * stagger) : 1;

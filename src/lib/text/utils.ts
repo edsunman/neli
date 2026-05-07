@@ -45,7 +45,6 @@ export const loadFont = async (fontJsonUrl: string): Promise<Font> => {
 export const measureText = (text: string, font: Font, lineSpacing: number): TextMeasurements => {
 	let maxWidth = 0;
 	const lineWidths: number[] = [];
-
 	let textOffsetX = 0;
 	//let textOffsetY = 0;
 	//let line = 0;

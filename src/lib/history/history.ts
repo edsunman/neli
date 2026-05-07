@@ -121,6 +121,12 @@ export class HistoryManager {
 					command.data.oldValue,
 					command.data.newValue
 				);
+			case 'clipText':
+				return new ClipTextCommand(
+					command.data.clipId,
+					command.data.oldValue,
+					command.data.newValue
+				);
 			case 'addTrack':
 				return new AddTrackCommand(command.data.number, command.data.type);
 			case 'removeTrack':
@@ -157,8 +163,6 @@ export class HistoryManager {
 				);
 			case 'deleteSource':
 				return new DeleteSourceCommand(command.data.sourceId);
-			default:
-				throw new Error(`Unknown command action: ${command.action}`);
 		}
 	}
 }
@@ -295,6 +299,26 @@ class ClipParamCommand implements ICommand {
 		for (let i = 0; i < this.paramIndex.length; i++) {
 			clip.params[this.paramIndex[i]] = this.oldValue[i];
 		}
+		updatedClips.add(clip);
+	}
+}
+
+class ClipTextCommand implements ICommand {
+	constructor(
+		private clipId: string,
+		private oldValue: string,
+		private newValue: string
+	) {}
+	redo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		clip.text = this.newValue;
+		updatedClips.add(clip);
+	}
+	undo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		clip.text = this.oldValue;
 		updatedClips.add(clip);
 	}
 }

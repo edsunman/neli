@@ -1,6 +1,6 @@
 import type { FontGPU, MsdfTextLayout, TextEffect } from './types';
 import { createFont, layoutText } from './actions';
-import { fadeInEffect } from './effects';
+import { popUpEffect, fadeInEffect } from './effects';
 import msdfTextWGSL from '../../shaders/text.wgsl?raw';
 
 // Prepared text with GPU render bundle and color/scale buffers.
@@ -69,8 +69,9 @@ export class MsdfTextRenderer {
 		params: number[],
 		uniformArray: Float32Array,
 		uniformBuffer: GPUBuffer,
-		effect: TextEffect = fadeInEffect
+		effect?: TextEffect
 	): MsdfText | null {
+		const selectedEffect = effect ?? (params[24] === 0 ? fadeInEffect : popUpEffect);
 		//const STRIDE_FLOATS = 6; // 24 bytes / 4 bytes per float
 		const textBuffer = this.device.createBuffer({
 			label: 'msdf text buffer',
@@ -83,7 +84,12 @@ export class MsdfTextRenderer {
 		// if string is empty or whitespace then skip
 		if (text.trim().length === 0) return null;
 
-		const { layout, characters } = layoutText(font.data, text, params[7], 1);
+		const { layout, characters } = layoutText(
+			font.data,
+			text,
+			params[7],
+			params[25] > 0 ? 1 : params[22]
+		);
 
 		const offset = 8;
 		const stride = 6;
@@ -105,15 +111,16 @@ export class MsdfTextRenderer {
 			const state = {
 				x: textX,
 				y: character.y + layout.height * 0.5,
-				scale: 1
+				scale: 1,
+				opacity: 1
 			};
 
-			effect.apply(state, character, layout, params[22]);
+			selectedEffect.apply(state, character, layout, params[22]);
 
 			textArray[base + 0] = state.x;
 			textArray[base + 1] = state.y;
 			textArray[base + 2] = character.charIndex;
-			textArray[base + 3] = 1;
+			textArray[base + 3] = state.opacity;
 			textArray[base + 4] = state.scale;
 
 			i++;

@@ -212,7 +212,20 @@
 				<Properties.Textarea bind:value={clip.text} />
 			</Properties.Group>
 			<Properties.Group label="font">
-				<Properties.Select bind:value={clip.params[23]} param={23} />
+				<Properties.Select
+					bind:value={clip.params[23]}
+					param={23}
+					options={[
+						{
+							value: 1,
+							text: 'Sen'
+						},
+						{
+							value: 2,
+							text: 'Montserrat'
+						}
+					]}
+				/>
 			</Properties.Group>
 			<Properties.Group label="font size" keyframeParams={[6]}>
 				<Properties.Input bind:value={clip.params[6]} param={6} fallback={20} step="1" />
@@ -237,9 +250,28 @@
 		{/if}
 		{#if appState.propertiesSection === 'textAnimation' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
-			<Properties.Group label="write on" keyframeParams={[22]}>
+			<Properties.Group label="effect">
+				<Properties.Select
+					bind:value={clip.params[24]}
+					param={24}
+					options={[
+						{
+							value: 0,
+							text: 'Fade in'
+						},
+						{
+							value: 1,
+							text: 'Pop up'
+						}
+					]}
+				/>
+			</Properties.Group>
+			<Properties.Group label="effect progress" keyframeParams={[22]}>
 				<Properties.Input bind:value={clip.params[22]} param={22} fallback={1} />
 				<Properties.Slider bind:value={clip.params[22]} param={22} />
+			</Properties.Group>
+			<Properties.Group label="hold">
+				<Properties.Input bind:value={clip.params[25]} param={25} fallback={1} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}

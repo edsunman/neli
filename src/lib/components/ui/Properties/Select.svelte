@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { historyManager, projectManager, timelineState, workerManager } from '$lib/state.svelte';
 
-	let { value = $bindable(), param } = $props();
+	type Props = { value: number; param: number; options: { value: number; text: string }[] };
+	let { value = $bindable(), param, options }: Props = $props();
 	let oldValue = value;
 </script>
 
 <select
 	bind:value
-	class="block w-full p-2 rounded-lg border border-zinc-600 text-zinc-300"
+	class={[
+		'block w-full p-2 rounded-lg border border-zinc-600 text-zinc-300',
+		'focus-visible:outline-hidden focus-visible:ring-2 ring-zinc-300'
+	]}
 	onchange={() => {
 		if (!timelineState.selectedClip) return;
 		const clip = timelineState.selectedClip;
@@ -25,6 +29,7 @@
 		workerManager.sendClip(clip);
 	}}
 >
-	<option class="bg-zinc-900" value={1}>Sen</option>
-	<option class="bg-zinc-900" value={2}>Montserrat</option>
+	{#each options as option (option.value)}
+		<option class="bg-zinc-900" value={option.value}>{option.text}</option>
+	{/each}
 </select>

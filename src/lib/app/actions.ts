@@ -33,8 +33,9 @@ export const startApp = async (canvas: HTMLCanvasElement) => {
 
 const setupWorkerAndProject = async (canvas: HTMLCanvasElement) => {
 	await workerManager.setup(canvas);
-	const font = await loadFont('/text.json');
-	appState.fonts.push(font);
+	const sen = await loadFont('/Sen.json');
+	const montserrat = await loadFont('/Montserrat.json');
+	appState.fonts = [sen, sen, montserrat];
 
 	await setupProjectManager();
 };

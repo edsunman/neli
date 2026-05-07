@@ -67,6 +67,7 @@
 		onmousedown={(e) => {
 			e.preventDefault();
 			dragging = true;
+			if (document.activeElement) (document.activeElement as HTMLElement).blur();
 			if (onSlideStart) onSlideStart(value);
 			let normalisedSize;
 			if (!vertical) {
@@ -101,6 +102,7 @@
 		onmousedown={(e) => {
 			e.preventDefault();
 			dragging = true;
+			if (document.activeElement) (document.activeElement as HTMLElement).blur();
 			clientStart = vertical ? e.clientY : e.clientX;
 			let normalised;
 			if (!vertical) {

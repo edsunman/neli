@@ -191,14 +191,15 @@
 		text: string,
 		fontSize: number,
 		scale: number,
-		lineSpacing: number
+		lineSpacing: number,
+		fontIndex: number
 	) => {
 		if (text.length === 0) text = '_';
-		const measurements = measureText(text, appState.fonts[0], lineSpacing);
+		const measurements = measureText(text, appState.fonts[fontIndex], lineSpacing);
 		// scale factor based on font size, canvas scale and arbitrary number
 		const scaleFactor = (scale / 100) * (fontSize / 9.3);
-		const x = measurements.width * scaleFactor + 10;
-		const y = measurements.height * scaleFactor + 10;
+		const x = measurements.width * scaleFactor;
+		const y = measurements.height * scaleFactor;
 		return { x, y };
 	};
 </script>
@@ -287,7 +288,13 @@
 	</div>
 {/if}
 {#if clip.source.type === 'text'}
-	{@const { x, y } = getTextBoundingBox(clip.text, clip.params[6], scale, clip.params[7])}
+	{@const { x, y } = getTextBoundingBox(
+		clip.text,
+		clip.params[6],
+		scale,
+		clip.params[7],
+		clip.params[23]
+	)}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		style:top={`${position.top + boxSizeHeight / 2 - y / 2}px`}

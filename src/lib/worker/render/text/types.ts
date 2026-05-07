@@ -72,6 +72,7 @@ export type LetterState = {
 	x: number;
 	y: number;
 	scale: number;
+	opacity: number;
 };
 
 export type TextEffect = {
