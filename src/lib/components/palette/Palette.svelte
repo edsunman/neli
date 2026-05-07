@@ -54,13 +54,14 @@
 <div
 	class="h-dvh w-dvw absolute top-0 left-0 grid bg-black/70 backdrop-grayscale z-10 items-center justify-center"
 	onmousedown={closePalette}
+	onmousemove={(e)=>e.stopPropagation()}
 >
 	<div
 		class={[
 			appState.palette.shrink || appState.palette.page === 'about'
 				? '-translate-y-[0px]'
 				: '-translate-y-[225px]',
-			'bg-zinc-925 z-2 px-8 h-20 w-lg row-start-1 col-start-1 rounded-t-2xl transition-transform duration-400 ease-in-out'
+			'bg-zinc-925 z-2 px-8 h-20 row-start-1 col-start-1 rounded-t-2xl transition-transform duration-400 ease-in-out'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
@@ -117,11 +118,11 @@
 	<div
 		class={[
 			appState.palette.page === 'about'
-				? 'h-[30rem]'
+				? 'height-md:h-[30rem] h-[20rem]'
 				: appState.palette.shrink
 					? appState.palette.shrink
 					: 'h-[25rem]',
-			'bg-zinc-900 w-lg row-start-1 col-start-1 z-2 rounded-2xl flex flex-col transition-all duration-400 ease-in-out overflow-y-hidden'
+			'bg-zinc-900 min-[520px]:w-lg row-start-1 col-start-1 z-2 rounded-2xl flex flex-col transition-all duration-400 ease-in-out overflow-y-hidden'
 		]}
 		onmousedown={(e) => {
 			e.stopPropagation();
@@ -145,9 +146,9 @@
 	</div>
 	<div
 		class={[
-			appState.palette.page === 'about' ? 'translate-y-[205px]' : 'translate-y-[0px]',
+			appState.palette.page === 'about' ? 'height-md:translate-y-[205px] translate-y-[125px]' : 'translate-y-[0px]',
 			'bg-linear-to-r from-rose-500 to-pink-600',
-			'z-1 px-8 h-20 w-lg row-start-1 col-start-1 rounded-b-2xl transition-transform duration-400 ease-in-out'
+			'z-1 px-8 h-20 row-start-1 col-start-1 rounded-b-2xl transition-transform duration-400 ease-in-out'
 		]}
 	></div>
 </div>

@@ -1,4 +1,4 @@
-import { getClipsAtFrame } from '$lib/clip/actions';
+import { getClipsAtFrame } from '$lib/clip/actions.svelte';
 import { appState, programState, timelineState } from '$lib/state.svelte';
 import { measureText } from '$lib/text/utils';
 

@@ -1,4 +1,4 @@
-import { createClip } from './clip/actions';
+import { createClip } from './clip/actions.svelte';
 import { appState, projectManager, workerManager } from './state.svelte';
 import { extendTimeline } from './timeline/actions';
 import { PUBLIC_API_URL, PUBLIC_R2_URL } from '$env/static/public';

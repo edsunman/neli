@@ -9,7 +9,7 @@ import {
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-import { removeHoverAllClips } from '$lib/clip/actions';
+import { removeHoverAllClips } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
 import { setParamsFromKeyframes } from '$lib/clip/keyframes';
@@ -209,9 +209,9 @@ export const focusTrack = (trackNumber: number) => {
 
 /** Call after changing track heights to recalculate and set positions */
 export const setTrackPositions = () => {
-	const flexHeight = timelineState.height - 35;
-	const trackContainerHeight = flexHeight * 0.8;
-	const rulerContainerHeight = flexHeight * 0.2;
+	const flexHeight = timelineState.height - 30;
+	const rulerContainerHeight = flexHeight * 0.2 + 5;
+	const trackContainerHeight = flexHeight - rulerContainerHeight;
 	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 10;
 	if (trackContainerHeight < 220) trackPadding = 5;
 

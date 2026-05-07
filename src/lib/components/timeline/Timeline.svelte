@@ -43,8 +43,9 @@
 		finaliseClip,
 		splitHoveredClip,
 		deleteClips,
-		deselectAllClips
-	} from '$lib/clip/actions';
+		deselectAllClips,
+		pasteClips
+	} from '$lib/clip/actions.svelte';
 	import {
 		getKeyframeAtMousePosition,
 		deleteKeyframe,
@@ -71,6 +72,7 @@
 		scissorsIcon,
 		zoomInIcon
 	} from '../icons/Icons.svelte';
+	import { Clip } from '$lib/clip/clip.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -189,7 +191,7 @@
 	};
 
 	const mouseDown = (e: MouseEvent) => {
-		if (appState.disableKeyboardShortcuts) return;
+		//if (appState.disableKeyboardShortcuts) return;
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		mouseIsDown = true;
@@ -228,7 +230,7 @@
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
 		if (
-			e.offsetY > timelineState.height - 40 &&
+			e.offsetY > timelineState.height - 30 &&
 			e.offsetX > scrollBarStart &&
 			e.offsetX < scrollBarEnd
 		) {
@@ -259,10 +261,15 @@
 
 			if (e.shiftKey) {
 				// If there is a clip selected check we have not clicked it
-				if (timelineState.selectedClip === clip) return;
+				if (timelineState.selectedClip && timelineState.selectedClip.id === clip.id) return;
 				multiSelectClip(clip.id);
 				return;
 			}
+
+			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== clip.track) {
+				focusTrack(clip.track)
+			}
+
 			timelineState.selectedClip = clip;
 			timelineState.selectedClips.clear();
 			showClipPropertiesSection(clip);
@@ -679,6 +686,24 @@
 					focusTrack(0);
 				}
 				break;
+			}
+			case 'KeyC': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (timelineState.selectedClip) {
+					appState.clipboardState.clips.length = 0;
+					appState.clipboardState.clips.push(timelineState.selectedClip);
+				};
+				if (timelineState.selectedClips.size > 0) {
+					appState.clipboardState.clips = [...timelineState.selectedClips];
+				}
+				break;
+			}
+			case 'KeyV': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (appState.clipboardState.clips.length < 1) return;
+
+				pasteClips()
+
 			}
 			case 'KeyK': {
 				if (timelineState.selectedClip) {

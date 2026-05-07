@@ -1,4 +1,4 @@
-import { getClip, setAllJoins } from '$lib/clip/actions';
+import { getClip, setAllJoins } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import {
 	addKeyframe,
@@ -7,8 +7,8 @@ import {
 	setParamsFromKeyframes
 } from '$lib/clip/keyframes';
 import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
-import { projectManager, timelineState, workerManager } from '$lib/state.svelte';
-import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
+import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
+import { focusTrack, setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { Command, TrackType } from '$lib/types';
 
 export class HistoryManager {
@@ -82,12 +82,14 @@ export class HistoryManager {
 		for (const clip of updatedClips) {
 			if (timelineState.selectedClip && clip.deleted && clip.id === timelineState.selectedClip.id) {
 				timelineState.selectedClip = null;
+				appState.propertiesSection = 'outputAudio'
 			}
 		}
 		workerManager.sendClip(Array.from(updatedClips));
 		projectManager.updateClip(Array.from(updatedClips));
 		setAllJoins();
 		setAllTrackTypes();
+		focusTrack(timelineState.focusedTrack)
 		setParamsFromKeyframes();
 		timelineState.invalidateWaveform = true;
 	}

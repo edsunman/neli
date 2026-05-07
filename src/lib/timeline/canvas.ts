@@ -67,8 +67,9 @@ export const drawCanvas = (
 	context.fillStyle = COLORS.zinc[900];
 	context.fillRect(0, 0, width, height);
 
-	const flexHeight = height - 35;
-	const rulerContainerHeight = flexHeight * 0.2;
+	const scrollbarHeight = 30;
+	const flexHeight = height - scrollbarHeight;
+	const rulerContainerHeight = flexHeight * 0.2 + 5;
 
 	drawRuler(context, rulerContainerHeight);
 
@@ -196,14 +197,14 @@ export const drawCanvas = (
 	}
 
 	// debug boxes
-	/* context.fillStyle = 'rgba(255,0,0,0.2)';
-	context.fillRect(0, height - 35, 200, 35);
+	/*  context.fillStyle = 'rgba(255,0,0,0.2)';
+	context.fillRect(0, height - scrollbarHeight, 200, 35);
 
 	context.fillStyle = 'rgba(0,255,0,0.2)';
-	context.fillRect(0, 0, 200, flexHeight * 0.2);
+	context.fillRect(0, 0, 200, rulerContainerHeight);
 
 	context.fillStyle = 'rgba(0,0,255,0.2)';
-	context.fillRect(0, flexHeight * 0.2, 200, flexHeight * 0.8); */
+	context.fillRect(0, rulerContainerHeight, 200, flexHeight - rulerContainerHeight);  */
 };
 
 export const drawSourceCanvas = (
@@ -387,7 +388,8 @@ const drawClip = (
 	selected = false,
 	multiSelected = false
 ) => {
-	const { clipColor, clipBaseColor, clipDarkColor } = getClipPalette(clip, selected, multiSelected);
+	const selectedOrHovered = selected || clip.hovered;
+	const { clipColor, clipBaseColor, clipDarkColor } = getClipPalette(clip, selectedOrHovered, multiSelected);
 
 	const gap = 3;
 	const trackTop = timelineState.tracks[clip.track - 1].top;
@@ -446,21 +448,26 @@ const drawClip = (
 		context.fill();
 		context.stroke();
 	}
-	if (clipWidth < 32) return;
+	if (clipWidth < 32 || clipHeight < 15) return;
+	// handles
 	if (selected || (clip.hovered && !multiSelected)) {
-		// handles
-		context.save();
-		context.beginPath();
-		context.roundRect(maskStart + 3, trackTop + 3, maskWidth - 6, clipHeight - 6, 5);
-		context.clip();
-
 		context.fillStyle = '#131315';
-		context.fillRect(clipStart + 3, trackTop + 3, 11, clipHeight - 6);
-		context.fillRect(clipEnd - 13, trackTop + 3, 11, clipHeight - 6);
-		context.restore();
+		if (!clip.joinLeft) {
+			context.beginPath();
+			context.roundRect(clipStart + 3, trackTop + 3, 11, clipHeight - 6, 5);
+			context.fill();
+		} else {
+			context.fillRect(clipStart + 3, trackTop + 3, 11, clipHeight - 6);
+		}
+		if (!clip.joinRight) {
+			context.beginPath();
+			context.roundRect(clipEnd - 13, trackTop + 3, 11, clipHeight - 6, 5);
+			context.fill();
+		} else {
+        	context.fillRect(clipEnd - 13, trackTop + 3, 11, clipHeight - 6);
+		}
 
 		context.fillStyle = clipColor;
-
 		context.fillRect(clipStart + 7, trackTop + 10, 3, clipHeight - 20);
 		context.fillRect(clipEnd - 9, trackTop + 10, 3, clipHeight - 20);
 	}

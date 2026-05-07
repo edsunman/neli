@@ -9,6 +9,7 @@
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
+	import { onDestroy } from 'svelte';
 
 	type Props = {
 		value: number | string;
@@ -32,6 +33,42 @@
 	const keyframeContext = getKeyframeContext();
 	let oldValue: number;
 	let selectedClip: Clip;
+
+	const blur = () => {
+		appState.disableKeyboardShortcuts = false;
+		onBlur();
+		if (!selectedClip) return;
+		// fallback value
+		if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
+			value = fallback;
+			workerManager.sendClip(selectedClip);
+		}
+		projectManager.updateClip(selectedClip);
+		if (
+			param > -1 &&
+			!keyframeContext.active() &&
+			typeof value === 'number' &&
+			oldValue !== value
+		) {
+			historyManager.pushAction({
+				action: 'clipParam',
+				data: {
+					clipId: selectedClip.id,
+					oldValue: [oldValue],
+					newValue: [value],
+					paramIndex: [param]
+				}
+			});
+		}
+		if (keyframeContext.params && keyframeContext.active()) {
+			finaliseKeyframe();
+		}
+		historyManager.finishCommand();
+	};
+
+	onDestroy(() => {
+		blur();
+	});
 </script>
 
 <div
@@ -70,37 +107,7 @@
 			}
 			timelineState.invalidate = true;
 		}}
-		onblur={() => {
-			appState.disableKeyboardShortcuts = false;
-			onBlur();
-			if (!selectedClip) return;
-			// fallback value
-			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
-				value = fallback;
-				workerManager.sendClip(selectedClip);
-			}
-			projectManager.updateClip(selectedClip);
-			if (
-				param > -1 &&
-				!keyframeContext.active() &&
-				typeof value === 'number' &&
-				oldValue !== value
-			) {
-				historyManager.pushAction({
-					action: 'clipParam',
-					data: {
-						clipId: selectedClip.id,
-						oldValue: [oldValue],
-						newValue: [value],
-						paramIndex: [param]
-					}
-				});
-			}
-			if (keyframeContext.params && keyframeContext.active()) {
-				finaliseKeyframe();
-			}
-			historyManager.finishCommand();
-		}}
+		onblur={blur}
 		oninput={() => {
 			if (keyframeContext.params && keyframeContext.active()) {
 				createOrUpdateKeyframe(keyframeContext.params);

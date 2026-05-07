@@ -22,7 +22,7 @@
 <div
 	inert={appState.palette.open}
 	id="portalContainer"
-	class="relative overflow-hidden h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] height-xl:grid-rows-[calc(100svh-392px)_392px] bg-zinc-900"
+	class="relative overflow-hidden h-dvh grid grid-cols-[20%_60%_20%] xl:grid-cols-[20%_60%_20%] grid-rows-[55%_45%] height-xl:grid-rows-[calc(100svh-360px)_360px] bg-zinc-900"
 >
 	<div>
 		<Sources />

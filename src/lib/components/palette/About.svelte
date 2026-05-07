@@ -3,11 +3,11 @@
 	import { onMount } from 'svelte';
 	import { fileIcon, infoIcon } from '../icons/Icons.svelte';
 	import Button from '../ui/Button.svelte';
-	import { closePalette } from '$lib/app/actions';
+	import { closePalette, isViewportTooSmall } from '$lib/app/actions';
 
 	let { onSelect } = $props();
 
-	let errorMessage = $state<'none' | 'webGpu' | 'webCodecs'>('none');
+	let errorMessage = $state<'none' | 'webGpu' | 'webCodecs' | 'screenSize'>('none');
 	let firstVisit = $state(false);
 
 	onMount(() => {
@@ -16,6 +16,9 @@
 		}
 		if (!('VideoEncoder' in window && 'VideoDecoder' in window)) {
 			errorMessage = 'webCodecs';
+		}
+		if (isViewportTooSmall()) {
+			errorMessage = 'screenSize'
 		}
 		if (!localStorage.getItem('alreadyVisited')) {
 			firstVisit = true;
@@ -26,7 +29,7 @@
 
 <div class="px-8 bg-zinc-900 rounded-2xl flex-1 grow flex flex-col relative items-center">
 	<svg
-		class={[firstVisit ? ' mt-12' : 'mt-20', 'text-white w-40 mb-5']}
+		class={[firstVisit ? 'mt-12' : 'height-md:mt-20 mt-10', 'text-white w-40 mb-5']}
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 648.87 342.4"
 		fill="currentColor"
@@ -52,11 +55,12 @@
 		>
 	</div>
 	{#if errorMessage !== 'none'}
-		<div class="text-rose-500 text-sm border border-rose-700 rounded-lg p-2 mt-4 flex items-center">
+		<div class="text-rose-500 text-sm border border-rose-900 rounded-lg p-2 mt-10 mb-20 flex items-center">
 			{@render infoIcon('size-6 mr-2 text-rose-600 ')}
 			<p class="flex-1 content-center">
 				{#if errorMessage === 'webCodecs'}WebCodecs not supported{/if}
 				{#if errorMessage === 'webGpu'}WebGpu not supported{/if}
+				{#if errorMessage === 'screenSize'}Neli is designed for larger screens{/if}
 			</p>
 		</div>
 	{:else}
@@ -73,7 +77,7 @@
 		{/if}
 		<div
 			class={[
-				firstVisit ? ' mt-18' : 'mt-24',
+				firstVisit ? 'mt-18' : 'mt-24',
 				'text-zinc-300 mt-18 mb-10 text-center px-10 text-sm'
 			]}
 		>
