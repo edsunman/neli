@@ -9,13 +9,13 @@ import {
 import { calculateMaxZoomLevel, canvasPixelToFrame } from './utils';
 import { pauseAudio, runAudio } from '$lib/audio/actions';
 import type { SourceType, TrackType } from '$lib/types';
-import { removeHoverAllClips } from '$lib/clip/actions';
+import { removeHoverAllClips } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import { startProgramPlayLoop } from '$lib/program/actions';
 import { setParamsFromKeyframes } from '$lib/clip/keyframes';
 
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
-	// TODO: debounce this - if same frame is called twice return early
+	// TODO: debounce this? - if same frame is called twice return early
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
 	if (updateWorker) workerManager.seek(frame);
@@ -39,11 +39,13 @@ export const play = async () => {
 			startPlayLoop();
 		}
 	}
+	if (appState.propertiesSection === 'project') {
+		appState.propertiesSection = 'outputAudio';
+	}
 };
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
-	//deselectAllClips();
 	programState.selectedClip = null;
 
 	const msPerFrame = 1000 / 30;
@@ -195,12 +197,11 @@ export const focusTrack = (trackNumber: number) => {
 		}
 	}
 
-	if (timelineState.selectedClip && timelineState.selectedClip.keyframeTracksActive.length > 0) {
-		const index = timelineState.selectedClip.keyframeTracksActive.findIndex(
+	if (timelineState.selectedClip && timelineState.keyframeTracksActive.length > 0) {
+		const index = timelineState.keyframeTracksActive.findIndex(
 			(p) => p === appState.selectedKeyframeParam
 		);
-		if (index < 0)
-			appState.selectedKeyframeParam = timelineState.selectedClip.keyframeTracksActive[0];
+		if (index < 0) appState.selectedKeyframeParam = timelineState.keyframeTracksActive[0];
 	}
 
 	setTrackPositions();
@@ -209,9 +210,9 @@ export const focusTrack = (trackNumber: number) => {
 
 /** Call after changing track heights to recalculate and set positions */
 export const setTrackPositions = () => {
-	const flexHeight = timelineState.height - 35;
-	const trackContainerHeight = flexHeight * 0.8;
-	const rulerContainerHeight = flexHeight * 0.2;
+	const flexHeight = timelineState.height - 30;
+	const rulerContainerHeight = flexHeight * 0.2 + 5;
+	const trackContainerHeight = flexHeight - rulerContainerHeight;
 	let trackPadding = timelineState.focusedTrack === 0 ? 15 : 10;
 	if (trackContainerHeight < 220) trackPadding = 5;
 

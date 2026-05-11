@@ -43,8 +43,10 @@
 		finaliseClip,
 		splitHoveredClip,
 		deleteClips,
-		deselectAllClips
-	} from '$lib/clip/actions';
+		deselectAllClips,
+		pasteClips,
+		selectClip
+	} from '$lib/clip/actions.svelte';
 	import {
 		getKeyframeAtMousePosition,
 		deleteKeyframe,
@@ -189,7 +191,7 @@
 	};
 
 	const mouseDown = (e: MouseEvent) => {
-		if (appState.disableKeyboardShortcuts) return;
+		//if (appState.disableKeyboardShortcuts) return;
 		const selection = document.getSelection();
 		selection?.removeAllRanges();
 		mouseIsDown = true;
@@ -228,7 +230,7 @@
 		const scrollBarStart = timelineState.offset * timelineState.width;
 		const scrollBarEnd = scrollBarStart + timelineState.width / timelineState.zoom;
 		if (
-			e.offsetY > timelineState.height - 40 &&
+			e.offsetY > timelineState.height - 30 &&
 			e.offsetX > scrollBarStart &&
 			e.offsetX < scrollBarEnd
 		) {
@@ -259,22 +261,22 @@
 
 			if (e.shiftKey) {
 				// If there is a clip selected check we have not clicked it
-				if (timelineState.selectedClip === clip) return;
+				if (timelineState.selectedClip && timelineState.selectedClip.id === clip.id) return;
 				multiSelectClip(clip.id);
 				return;
 			}
-			timelineState.selectedClip = clip;
-			timelineState.selectedClips.clear();
-			showClipPropertiesSection(clip);
-			clip.savedStart = clip.start;
-			clip.savedDuration = clip.duration;
-			clip.savedSourceOffset = clip.sourceOffset;
-			clip.savedTrack = clip.track;
-			for (const [, keyframeTrack] of clip.keyframeTracks) {
-				for (const keyframe of keyframeTrack.keyframes) {
-					keyframe.savedFrame = keyframe.frame;
-				}
+
+			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== clip.track) {
+				focusTrack(clip.track);
 			}
+
+			if (e.detail > 1) {
+				// double click
+				focusClip();
+				return;
+			}
+
+			selectClip(clip);
 			setTrackLocks();
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
@@ -288,8 +290,9 @@
 			deselectAllClips();
 			timelineState.action = 'selecting';
 			appState.propertiesSection = 'outputAudio';
+			removeHoverAllClips();
 		}
-		removeHoverAllClips();
+
 		timelineState.invalidate = true;
 	};
 
@@ -482,7 +485,7 @@
 			clickedKeyframe = -1;
 			if (
 				clip &&
-				clip.keyframeTracksActive.length > 0 &&
+				clip.keyframeTracks.size > 0 &&
 				timelineState.focusedTrack === clip.track &&
 				timelineState.selectedClip &&
 				appState.selectedKeyframeParam > -1 &&
@@ -678,6 +681,24 @@
 				} else {
 					focusTrack(0);
 				}
+				break;
+			}
+			case 'KeyC': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (timelineState.selectedClip) {
+					appState.clipboardState.clips.length = 0;
+					appState.clipboardState.clips.push(timelineState.selectedClip);
+				}
+				if (timelineState.selectedClips.size > 0) {
+					appState.clipboardState.clips = [...timelineState.selectedClips];
+				}
+				break;
+			}
+			case 'KeyV': {
+				if (!event.ctrlKey && !event.metaKey) return;
+				if (appState.clipboardState.clips.length < 1) return;
+
+				pasteClips();
 				break;
 			}
 			case 'KeyK': {

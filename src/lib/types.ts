@@ -1,7 +1,13 @@
 import type { EncodedPacketSink, InputVideoTrack } from 'mediabunny';
 import type { Source } from './source/source.svelte';
+import type { Clip } from './clip/clip.svelte';
+
+export type ClipboardState = {
+	clips: Clip[];
+};
 
 export type DragAndDropState = {
+	startingCursor: { x: number; y: number };
 	currentCursor: { x: number; y: number };
 	dragFrom: 'sources' | 'program';
 	clicked: boolean;
@@ -30,6 +36,8 @@ export type PropertiesSection =
 	| 'layout'
 	| 'audio'
 	| 'text'
+	| 'textLayout'
+	| 'textAnimation'
 	| 'source'
 	| 'crop'
 	| 'colour';
@@ -153,6 +161,10 @@ export type Command =
 			data: { clipId: string; paramIndex: number[]; oldValue: number[]; newValue: number[] };
 	  }
 	| {
+			action: 'clipText';
+			data: { clipId: string; oldValue: string; newValue: string };
+	  }
+	| {
 			action: 'addKeyframe';
 			data: {
 				clipId: string;
@@ -188,7 +200,18 @@ export type Command =
 				newEaseOut: number;
 			};
 	  }
-	| { action: 'deleteSource'; data: { sourceId: string } };
+	| { action: 'deleteSource'; data: { sourceId: string } }
+	| {
+			action: 'updateProject';
+			data: {
+				oldApsect: number;
+				oldWidth: number;
+				oldHeight: number;
+				newAspect: number;
+				newWidth: number;
+				newHeight: number;
+			};
+	  };
 
 export type WorkerClip = {
 	id: string;
@@ -203,7 +226,6 @@ export type WorkerClip = {
 	text: string;
 	deleted: boolean;
 	type: SourceType;
-	keyframeTracksActive: number[];
 	keyframeTracks: Map<number, KeyframeTrack>;
 };
 

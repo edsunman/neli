@@ -18,6 +18,8 @@ export const addKeyframe = (
 	easeIn = 1,
 	easeOut = 1
 ) => {
+	if (frame < 0 || frame > clip.duration) return false;
+
 	const newKeyframe = {
 		frame,
 		savedFrame: frame,
@@ -33,7 +35,7 @@ export const addKeyframe = (
 	if (!track) {
 		track = { keyframes: [newKeyframe] };
 		clip.keyframeTracks.set(param, track);
-		clip.keyframeTracksActive.push(param);
+		timelineState.keyframeTracksActive.push(param);
 		return;
 	}
 
@@ -48,6 +50,8 @@ export const addKeyframe = (
 	}
 
 	keyframes.splice(insertIndex, 0, newKeyframe);
+
+	return true;
 };
 
 export const updateKeyframeEasing = (
@@ -109,8 +113,8 @@ export const removeKeyframe = (clip: Clip, frame: number, param: number) => {
 	const [removedKeyframe] = track.keyframes.splice(index, 1);
 	if (track.keyframes.length < 1) {
 		clip.keyframeTracks.delete(param);
-		const activeIndex = clip.keyframeTracksActive.indexOf(index);
-		clip.keyframeTracksActive.splice(activeIndex, 1);
+		const activeIndex = timelineState.keyframeTracksActive.indexOf(param);
+		timelineState.keyframeTracksActive.splice(activeIndex, 1);
 	}
 	return removedKeyframe;
 };
@@ -168,7 +172,8 @@ export const createOrUpdateKeyframe = (paramIndices: number[]) => {
 		const track = clip.keyframeTracks.get(paramIndex);
 		const keyframe = track?.keyframes.find((k) => k.frame === clipFrame);
 		if (!track || !keyframe) {
-			addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			const success = addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			if (!success) continue;
 			historyManager.pushAction({
 				action: 'addKeyframe',
 				data: {
@@ -181,7 +186,7 @@ export const createOrUpdateKeyframe = (paramIndices: number[]) => {
 				}
 			});
 			projectManager.updateClip(clip);
-			clip.keyframesOnThisFrame.push(paramIndex);
+			timelineState.keyframesOnThisFrame.push(paramIndex);
 			continue;
 		} else {
 			// need to update
@@ -203,7 +208,8 @@ export const createOrDeleteKeyframe = (paramIndices: number[]) => {
 		const track = clip.keyframeTracks.get(paramIndex);
 		const keyframe = track?.keyframes.find((k) => k.frame === clipFrame);
 		if (!track || !keyframe) {
-			addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			const success = addKeyframe(clip, clipFrame, paramIndex, clip.params[paramIndex]);
+			if (!success) continue;
 			historyManager.pushAction({
 				action: 'addKeyframe',
 				data: {
@@ -275,15 +281,12 @@ export const getKeyframeByFrameNumber = (clip: Clip | null, param: number, frame
 };
 
 export const setParamsFromKeyframes = () => {
+	timelineState.keyframesOnThisFrame.length = 0;
+
 	const frameNumber = timelineState.currentFrame;
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
-			if (clip.keyframeTracksActive.length < 1) {
-				if (clip.keyframesOnThisFrame.length > 0) clip.keyframesOnThisFrame = [];
-				continue;
-			}
-
 			const clipFrame = frameNumber - clip.start;
 			const keyframesThisFrame: number[] = [];
 			for (const [param, track] of clip.keyframeTracks) {
@@ -355,13 +358,15 @@ export const setParamsFromKeyframes = () => {
 				if (panNode) panNode.pan.value = clip.params[5];
 			}
 
-			clip.keyframesOnThisFrame = keyframesThisFrame;
+			if (timelineState.selectedClip && timelineState.selectedClip.id === clip.id) {
+				timelineState.keyframesOnThisFrame = keyframesThisFrame;
+			}
 		}
 	}
 };
 
 export const toggleSelectedParam = () => {
-	const params = timelineState.selectedClip?.keyframeTracksActive;
+	const params = timelineState.keyframeTracksActive;
 	if (!params || params.length < 1) return;
 	const currentIndex = params.findIndex((p) => p === appState.selectedKeyframeParam);
 	if (currentIndex < 0) {

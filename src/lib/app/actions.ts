@@ -4,10 +4,12 @@ import { setupTests } from '$lib/tests';
 import { loadFont } from '$lib/text/utils';
 
 export const startApp = async (canvas: HTMLCanvasElement) => {
+
 	if (
 		!localStorage.getItem('alreadyVisited') ||
 		(navigator && !navigator.gpu) ||
-		!('VideoEncoder' in window && 'VideoDecoder' in window)
+		!('VideoEncoder' in window && 'VideoDecoder' in window) ||
+		isViewportTooSmall()
 	) {
 		appState.palette.open = true;
 		appState.palette.page = 'about';
@@ -33,8 +35,9 @@ export const startApp = async (canvas: HTMLCanvasElement) => {
 
 const setupWorkerAndProject = async (canvas: HTMLCanvasElement) => {
 	await workerManager.setup(canvas);
-	const font = await loadFont('/text.json');
-	appState.fonts.push(font);
+	const sen = await loadFont('/Sen.json');
+	const montserrat = await loadFont('/Montserrat.json');
+	appState.fonts = [sen, sen, montserrat];
 
 	await setupProjectManager();
 };
@@ -47,3 +50,11 @@ export const closePalette = () => {
 	appState.import.importStarted = false;
 	appState.disableKeyboardShortcuts = false;
 };
+
+
+export const isViewportTooSmall = () => {
+	const width  = window.innerWidth;
+	const height = window.innerHeight;
+	if (width < 800 || height < 650) return true;
+	return false; 
+}

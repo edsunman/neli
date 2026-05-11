@@ -1,4 +1,4 @@
-import { getClip, setAllJoins } from '$lib/clip/actions';
+import { getClip, setAllJoins } from '$lib/clip/actions.svelte';
 import type { Clip } from '$lib/clip/clip.svelte';
 import {
 	addKeyframe,
@@ -6,9 +6,10 @@ import {
 	removeKeyframe,
 	setParamsFromKeyframes
 } from '$lib/clip/keyframes';
+import { changeProjectResolution } from '$lib/project/actions';
 import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
-import { projectManager, timelineState, workerManager } from '$lib/state.svelte';
-import { setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
+import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
+import { focusTrack, setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
 import type { Command, TrackType } from '$lib/types';
 
 export class HistoryManager {
@@ -79,17 +80,27 @@ export class HistoryManager {
 	}
 
 	private finishUndoRedo(updatedClips: Set<Clip>) {
-		for (const clip of updatedClips) {
-			if (timelineState.selectedClip && clip.deleted && clip.id === timelineState.selectedClip.id) {
-				timelineState.selectedClip = null;
+		if (updatedClips.size > 0) {
+			for (const clip of updatedClips) {
+				if (
+					timelineState.selectedClip &&
+					clip.deleted &&
+					clip.id === timelineState.selectedClip.id
+				) {
+					timelineState.selectedClip = null;
+					appState.propertiesSection = 'outputAudio';
+				}
 			}
+			workerManager.sendClip(Array.from(updatedClips));
+			projectManager.updateClip(Array.from(updatedClips));
+			setAllJoins();
+			setAllTrackTypes();
+			focusTrack(timelineState.focusedTrack);
+			setParamsFromKeyframes();
+			timelineState.invalidateWaveform = true;
+		} else {
+			projectManager.updateProject({ aspect: appState.project.aspect });
 		}
-		workerManager.sendClip(Array.from(updatedClips));
-		projectManager.updateClip(Array.from(updatedClips));
-		setAllJoins();
-		setAllTrackTypes();
-		setParamsFromKeyframes();
-		timelineState.invalidateWaveform = true;
 	}
 
 	private toCommandObject(command: Command): ICommand {
@@ -118,6 +129,12 @@ export class HistoryManager {
 				return new ClipParamCommand(
 					command.data.clipId,
 					command.data.paramIndex,
+					command.data.oldValue,
+					command.data.newValue
+				);
+			case 'clipText':
+				return new ClipTextCommand(
+					command.data.clipId,
 					command.data.oldValue,
 					command.data.newValue
 				);
@@ -157,6 +174,15 @@ export class HistoryManager {
 				);
 			case 'deleteSource':
 				return new DeleteSourceCommand(command.data.sourceId);
+			case 'updateProject':
+				return new UpdateProjectCommand(
+					command.data.oldApsect,
+					command.data.oldWidth,
+					command.data.oldHeight,
+					command.data.newAspect,
+					command.data.newWidth,
+					command.data.newHeight
+				);
 		}
 	}
 }
@@ -297,6 +323,26 @@ class ClipParamCommand implements ICommand {
 	}
 }
 
+class ClipTextCommand implements ICommand {
+	constructor(
+		private clipId: string,
+		private oldValue: string,
+		private newValue: string
+	) {}
+	redo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		clip.text = this.newValue;
+		updatedClips.add(clip);
+	}
+	undo(updatedClips: Set<Clip>) {
+		const clip = getClip(this.clipId);
+		if (!clip) return;
+		clip.text = this.oldValue;
+		updatedClips.add(clip);
+	}
+}
+
 class AddKeyframeCommand implements ICommand {
 	constructor(
 		private clipId: string,
@@ -416,5 +462,24 @@ class RemoveTrackCommand implements ICommand {
 			type: this.type
 		});
 		setTrackPositions();
+	}
+}
+
+class UpdateProjectCommand implements ICommand {
+	constructor(
+		private oldAspect: number,
+		private oldWidth: number,
+		private oldHeight: number,
+		private newAspect: number,
+		private newWidth: number,
+		private newHeight: number
+	) {}
+	redo(): void {
+		appState.project.aspect = this.newAspect;
+		changeProjectResolution(this.newWidth, this.newHeight);
+	}
+	undo(): void {
+		appState.project.aspect = this.oldAspect;
+		changeProjectResolution(this.oldWidth, this.oldHeight);
 	}
 }

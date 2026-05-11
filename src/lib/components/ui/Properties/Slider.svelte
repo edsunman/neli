@@ -9,9 +9,14 @@
 	import { pause } from '$lib/timeline/actions';
 	import Slider from '../Slider.svelte';
 
-	let { value = $bindable(), ...props } = $props();
+	let { value = $bindable(), param = -1, ...props } = $props();
+	let oldValue: number;
 
 	const keyframeContext = getKeyframeContext();
+
+	const onSlideStart = () => {
+		oldValue = value;
+	};
 
 	const onValueChange = () => {
 		pause();
@@ -21,14 +26,31 @@
 	};
 
 	const onValueFinalised = () => {
-		if (timelineState.selectedClip) projectManager.updateClip(timelineState.selectedClip);
+		if (!timelineState.selectedClip) return;
+		projectManager.updateClip(timelineState.selectedClip);
+		if (
+			param > -1 &&
+			!keyframeContext.active() &&
+			typeof value === 'number' &&
+			oldValue !== value
+		) {
+			historyManager.pushAction({
+				action: 'clipParam',
+				data: {
+					clipId: timelineState.selectedClip.id,
+					oldValue: [oldValue],
+					newValue: [value],
+					paramIndex: [param]
+				}
+			});
+		}
 		if (keyframeContext.params && keyframeContext.active()) {
 			finaliseKeyframe();
-			historyManager.finishCommand();
 			setParamsFromKeyframes();
 			timelineState.invalidate = true;
 		}
+		historyManager.finishCommand();
 	};
 </script>
 
-<Slider bind:value {onValueChange} {onValueFinalised} {...props} />
+<Slider bind:value {onSlideStart} {onValueChange} {onValueFinalised} {...props} />

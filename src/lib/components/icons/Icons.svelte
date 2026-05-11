@@ -7,6 +7,7 @@
 		audioIcon,
 		backIcon,
 		backArrowIcon,
+		checkIcon,
 		copyIcon,
 		cropIcon,
 		deleteIcon,
@@ -163,12 +164,23 @@
 	<svg
 		class={className}
 		role="img"
-		id="Layer_1"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 -960 960 960"
 		fill="currentColor"
 	>
 		<path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+	</svg>
+{/snippet}
+
+{#snippet checkIcon(className: string)}
+	<svg
+		class={className}
+		role="img"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 -960 960 960"
+		fill="currentColor"
+	>
+		<path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
 	</svg>
 {/snippet}
 

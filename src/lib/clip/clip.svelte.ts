@@ -24,14 +24,13 @@ export class Clip {
 		// 12 crop t, 13 crop r, 14 crop b, 15 crop l, 16 rounded corners, 17 rotation
 		0, 0, 0, 0, 0, 0,
 		// 18 opacity, 19 exposure, 20 contrast, 21 saturation
-		1, 0, 1, 1
+		1, 0, 1, 1,
+		// 22 effect progress, 23 font, 24 effect, 25 hold in place
+		1, 1, 0, 0
 	]);
 	text = $state('text');
 
 	keyframeTracks = new Map<number, KeyframeTrack>();
-	keyframeTracksActive = $state<number[]>([]);
-	keyframesOnThisFrame = $state<number[]>([]);
-
 	deleted = false;
 	invalid = false;
 	hovered = false;

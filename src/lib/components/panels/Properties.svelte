@@ -15,7 +15,8 @@
 		aspectPortrait,
 		imageIcon,
 		opacityIcon,
-		cropIcon
+		cropIcon,
+		seekIcon
 	} from '../icons/Icons.svelte';
 	import { changeProjectResolution } from '$lib/project/actions';
 	import { secondsToTimecode } from '$lib/timeline/utils';
@@ -58,6 +59,8 @@
 					{/if}
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
+						{@render sideButton('textLayout', 'text layout', justifyLeftIcon)}
+						{@render sideButton('textAnimation', 'text animation', seekIcon)}
 					{/if}
 					{#if source.type === 'video' || source.type === 'image'}
 						{@render sideButton('crop', 'crop settings', cropIcon)}
@@ -71,7 +74,7 @@
 		</BitsTooltip.Provider>
 	</div>
 
-	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-40 justify-end">
+	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-50 justify-end">
 		{#if appState.propertiesSection === 'project'}
 			<Properties.Group label="project name">
 				<Properties.Input
@@ -87,14 +90,13 @@
 			<Properties.Group label="aspect ratio">
 				<Properties.Toggle
 					bind:value={appState.project.aspect}
-					updateWorker={false}
+					updates="project"
 					items={[
 						{
 							value: 0,
 							icon: aspectLandscape,
 							onClick: () => {
 								changeProjectResolution(1920, 1080);
-								projectManager.updateProject({ aspect: 0 });
 							}
 						},
 						{
@@ -102,7 +104,6 @@
 							icon: aspectSquare,
 							onClick: () => {
 								changeProjectResolution(1080, 1080);
-								projectManager.updateProject({ aspect: 1 });
 							}
 						},
 						{
@@ -110,7 +111,6 @@
 							icon: aspectPortrait,
 							onClick: () => {
 								changeProjectResolution(1080, 1920);
-								projectManager.updateProject({ aspect: 2 });
 							}
 						}
 					]}
@@ -186,40 +186,56 @@
 			{#if clip.source.type !== 'text'}
 				<Properties.Group label="size" keyframeParams={[0, 1]}>
 					<Properties.Grid>
-						<Properties.Input bind:value={clip.params[0]} fallback={1} />
-						<Properties.Input bind:value={clip.params[1]} fallback={1} />
+						<Properties.Input bind:value={clip.params[0]} param={0} fallback={1} />
+						<Properties.Input bind:value={clip.params[1]} param={1} fallback={1} />
 					</Properties.Grid>
 				</Properties.Group>
 			{/if}
 			<Properties.Group label="position" keyframeParams={[2, 3]}>
 				<Properties.Grid>
-					<Properties.Input bind:value={clip.params[2]} />
-					<Properties.Input bind:value={clip.params[3]} />
+					<Properties.Input bind:value={clip.params[2]} param={2} />
+					<Properties.Input bind:value={clip.params[3]} param={3} />
 				</Properties.Grid>
 			</Properties.Group>
 			{#if clip.source.type !== 'test'}
 				<Properties.Group label="rotate" keyframeParams={[17]}>
-					<Properties.Input bind:value={clip.params[17]} step="1" />
+					<Properties.Input bind:value={clip.params[17]} param={17} step="1" />
 				</Properties.Group>
 			{/if}
 		{/if}
 		{#if appState.propertiesSection === 'text' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="text">
-				<Properties.Textarea
-					bind:value={clip.text}
-					onBlur={() => {
-						if (clip) projectManager.updateClip(clip);
-					}}
+				<Properties.Textarea bind:value={clip.text} />
+			</Properties.Group>
+			<Properties.Group label="font">
+				<Properties.Select
+					bind:value={clip.params[23]}
+					param={23}
+					options={[
+						{
+							value: 1,
+							text: 'Sen'
+						},
+						{
+							value: 2,
+							text: 'Montserrat'
+						}
+					]}
 				/>
 			</Properties.Group>
 			<Properties.Group label="font size" keyframeParams={[6]}>
-				<Properties.Input bind:value={clip.params[6]} fallback={20} step="1" />
-				<Properties.Slider bind:value={clip.params[6]} min={1} max={75} step />
+				<Properties.Input bind:value={clip.params[6]} param={6} fallback={20} step="1" />
+				<Properties.Slider bind:value={clip.params[6]} param={6} min={1} max={75} step />
 			</Properties.Group>
+		{/if}
+		{#if appState.propertiesSection === 'textLayout' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="justify">
 				<Properties.Toggle
 					bind:value={clip.params[8]}
+					param={8}
+					updates="clip"
 					items={[
 						{ value: 0, icon: justifyLeftIcon },
 						{ value: 1, icon: justifyCenterIcon },
@@ -231,14 +247,40 @@
 				<Properties.Input bind:value={clip.params[7]} fallback={1} />
 			</Properties.Group>
 		{/if}
+		{#if appState.propertiesSection === 'textAnimation' && timelineState.selectedClip}
+			{@const clip = timelineState.selectedClip}
+			<Properties.Group label="effect">
+				<Properties.Select
+					bind:value={clip.params[24]}
+					param={24}
+					options={[
+						{
+							value: 0,
+							text: 'Fade in'
+						},
+						{
+							value: 1,
+							text: 'Pop up'
+						}
+					]}
+				/>
+			</Properties.Group>
+			<Properties.Group label="effect progress" keyframeParams={[22]}>
+				<Properties.Input bind:value={clip.params[22]} param={22} fallback={1} />
+				<Properties.Slider bind:value={clip.params[22]} param={22} />
+			</Properties.Group>
+			<Properties.Group label="hold position">
+				<Properties.Checkbox bind:value={clip.params[25]} param={25} />
+			</Properties.Group>
+		{/if}
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="crop" className={['w-30']} keyframeParams={[12, 13, 14, 15]}>
 				<Properties.Grid>
-					<Properties.Input bind:value={clip.params[12]} />
-					<Properties.Input bind:value={clip.params[13]} />
-					<Properties.Input bind:value={clip.params[14]} />
-					<Properties.Input bind:value={clip.params[15]} />
+					<Properties.Input bind:value={clip.params[12]} param={12} />
+					<Properties.Input bind:value={clip.params[13]} param={13} />
+					<Properties.Input bind:value={clip.params[14]} param={14} />
+					<Properties.Input bind:value={clip.params[15]} param={15} />
 				</Properties.Grid>
 			</Properties.Group>
 			<Properties.Group label="round corners">
@@ -248,31 +290,31 @@
 		{#if appState.propertiesSection === 'colour' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="opacity" keyframeParams={[18]}>
-				<Properties.Input bind:value={clip.params[18]} fallback={1} />
-				<Properties.Slider bind:value={clip.params[18]} />
+				<Properties.Input bind:value={clip.params[18]} param={18} fallback={1} />
+				<Properties.Slider bind:value={clip.params[18]} param={18} />
 			</Properties.Group>
 			<Properties.Group label="exposure" keyframeParams={[19]}>
-				<Properties.Input bind:value={clip.params[19]} fallback={0} />
-				<Properties.Slider bind:value={clip.params[19]} max={2} min={-2} />
+				<Properties.Input bind:value={clip.params[19]} param={19} fallback={0} />
+				<Properties.Slider bind:value={clip.params[19]} param={19} max={2} min={-2} />
 			</Properties.Group>
 			<Properties.Group label="contrast" keyframeParams={[20]}>
-				<Properties.Input bind:value={clip.params[20]} fallback={1} />
-				<Properties.Slider bind:value={clip.params[20]} max={1.5} min={0.5} />
+				<Properties.Input bind:value={clip.params[20]} param={20} fallback={1} />
+				<Properties.Slider bind:value={clip.params[20]} param={20} max={1.5} min={0.5} />
 			</Properties.Group>
 			<Properties.Group label="saturation" keyframeParams={[21]}>
-				<Properties.Input bind:value={clip.params[21]} fallback={1} />
-				<Properties.Slider bind:value={clip.params[21]} max={2} min={0} />
+				<Properties.Input bind:value={clip.params[21]} param={21} fallback={1} />
+				<Properties.Slider bind:value={clip.params[21]} param={21} max={2} min={0} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'audio' && timelineState.selectedClip}
 			{@const clip = timelineState.selectedClip}
 			<Properties.Group label="gain" keyframeParams={[4]}>
-				<Properties.Input bind:value={clip.params[4]} fallback={1} />
-				<Properties.Slider bind:value={clip.params[4]} min={0} max={1.5} />
+				<Properties.Input bind:value={clip.params[4]} param={4} fallback={1} />
+				<Properties.Slider bind:value={clip.params[4]} param={4} min={0} max={1.5} />
 			</Properties.Group>
 			<Properties.Group label="pan" keyframeParams={[5]}>
-				<Properties.Input bind:value={clip.params[5]} fallback={0} />
-				<Properties.Slider bind:value={clip.params[5]} min={-1} max={1} />
+				<Properties.Input bind:value={clip.params[5]} param={5} fallback={0} />
+				<Properties.Slider bind:value={clip.params[5]} param={5} min={-1} max={1} />
 			</Properties.Group>
 		{/if}
 

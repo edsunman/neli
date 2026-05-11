@@ -1,8 +1,9 @@
-import { MsdfFont, MsdfTextRenderer } from './render/text';
+import { MsdfTextRenderer } from './render/text/text';
 import { TestRenderer } from './render/test';
 import { VideoRenderer } from './render/video';
 import { ImageRenderer } from './render/image';
 import { SolidColorRenderer } from './render/solidColor';
+import type { FontGPU } from './render/text/types';
 
 export class WebGPURenderer {
 	bitmap?: ImageBitmap;
@@ -16,8 +17,7 @@ export class WebGPURenderer {
 	private commandEncoder?: GPUCommandEncoder;
 	private passEncoder?: GPURenderPassEncoder;
 
-	private font?: MsdfFont;
-	private testFont?: MsdfFont;
+	private fonts: FontGPU[] = [];
 	private textRenderer?: MsdfTextRenderer;
 	private testRenderer?: TestRenderer;
 	private videoRenderer?: VideoRenderer;
@@ -60,8 +60,11 @@ export class WebGPURenderer {
 		this.imageRenderer = new ImageRenderer(this.device, this.format, this.sampler);
 		this.solidColorRenderer = new SolidColorRenderer(this.device, this.format, this.sampler);
 		this.textRenderer = new MsdfTextRenderer(this.device, this.format);
-		this.font = await this.textRenderer.createFont('/text.json');
-		this.testFont = await this.textRenderer.createFont('/FiraMono-Bold-msdf.json');
+
+		const test = await this.textRenderer.createFont('/FiraMono-Bold-msdf.json');
+		const sen = await this.textRenderer.createFont('/Sen.json');
+		const montserrat = await this.textRenderer.createFont('/Montserrat.json');
+		this.fonts = [test, sen, montserrat];
 
 		for (let i = 0; i < 4; i++) {
 			const uniformBuffer = this.device.createBuffer({
@@ -106,22 +109,23 @@ export class WebGPURenderer {
 	}
 
 	textPass(trackNumber: number, params: number[], inputText: string) {
-		if (!this.textRenderer || !this.font || !this.passEncoder || !this.canvas) return;
+		if (!this.textRenderer || !this.passEncoder || !this.canvas) return;
 		const height = params[0] * (1920 / this.canvas.width);
 		const width = params[1] * (1080 / this.canvas.height);
 		this.uniformArray.set([1, 0, height, width, params[2], params[3]]);
+		const fontIndex = params[23] === 1 ? 1 : 2;
 		const text = this.textRenderer.prepareText(
-			this.font,
+			this.fonts[fontIndex],
 			inputText,
 			params,
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
-		this.textRenderer.draw(this.passEncoder, [text]);
+		if (text) this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
 	testPass(trackNumber: number, frameNumber: number, params: number[]) {
-		if (!this.passEncoder || !this.textRenderer || !this.testFont || !this.canvas) return;
+		if (!this.passEncoder || !this.textRenderer || !this.canvas) return;
 		const height = params[0] * (1920 / this.canvas.width);
 		const width = params[1] * (1080 / this.canvas.height);
 		this.uniformArray.set([frameNumber, 0, height, width, params[2], params[3]], 0);
@@ -145,13 +149,13 @@ export class WebGPURenderer {
 
 		params[6] = 35;
 		const text = this.textRenderer.prepareText(
-			this.testFont,
+			this.fonts[0],
 			t,
 			params,
 			this.uniformArray,
 			this.uniformBuffers[trackNumber - 1]
 		);
-		this.textRenderer.draw(this.passEncoder, [text]);
+		if (text) this.textRenderer.draw(this.passEncoder, [text]);
 	}
 
 	videoPass(

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Clip } from '$lib/clip/clip.svelte';
 	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
 	import { getKeyframeContext } from '$lib/context/context';
 	import {
@@ -8,6 +9,8 @@
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
+	import { pause } from '$lib/timeline/actions';
+	import { onDestroy } from 'svelte';
 
 	type Props = {
 		value: number | string;
@@ -16,6 +19,7 @@
 		fullWidth?: boolean;
 		onBlur?: () => void;
 		step?: string;
+		param?: number;
 	};
 	let {
 		value = $bindable(),
@@ -23,10 +27,49 @@
 		type = 'number',
 		fullWidth = false,
 		onBlur = () => {},
-		step = '.01'
+		step = '.01',
+		param = -1
 	}: Props = $props();
 
 	const keyframeContext = getKeyframeContext();
+	let oldValue: number;
+	let selectedClip: Clip;
+
+	const blur = () => {
+		appState.disableKeyboardShortcuts = false;
+		onBlur();
+		if (!selectedClip) return;
+		// fallback value
+		if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
+			value = fallback;
+			workerManager.sendClip(selectedClip);
+		}
+		projectManager.updateClip(selectedClip);
+		if (
+			param > -1 &&
+			!keyframeContext.active() &&
+			typeof value === 'number' &&
+			oldValue !== value
+		) {
+			historyManager.pushAction({
+				action: 'clipParam',
+				data: {
+					clipId: selectedClip.id,
+					oldValue: [oldValue],
+					newValue: [value],
+					paramIndex: [param]
+				}
+			});
+		}
+		if (keyframeContext.params && keyframeContext.active()) {
+			finaliseKeyframe();
+		}
+		historyManager.finishCommand();
+	};
+
+	onDestroy(() => {
+		blur();
+	});
 </script>
 
 <div
@@ -52,28 +95,22 @@
 		]}
 		onfocus={() => {
 			appState.disableKeyboardShortcuts = true;
+			if (!timelineState.selectedClip) return;
+			selectedClip = timelineState.selectedClip;
 			if (keyframeContext.active() && keyframeContext.params) {
 				appState.selectedKeyframeParam = keyframeContext.params[0];
 			} else {
 				appState.selectedKeyframeParam = -1;
 			}
+
+			if (type === 'number' && typeof value === 'number') {
+				oldValue = value;
+			}
 			timelineState.invalidate = true;
 		}}
-		onblur={() => {
-			appState.disableKeyboardShortcuts = false;
-			onBlur();
-			if (!timelineState.selectedClip) return;
-			if ((type === 'text' && value === '') || (type === 'number' && value === null)) {
-				value = fallback;
-				workerManager.sendClip(timelineState.selectedClip);
-			}
-			projectManager.updateClip(timelineState.selectedClip);
-			if (keyframeContext.params && keyframeContext.active()) {
-				finaliseKeyframe();
-				historyManager.finishCommand();
-			}
-		}}
+		onblur={blur}
 		oninput={() => {
+			pause();
 			if (keyframeContext.params && keyframeContext.active()) {
 				createOrUpdateKeyframe(keyframeContext.params);
 			}
