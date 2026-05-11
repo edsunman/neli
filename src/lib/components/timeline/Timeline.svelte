@@ -44,7 +44,8 @@
 		splitHoveredClip,
 		deleteClips,
 		deselectAllClips,
-		pasteClips
+		pasteClips,
+		selectClip
 	} from '$lib/clip/actions.svelte';
 	import {
 		getKeyframeAtMousePosition,
@@ -275,18 +276,7 @@
 				return;
 			}
 
-			timelineState.selectedClip = clip;
-			timelineState.selectedClips.clear();
-			showClipPropertiesSection(clip);
-			clip.savedStart = clip.start;
-			clip.savedDuration = clip.duration;
-			clip.savedSourceOffset = clip.sourceOffset;
-			clip.savedTrack = clip.track;
-			for (const [, keyframeTrack] of clip.keyframeTracks) {
-				for (const keyframe of keyframeTrack.keyframes) {
-					keyframe.savedFrame = keyframe.frame;
-				}
-			}
+			selectClip(clip);
 			setTrackLocks();
 
 			if (clip.resizeHover === 'start' || clip.resizeHover === 'end') {
@@ -495,7 +485,7 @@
 			clickedKeyframe = -1;
 			if (
 				clip &&
-				clip.keyframeTracksActive.length > 0 &&
+				clip.keyframeTracks.size > 0 &&
 				timelineState.focusedTrack === clip.track &&
 				timelineState.selectedClip &&
 				appState.selectedKeyframeParam > -1 &&

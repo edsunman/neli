@@ -24,9 +24,9 @@ class AppState {
 	progress = $state({ started: false, message: 'starting', percentage: 0, fail: false });
 	mouseIsDown = $state(false);
 
-	clipboardState : ClipboardState = {
+	clipboardState: ClipboardState = {
 		clips: []
-	}
+	};
 
 	palette = $state<PaletteState>({
 		open: false,
@@ -79,6 +79,9 @@ class TimelineState {
 	selectedClip = $state<Clip | null>(null);
 	selectedClips = new Set<Clip>();
 	selectedTool = $state<'pointer' | 'hand' | 'scissors'>('pointer');
+
+	keyframeTracksActive = $state<number[]>([]);
+	keyframesOnThisFrame = $state<number[]>([]);
 
 	action: 'none' | 'selecting' = 'none';
 	offset = -1 / 18; // (-0.055) percentage, 0...1

@@ -16,7 +16,7 @@
 	import { focusTrack, pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';
 	import { startApp } from '$lib/app/actions';
-	import { deselectAllClips } from '$lib/clip/actions.svelte';
+	import { deselectAllClips, selectClip } from '$lib/clip/actions.svelte';
 	import { roundTo } from '$lib/clip/utils';
 	import { createOrUpdateKeyframe, finaliseKeyframe } from '$lib/clip/keyframes';
 
@@ -52,9 +52,8 @@
 
 		const clip = getClipAtCanvasPoint(x, y);
 		if (clip) {
-			timelineState.selectedClip = clip;
+			selectClip(clip);
 			programState.selectedClip = clip;
-			showClipPropertiesSection(clip);
 			dragging = true;
 			draggedOffset = { x: 0, y: 0 };
 			savedClipPosition = { x: clip.params[2], y: clip.params[3] };

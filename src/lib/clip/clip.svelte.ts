@@ -31,10 +31,6 @@ export class Clip {
 	text = $state('text');
 
 	keyframeTracks = new Map<number, KeyframeTrack>();
-	// TODO: make keyframeTracks a SvelteMap so we no longer need keyframeTracksActive
-	keyframeTracksActive = $state<number[]>([]);
-	keyframesOnThisFrame = $state<number[]>([]);
-
 	deleted = false;
 	invalid = false;
 	hovered = false;

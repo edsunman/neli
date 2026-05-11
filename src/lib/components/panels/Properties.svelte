@@ -234,6 +234,7 @@
 			<Properties.Group label="justify">
 				<Properties.Toggle
 					bind:value={clip.params[8]}
+					param={8}
 					updates="clip"
 					items={[
 						{ value: 0, icon: justifyLeftIcon },

@@ -6,8 +6,9 @@
 		value?: number;
 		items: { value: number; icon: Snippet<[string]>; onClick?: () => void }[];
 		updates?: 'none' | 'project' | 'clip';
+		param?: number;
 	};
-	let { value = $bindable(0), items, updates = 'none' }: Props = $props();
+	let { value = $bindable(0), items, updates = 'none', param = 0 }: Props = $props();
 	let oldValue = 0;
 
 	let selectedIndex = $derived.by(() => {
@@ -52,6 +53,15 @@
 				}
 				if (updates === 'clip' && timelineState.selectedClip) {
 					workerManager.sendClip(timelineState.selectedClip);
+					historyManager.newCommand({
+						action: 'clipParam',
+						data: {
+							clipId: timelineState.selectedClip.id,
+							paramIndex: [param],
+							newValue: [value],
+							oldValue: [oldValue]
+						}
+					});
 				}
 			}}>{@render item.icon('size-6')}</button
 		>

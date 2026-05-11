@@ -33,7 +33,7 @@ export const addKeyframe = (
 	if (!track) {
 		track = { keyframes: [newKeyframe] };
 		clip.keyframeTracks.set(param, track);
-		clip.keyframeTracksActive.push(param);
+		timelineState.keyframeTracksActive.push(param);
 		return;
 	}
 
@@ -109,8 +109,8 @@ export const removeKeyframe = (clip: Clip, frame: number, param: number) => {
 	const [removedKeyframe] = track.keyframes.splice(index, 1);
 	if (track.keyframes.length < 1) {
 		clip.keyframeTracks.delete(param);
-		const activeIndex = clip.keyframeTracksActive.indexOf(index);
-		clip.keyframeTracksActive.splice(activeIndex, 1);
+		const activeIndex = timelineState.keyframeTracksActive.indexOf(param);
+		timelineState.keyframeTracksActive.splice(activeIndex, 1);
 	}
 	return removedKeyframe;
 };
@@ -181,7 +181,7 @@ export const createOrUpdateKeyframe = (paramIndices: number[]) => {
 				}
 			});
 			projectManager.updateClip(clip);
-			clip.keyframesOnThisFrame.push(paramIndex);
+			timelineState.keyframesOnThisFrame.push(paramIndex);
 			continue;
 		} else {
 			// need to update
@@ -279,8 +279,8 @@ export const setParamsFromKeyframes = () => {
 	for (const clip of timelineState.clips) {
 		if (clip.deleted) continue;
 		if (clip.start <= frameNumber && clip.start + clip.duration > frameNumber) {
-			if (clip.keyframeTracksActive.length < 1) {
-				if (clip.keyframesOnThisFrame.length > 0) clip.keyframesOnThisFrame = [];
+			if (timelineState.keyframeTracksActive.length < 1) {
+				if (timelineState.keyframesOnThisFrame.length > 0) timelineState.keyframesOnThisFrame = [];
 				continue;
 			}
 
@@ -355,13 +355,13 @@ export const setParamsFromKeyframes = () => {
 				if (panNode) panNode.pan.value = clip.params[5];
 			}
 
-			clip.keyframesOnThisFrame = keyframesThisFrame;
+			timelineState.keyframesOnThisFrame = keyframesThisFrame;
 		}
 	}
 };
 
 export const toggleSelectedParam = () => {
-	const params = timelineState.selectedClip?.keyframeTracksActive;
+	const params = timelineState.keyframeTracksActive;
 	if (!params || params.length < 1) return;
 	const currentIndex = params.findIndex((p) => p === appState.selectedKeyframeParam);
 	if (currentIndex < 0) {

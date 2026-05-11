@@ -13,6 +13,7 @@ import { getClipFitTransform } from './utils';
 import { addTrack, extendTimeline, setAllTrackTypes } from '$lib/timeline/actions';
 import type { KeyframeTrack, Keyframe } from '$lib/types';
 import { removeKeyframe } from './keyframes';
+import { showClipPropertiesSection } from '$lib/properties/actions';
 
 export const createClip = (
 	sourceId: string,
@@ -544,9 +545,11 @@ export const splitClip = (clipId: string, frame: number, gapSize = 0) => {
 				framesToMove.push(keyframe);
 			}
 		}
-		newTrack.keyframes = framesToMove.reverse();
-		newClip.keyframeTracks.set(param, newTrack);
-		newClip.keyframeTracksActive.push(param);
+		if (framesToMove.length > 0) {
+			newTrack.keyframes = framesToMove.reverse();
+			newClip.keyframeTracks.set(param, newTrack);
+			timelineState.keyframeTracksActive.push(param);
+		}
 	}
 
 	timelineState.clips.push(newClip);
@@ -854,7 +857,6 @@ export const cloneClipProperties = (clip: Clip, destinationClip: Clip) => {
 	destinationClip.params = $state.snapshot(clip.params);
 	destinationClip.text = clip.text;
 	destinationClip.keyframeTracks = structuredClone(clip.keyframeTracks);
-	destinationClip.keyframeTracksActive = [...clip.keyframeTracksActive];
 };
 
 export const pasteClips = () => {
@@ -895,4 +897,22 @@ export const pasteClips = () => {
 		timelineState.selectedClips = new Set([...newClips]);
 	}
 	timelineState.invalidateWaveform = true;
+};
+
+export const selectClip = (clip: Clip) => {
+	timelineState.selectedClip = clip;
+	timelineState.selectedClips.clear();
+	showClipPropertiesSection(clip);
+	clip.savedStart = clip.start;
+	clip.savedDuration = clip.duration;
+	clip.savedSourceOffset = clip.sourceOffset;
+	clip.savedTrack = clip.track;
+	timelineState.keyframeTracksActive.length = 0;
+	for (const [key, keyframeTrack] of clip.keyframeTracks) {
+		const index = timelineState.keyframeTracksActive.findIndex((k) => k === key);
+		if (index < 0) timelineState.keyframeTracksActive.push(key);
+		for (const keyframe of keyframeTrack.keyframes) {
+			keyframe.savedFrame = keyframe.frame;
+		}
+	}
 };

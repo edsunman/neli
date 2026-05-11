@@ -205,11 +205,11 @@ export type Command =
 			action: 'updateProject';
 			data: {
 				oldApsect: number;
-				oldApsect: number;
-				oldApsect: number;
-				oldApsect: number;
-				oldApsect: number;
-				oldApsect: number;
+				oldWidth: number;
+				oldHeight: number;
+				newAspect: number;
+				newWidth: number;
+				newHeight: number;
 			};
 	  };
 
@@ -226,7 +226,6 @@ export type WorkerClip = {
 	text: string;
 	deleted: boolean;
 	type: SourceType;
-	keyframeTracksActive: number[];
 	keyframeTracks: Map<number, KeyframeTrack>;
 };
 

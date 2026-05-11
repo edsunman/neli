@@ -15,12 +15,12 @@
 	let { children, label, className = [], keyframeParams }: Props = $props();
 
 	let keyframeActive = $derived.by(() => {
-		if (!keyframeParams || !timelineState.selectedClip) return false;
-		return timelineState.selectedClip.keyframeTracksActive.includes(keyframeParams[0]);
+		if (!keyframeParams) return false;
+		return timelineState.keyframeTracksActive.includes(keyframeParams[0]);
 	});
 	let keyframeOnThisFrame = $derived.by(() => {
 		if (!keyframeParams) return false;
-		return timelineState.selectedClip?.keyframesOnThisFrame.includes(keyframeParams[0]);
+		return timelineState.keyframesOnThisFrame.includes(keyframeParams[0]);
 	});
 
 	// eslint-disable-next-line svelte/no-unused-svelte-ignore
