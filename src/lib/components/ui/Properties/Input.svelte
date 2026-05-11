@@ -9,6 +9,7 @@
 		timelineState,
 		workerManager
 	} from '$lib/state.svelte';
+	import { pause } from '$lib/timeline/actions';
 	import { onDestroy } from 'svelte';
 
 	type Props = {
@@ -109,6 +110,7 @@
 		}}
 		onblur={blur}
 		oninput={() => {
+			pause();
 			if (keyframeContext.params && keyframeContext.active()) {
 				createOrUpdateKeyframe(keyframeContext.params);
 			}

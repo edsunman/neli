@@ -8,8 +8,12 @@ export const showClipPropertiesSection = (clip: Clip) => {
 		return;
 	}
 	if (type === 'text') {
-		if (appState.propertiesSavedSection === 'layout') {
-			appState.propertiesSection = 'layout';
+		if (
+			appState.propertiesSavedSection === 'layout' ||
+			appState.propertiesSavedSection === 'textAnimation' ||
+			appState.propertiesSavedSection === 'textLayout'
+		) {
+			appState.propertiesSection = appState.propertiesSavedSection;
 			return;
 		}
 		appState.propertiesSection = 'text';

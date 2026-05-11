@@ -4,7 +4,7 @@ import type { Clip } from './clip/clip.svelte';
 
 export type ClipboardState = {
 	clips: Clip[];
-}
+};
 
 export type DragAndDropState = {
 	startingCursor: { x: number; y: number };
@@ -200,7 +200,18 @@ export type Command =
 				newEaseOut: number;
 			};
 	  }
-	| { action: 'deleteSource'; data: { sourceId: string } };
+	| { action: 'deleteSource'; data: { sourceId: string } }
+	| {
+			action: 'updateProject';
+			data: {
+				oldApsect: number;
+				oldApsect: number;
+				oldApsect: number;
+				oldApsect: number;
+				oldApsect: number;
+				oldApsect: number;
+			};
+	  };
 
 export type WorkerClip = {
 	id: string;

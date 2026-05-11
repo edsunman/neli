@@ -422,11 +422,11 @@ export const trimSiblingClips = (clip: Clip) => {
 			// clip covers sibling so remove it
 			siblingClip.deleted = true;
 			historyManager.pushAction({
-					action: 'deleteClip',
-					data: {
-						clipId: siblingClip.id
-					}
-				});
+				action: 'deleteClip',
+				data: {
+					clipId: siblingClip.id
+				}
+			});
 			modifiedClips.push(siblingClip);
 			continue;
 		}
@@ -478,7 +478,6 @@ export const trimSiblingClips = (clip: Clip) => {
 			modifiedClips.push(siblingClip);
 		}
 	}
-		
 
 	workerManager.sendClip(modifiedClips);
 	projectManager.updateClip(modifiedClips);
@@ -851,42 +850,49 @@ export const deselectAllClips = (showOutputAudio = true) => {
 	if (showOutputAudio) appState.propertiesSection = 'outputAudio';
 };
 
-export const cloneClipProperties = (clip:Clip, destinationClip:Clip) => {
+export const cloneClipProperties = (clip: Clip, destinationClip: Clip) => {
 	destinationClip.params = $state.snapshot(clip.params);
 	destinationClip.text = clip.text;
 	destinationClip.keyframeTracks = structuredClone(clip.keyframeTracks);
 	destinationClip.keyframeTracksActive = [...clip.keyframeTracksActive];
-}
+};
 
 export const pasteClips = () => {
 	const firstClip = appState.clipboardState.clips.reduce((prev, curr) => {
-		return (curr.start < prev.start) ? curr : prev;
+		return curr.start < prev.start ? curr : prev;
 	});
 
 	const newClips: Clip[] = [];
 	let track = 0;
 	let lastFrame = 0;
 	for (const clip of appState.clipboardState.clips) {
-		const startFrame = timelineState.currentFrame + (clip.start - firstClip.start)
-		const newClip = createClip(clip.source.id, clip.track,startFrame, clip.duration, clip.sourceOffset, true);
+		const startFrame = timelineState.currentFrame + (clip.start - firstClip.start);
+		const newClip = createClip(
+			clip.source.id,
+			clip.track,
+			startFrame,
+			clip.duration,
+			clip.sourceOffset,
+			true
+		);
 		if (!newClip) continue;
-		cloneClipProperties(clip,newClip);
+		cloneClipProperties(clip, newClip);
 		trimSiblingClips(newClip);
-		historyManager.pushAction({action:'addClip', data: {clipId: newClip.id}})
-		newClips.push(newClip)
+		historyManager.pushAction({ action: 'addClip', data: { clipId: newClip.id } });
+		newClips.push(newClip);
 		track = clip.track;
 		const clipLastFrame = startFrame + clip.duration;
 		if (clipLastFrame > lastFrame) lastFrame = clipLastFrame;
 	}
 	extendTimeline(lastFrame);
-	setTrackJoins(track)
+	setTrackJoins(track);
 	workerManager.sendClip(newClips);
 	projectManager.updateClip(newClips);
 	historyManager.finishCommand();
-	if (newClips.length<2) {
-		timelineState.selectedClip = newClips[0]
+	if (newClips.length < 2) {
+		timelineState.selectedClip = newClips[0];
 	} else {
-		timelineState.selectedClips = new Set([...newClips])
+		timelineState.selectedClips = new Set([...newClips]);
 	}
-	timelineState.invalidateWaveform =true;
-}
+	timelineState.invalidateWaveform = true;
+};

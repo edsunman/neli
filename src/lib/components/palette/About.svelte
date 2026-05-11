@@ -18,7 +18,7 @@
 			errorMessage = 'webCodecs';
 		}
 		if (isViewportTooSmall()) {
-			errorMessage = 'screenSize'
+			errorMessage = 'screenSize';
 		}
 		if (!localStorage.getItem('alreadyVisited')) {
 			firstVisit = true;
@@ -55,9 +55,11 @@
 		>
 	</div>
 	{#if errorMessage !== 'none'}
-		<div class="text-rose-500 text-sm border border-rose-900 rounded-lg p-2 mt-10 mb-20 flex items-center">
+		<div
+			class="text-rose-500 text-sm border-2 border-rose-900 rounded-lg p-2 mt-10 mb-20 flex items-center"
+		>
 			{@render infoIcon('size-6 mr-2 text-rose-600 ')}
-			<p class="flex-1 content-center">
+			<p class="flex-1 content-center font-bold">
 				{#if errorMessage === 'webCodecs'}WebCodecs not supported{/if}
 				{#if errorMessage === 'webGpu'}WebGpu not supported{/if}
 				{#if errorMessage === 'screenSize'}Neli is designed for larger screens{/if}

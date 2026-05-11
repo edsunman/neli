@@ -9,8 +9,10 @@
 <select
 	bind:value
 	class={[
-		'block w-full p-2 rounded-lg border border-zinc-600 text-zinc-300',
-		'focus-visible:outline-hidden focus-visible:ring-2 ring-zinc-300'
+		'block w-full p-2 rounded-lg text-zinc-300',
+		'hover:border-zinc-500 border-2 border-zinc-800 focus:border-zinc-800',
+		'focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300'
+		//'focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300'
 	]}
 	onchange={() => {
 		if (!timelineState.selectedClip) return;

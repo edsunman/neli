@@ -59,7 +59,7 @@
 					{/if}
 					{#if source.type === 'text'}
 						{@render sideButton('text', 'text settings', textIcon)}
-						{@render sideButton('textLayout', 'text layout', textIcon)}
+						{@render sideButton('textLayout', 'text layout', justifyLeftIcon)}
 						{@render sideButton('textAnimation', 'text animation', seekIcon)}
 					{/if}
 					{#if source.type === 'video' || source.type === 'image'}
@@ -74,7 +74,7 @@
 		</BitsTooltip.Provider>
 	</div>
 
-	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-40 justify-end">
+	<div class="flex flex-1 flex-col gap-4 height-xl:gap-6 height-lg:mt-2 mr-3 max-w-50 justify-end">
 		{#if appState.propertiesSection === 'project'}
 			<Properties.Group label="project name">
 				<Properties.Input
@@ -90,14 +90,13 @@
 			<Properties.Group label="aspect ratio">
 				<Properties.Toggle
 					bind:value={appState.project.aspect}
-					updateWorker={false}
+					updates="project"
 					items={[
 						{
 							value: 0,
 							icon: aspectLandscape,
 							onClick: () => {
 								changeProjectResolution(1920, 1080);
-								projectManager.updateProject({ aspect: 0 });
 							}
 						},
 						{
@@ -105,7 +104,6 @@
 							icon: aspectSquare,
 							onClick: () => {
 								changeProjectResolution(1080, 1080);
-								projectManager.updateProject({ aspect: 1 });
 							}
 						},
 						{
@@ -113,7 +111,6 @@
 							icon: aspectPortrait,
 							onClick: () => {
 								changeProjectResolution(1080, 1920);
-								projectManager.updateProject({ aspect: 2 });
 							}
 						}
 					]}
@@ -237,6 +234,7 @@
 			<Properties.Group label="justify">
 				<Properties.Toggle
 					bind:value={clip.params[8]}
+					updates="clip"
 					items={[
 						{ value: 0, icon: justifyLeftIcon },
 						{ value: 1, icon: justifyCenterIcon },
@@ -270,8 +268,8 @@
 				<Properties.Input bind:value={clip.params[22]} param={22} fallback={1} />
 				<Properties.Slider bind:value={clip.params[22]} param={22} />
 			</Properties.Group>
-			<Properties.Group label="hold">
-				<Properties.Input bind:value={clip.params[25]} param={25} fallback={1} />
+			<Properties.Group label="hold position">
+				<Properties.Checkbox bind:value={clip.params[25]} param={25} />
 			</Properties.Group>
 		{/if}
 		{#if appState.propertiesSection === 'crop' && timelineState.selectedClip}

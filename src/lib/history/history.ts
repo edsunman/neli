@@ -6,6 +6,7 @@ import {
 	removeKeyframe,
 	setParamsFromKeyframes
 } from '$lib/clip/keyframes';
+import { changeProjectResolution } from '$lib/project/actions';
 import { assignSourcesToFolders, getSourceFromId } from '$lib/source/actions';
 import { appState, projectManager, timelineState, workerManager } from '$lib/state.svelte';
 import { focusTrack, setAllTrackTypes, setTrackPositions } from '$lib/timeline/actions';
@@ -79,19 +80,27 @@ export class HistoryManager {
 	}
 
 	private finishUndoRedo(updatedClips: Set<Clip>) {
-		for (const clip of updatedClips) {
-			if (timelineState.selectedClip && clip.deleted && clip.id === timelineState.selectedClip.id) {
-				timelineState.selectedClip = null;
-				appState.propertiesSection = 'outputAudio'
+		if (updatedClips.size > 0) {
+			for (const clip of updatedClips) {
+				if (
+					timelineState.selectedClip &&
+					clip.deleted &&
+					clip.id === timelineState.selectedClip.id
+				) {
+					timelineState.selectedClip = null;
+					appState.propertiesSection = 'outputAudio';
+				}
 			}
+			workerManager.sendClip(Array.from(updatedClips));
+			projectManager.updateClip(Array.from(updatedClips));
+			setAllJoins();
+			setAllTrackTypes();
+			focusTrack(timelineState.focusedTrack);
+			setParamsFromKeyframes();
+			timelineState.invalidateWaveform = true;
+		} else {
+			projectManager.updateProject({ aspect: appState.project.aspect });
 		}
-		workerManager.sendClip(Array.from(updatedClips));
-		projectManager.updateClip(Array.from(updatedClips));
-		setAllJoins();
-		setAllTrackTypes();
-		focusTrack(timelineState.focusedTrack)
-		setParamsFromKeyframes();
-		timelineState.invalidateWaveform = true;
 	}
 
 	private toCommandObject(command: Command): ICommand {
@@ -165,6 +174,15 @@ export class HistoryManager {
 				);
 			case 'deleteSource':
 				return new DeleteSourceCommand(command.data.sourceId);
+			case 'updateProject':
+				return new UpdateProjectCommand(
+					command.data.oldApsect,
+					command.data.oldWidth,
+					command.data.oldHeight,
+					command.data.newAspect,
+					command.data.newWidth,
+					command.data.newHeight
+				);
 		}
 	}
 }
@@ -444,5 +462,24 @@ class RemoveTrackCommand implements ICommand {
 			type: this.type
 		});
 		setTrackPositions();
+	}
+}
+
+class UpdateProjectCommand implements ICommand {
+	constructor(
+		private oldAspect: number,
+		private oldWidth: number,
+		private oldHeight: number,
+		private newAspect: number,
+		private newWidth: number,
+		private newHeight: number
+	) {}
+	redo(): void {
+		appState.project.aspect = this.newAspect;
+		changeProjectResolution(this.newWidth, this.newHeight);
+	}
+	undo(): void {
+		appState.project.aspect = this.oldAspect;
+		changeProjectResolution(this.oldWidth, this.oldHeight);
 	}
 }

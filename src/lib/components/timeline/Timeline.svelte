@@ -72,7 +72,6 @@
 		scissorsIcon,
 		zoomInIcon
 	} from '../icons/Icons.svelte';
-	import { Clip } from '$lib/clip/clip.svelte';
 
 	const { onFrame } = useAnimationFrame();
 
@@ -267,7 +266,13 @@
 			}
 
 			if (timelineState.focusedTrack > 0 && timelineState.focusedTrack !== clip.track) {
-				focusTrack(clip.track)
+				focusTrack(clip.track);
+			}
+
+			if (e.detail > 1) {
+				// double click
+				focusClip();
+				return;
 			}
 
 			timelineState.selectedClip = clip;
@@ -295,8 +300,9 @@
 			deselectAllClips();
 			timelineState.action = 'selecting';
 			appState.propertiesSection = 'outputAudio';
+			removeHoverAllClips();
 		}
-		removeHoverAllClips();
+
 		timelineState.invalidate = true;
 	};
 
@@ -692,7 +698,7 @@
 				if (timelineState.selectedClip) {
 					appState.clipboardState.clips.length = 0;
 					appState.clipboardState.clips.push(timelineState.selectedClip);
-				};
+				}
 				if (timelineState.selectedClips.size > 0) {
 					appState.clipboardState.clips = [...timelineState.selectedClips];
 				}
@@ -702,8 +708,8 @@
 				if (!event.ctrlKey && !event.metaKey) return;
 				if (appState.clipboardState.clips.length < 1) return;
 
-				pasteClips()
-
+				pasteClips();
+				break;
 			}
 			case 'KeyK': {
 				if (timelineState.selectedClip) {
