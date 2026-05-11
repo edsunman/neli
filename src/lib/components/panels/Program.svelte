@@ -11,7 +11,6 @@
 
 	import ClipBox from '../program/ClipBox.svelte';
 	import SourceTimeline from '../timeline/SourceTimeline.svelte';
-	import { showClipPropertiesSection } from '$lib/properties/actions';
 	import { getClipAtCanvasPoint } from '$lib/program/utils';
 	import { focusTrack, pause } from '$lib/timeline/actions';
 	import { pauseProgram } from '$lib/program/actions';

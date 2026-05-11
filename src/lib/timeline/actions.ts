@@ -15,7 +15,7 @@ import { startProgramPlayLoop } from '$lib/program/actions';
 import { setParamsFromKeyframes } from '$lib/clip/keyframes';
 
 export const setCurrentFrame = (frame: number, updateWorker = true) => {
-	// TODO: debounce this - if same frame is called twice return early
+	// TODO: debounce this? - if same frame is called twice return early
 	if (frame < 0) frame = 0;
 	if (frame > timelineState.duration - 1) frame = timelineState.duration - 1;
 	if (updateWorker) workerManager.seek(frame);
@@ -39,11 +39,13 @@ export const play = async () => {
 			startPlayLoop();
 		}
 	}
+	if (appState.propertiesSection === 'project') {
+		appState.propertiesSection = 'outputAudio';
+	}
 };
 
 export const startPlayLoop = () => {
 	timelineState.playing = true;
-	//deselectAllClips();
 	programState.selectedClip = null;
 
 	const msPerFrame = 1000 / 30;
@@ -195,12 +197,11 @@ export const focusTrack = (trackNumber: number) => {
 		}
 	}
 
-	if (timelineState.selectedClip && timelineState.selectedClip.keyframeTracksActive.length > 0) {
-		const index = timelineState.selectedClip.keyframeTracksActive.findIndex(
+	if (timelineState.selectedClip && timelineState.keyframeTracksActive.length > 0) {
+		const index = timelineState.keyframeTracksActive.findIndex(
 			(p) => p === appState.selectedKeyframeParam
 		);
-		if (index < 0)
-			appState.selectedKeyframeParam = timelineState.selectedClip.keyframeTracksActive[0];
+		if (index < 0) appState.selectedKeyframeParam = timelineState.keyframeTracksActive[0];
 	}
 
 	setTrackPositions();
