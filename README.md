@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="neli.png" alt="Neli" width="150"/>
+   <img src="logo.png" alt="Neli" width="150"/>
 </p>
 
 Neli is a simple video editing web application designed and developed with speed and ease of use in mind.
