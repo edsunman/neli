@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">neli</h1>
+   <img src="neli.png" alt="Neli" width="150"/>
 </p>
 
 Neli is a simple video editing web application designed and developed with speed and ease of use in mind.
@@ -31,3 +31,5 @@ To generate local SSL certificate:
 mkcert -install
 mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1
 ```
+
+🎬
